@@ -1,0 +1,332 @@
+/**
+ * apiClient.ts — Mock data client.
+ * All data operations now use in-memory mock data.
+ */
+import type {
+  User,
+  RegisteredUser,
+  ColdStorage,
+  RentRequest,
+  RentalContract,
+  WarehouseRating,
+  CertificationType,
+} from '../types';
+import { MockUsers } from '../data/mockUsers';
+import { MockWarehouseData } from '../data/mockWarehouses';
+import { MockRentRequests } from '../data/mockRequests';
+import { MockRentalContracts } from '../data/mockContracts';
+import { MockRatings } from '../data/mockRatings';
+
+// ── In-memory data stores ─────────────────────────────────────────────────────
+let users: RegisteredUser[] = [...MockUsers];
+let warehouses: ColdStorage[] = [...MockWarehouseData];
+let requests: RentRequest[] = [...MockRentRequests];
+let contracts: RentalContract[] = [...MockRentalContracts];
+let ratings: WarehouseRating[] = [...MockRatings];
+let bookmarks: Record<string, string[]> = {};
+let certTypes: CertificationType[] = [
+  { id: 'cert-type-1', code: 'HACCP', name: 'HACCP', description: 'Hazard Analysis Critical Control Point', category: 'food_safety', createdAt: new Date().toISOString() },
+  { id: 'cert-type-2', code: 'ISO-22000', name: 'ISO 22000', description: 'Food Safety Management', category: 'food_safety', createdAt: new Date().toISOString() },
+  { id: 'cert-type-3', code: 'GMP', name: 'GMP', description: 'Good Manufacturing Practice', category: 'manufacturing', createdAt: new Date().toISOString() },
+  { id: 'cert-type-4', code: 'GDP', name: 'GDP', description: 'Good Distribution Practice', category: 'distribution', createdAt: new Date().toISOString() },
+  { id: 'cert-type-5', code: 'ISO-9001', name: 'ISO 9001', description: 'Quality Management', category: 'quality', createdAt: new Date().toISOString() },
+  { id: 'cert-type-6', code: 'ATTP', name: 'ATTP', description: 'An toàn thực phẩm', category: 'food_safety', createdAt: new Date().toISOString() },
+];
+
+// ── Helper to simulate async delay ────────────────────────────────────────────
+const delay = (ms: number = 100) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ── Resource CRUD clients (mock implementation) ───────────────────────────────
+export const usersAPI = {
+  getAll: async () => { await delay(); return [...users]; },
+  getById: async (id: string) => { await delay(); const user = users.find(u => u.id === id); if (!user) throw new Error('User not found'); return user; },
+  create: async (data: RegisteredUser) => { await delay(); users.push(data); return data; },
+  update: async (id: string, data: Partial<RegisteredUser>) => { await delay(); const idx = users.findIndex(u => u.id === id); if (idx === -1) throw new Error('User not found'); users[idx] = { ...users[idx], ...data }; return users[idx]; },
+  delete: async (id: string) => { await delay(); users = users.filter(u => u.id !== id); return { success: true }; },
+};
+
+export const warehousesAPI = {
+  getAll: async () => { await delay(); return [...warehouses]; },
+  getById: async (id: string) => { await delay(); const wh = warehouses.find(w => w.id === id); if (!wh) throw new Error('Warehouse not found'); return wh; },
+  create: async (data: ColdStorage) => { await delay(); warehouses.push(data); return data; },
+  update: async (id: string, data: Partial<ColdStorage>) => { await delay(); const idx = warehouses.findIndex(w => w.id === id); if (idx === -1) throw new Error('Warehouse not found'); warehouses[idx] = { ...warehouses[idx], ...data }; return warehouses[idx]; },
+  delete: async (id: string) => { await delay(); warehouses = warehouses.filter(w => w.id !== id); return { success: true }; },
+};
+
+export const requestsAPI = {
+  getAll: async () => { await delay(); return [...requests]; },
+  getById: async (id: string) => { await delay(); const req = requests.find(r => r.id === id); if (!req) throw new Error('Request not found'); return req; },
+  create: async (data: RentRequest) => { await delay(); requests.push(data); return data; },
+  update: async (id: string, data: Partial<RentRequest>) => { await delay(); const idx = requests.findIndex(r => r.id === id); if (idx === -1) throw new Error('Request not found'); requests[idx] = { ...requests[idx], ...data }; return requests[idx]; },
+  delete: async (id: string) => { await delay(); requests = requests.filter(r => r.id !== id); return { success: true }; },
+};
+
+export const contractsAPI = {
+  getAll: async () => { await delay(); return [...contracts]; },
+  getById: async (id: string) => { await delay(); const contract = contracts.find(c => c.id === id); if (!contract) throw new Error('Contract not found'); return contract; },
+  create: async (data: RentalContract) => { await delay(); contracts.push(data); return data; },
+  update: async (id: string, data: Partial<RentalContract>) => { await delay(); const idx = contracts.findIndex(c => c.id === id); if (idx === -1) throw new Error('Contract not found'); contracts[idx] = { ...contracts[idx], ...data }; return contracts[idx]; },
+  delete: async (id: string) => { await delay(); contracts = contracts.filter(c => c.id !== id); return { success: true }; },
+};
+
+export const ratingsAPI = {
+  getAll: async () => { await delay(); return [...ratings]; },
+  getById: async (id: string) => { await delay(); const rating = ratings.find(r => r.id === id); if (!rating) throw new Error('Rating not found'); return rating; },
+  create: async (data: WarehouseRating) => { await delay(); ratings.push(data); return data; },
+  update: async (id: string, data: Partial<WarehouseRating>) => { await delay(); const idx = ratings.findIndex(r => r.id === id); if (idx === -1) throw new Error('Rating not found'); ratings[idx] = { ...ratings[idx], ...data }; return ratings[idx]; },
+  delete: async (id: string) => { await delay(); ratings = ratings.filter(r => r.id !== id); return { success: true }; },
+};
+
+export const certTypesAPI = {
+  getAll: async () => { await delay(); return [...certTypes]; },
+  getById: async (id: string) => { await delay(); const cert = certTypes.find(c => c.id === id); if (!cert) throw new Error('Cert type not found'); return cert; },
+  create: async (data: CertificationType) => { await delay(); certTypes.push(data); return data; },
+  update: async (id: string, data: Partial<CertificationType>) => { await delay(); const idx = certTypes.findIndex(c => c.id === id); if (idx === -1) throw new Error('Cert type not found'); certTypes[idx] = { ...certTypes[idx], ...data }; return certTypes[idx]; },
+  delete: async (id: string) => { await delay(); certTypes = certTypes.filter(c => c.id !== id); return { success: true }; },
+};
+
+// ── Auth endpoints (mock implementation) ──────────────────────────────────────
+export const authAPI = {
+  /**
+   * Validate credentials against mock data.
+   * Returns User (without password) on success, throws 401 on bad credentials.
+   */
+  login: async (email: string, password: string): Promise<User> => {
+    await delay();
+    const user = users.find(u => u.email === email && u.password === password);
+    if (!user) throw new Error('Invalid credentials');
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  },
+
+  /**
+   * Create a new user in mock data.
+   * Returns User (without password) on success, throws 409 on duplicate email.
+   */
+  register: async (user: RegisteredUser): Promise<User> => {
+    await delay();
+    if (users.find(u => u.email === user.email)) {
+      throw new Error('Email already exists');
+    }
+    users.push(user);
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  },
+};
+
+// ── Bookmarks endpoints (mock implementation) ─────────────────────────────────
+export const bookmarksAPI = {
+  getByUser: async (userId: string) => {
+    await delay();
+    return { warehouseIds: bookmarks[userId] || [] };
+  },
+
+  saveForUser: async (userId: string, warehouseIds: string[]) => {
+    await delay();
+    bookmarks[userId] = warehouseIds;
+    return { warehouseIds };
+  },
+};
+
+// ── Seed endpoints (mock implementation) ──────────────────────────────────────
+export interface SeedCheckResult {
+  seeded: boolean;
+  meta: { ts: string; counts: Record<string, number>; dataVersion?: string } | null;
+}
+
+export interface SeedPayload {
+  users:      RegisteredUser[];
+  warehouses: ColdStorage[];
+  requests:   RentRequest[];
+  contracts:  RentalContract[];
+  ratings:    WarehouseRating[];
+}
+
+let seeded = false;
+let seedMeta: { ts: string; counts: Record<string, number>; dataVersion?: string } | null = null;
+
+export const seedAPI = {
+  check: async (): Promise<SeedCheckResult> => {
+    await delay();
+    return { seeded, meta: seedMeta };
+  },
+
+  seed: async (payload: SeedPayload, force = false, dataVersion?: string) => {
+    await delay();
+    if (seeded && !force) {
+      return { status: 'already seeded', counts: {} };
+    }
+    
+    users = [...payload.users];
+    warehouses = [...payload.warehouses];
+    requests = [...payload.requests];
+    contracts = [...payload.contracts];
+    ratings = [...payload.ratings];
+    
+    seeded = true;
+    seedMeta = {
+      ts: new Date().toISOString(),
+      counts: {
+        users: users.length,
+        warehouses: warehouses.length,
+        requests: requests.length,
+        contracts: contracts.length,
+        ratings: ratings.length,
+      },
+      dataVersion,
+    };
+    
+    return { status: 'seeded', counts: seedMeta.counts };
+  },
+
+  clear: async () => {
+    await delay();
+    users = [];
+    warehouses = [];
+    requests = [];
+    contracts = [];
+    ratings = [];
+    bookmarks = {};
+    seeded = false;
+    seedMeta = null;
+    return { status: 'cleared', message: 'All data cleared' };
+  },
+
+  status: async () => {
+    await delay();
+    return {
+      counts: {
+        users: users.length,
+        warehouses: warehouses.length,
+        requests: requests.length,
+        contracts: contracts.length,
+        ratings: ratings.length,
+      },
+      seededAt: seedMeta?.ts || null,
+      seeded,
+    };
+  },
+
+  seedResource: async (resource: string, items: any[], force = false) => {
+    await delay();
+    // Simple resource seeding
+    return { status: 'seeded', resource, count: items.length };
+  },
+
+  clearResource: async (resource: string) => {
+    await delay();
+    return { status: 'cleared', resource, cleared: 0 };
+  },
+};
+
+// ── Storage: image upload (mock implementation) ───────────────────────────────
+export const storageAPI = {
+  /**
+   * Mock image upload - returns a placeholder URL.
+   */
+  uploadImage: async (file: File): Promise<string> => {
+    await delay(300);
+    // Return a mock URL based on file name
+    return `https://images.unsplash.com/photo-${Date.now()}?w=1080`;
+  },
+
+  /**
+   * Mock document upload - returns a placeholder URL.
+   */
+  uploadDoc: async (file: File): Promise<string> => {
+    await delay(300);
+    return `https://example.com/docs/${file.name}`;
+  },
+};
+
+// ── AI Chat endpoint (mock implementation) ────────────────────────────────────
+export interface AIRequestPayload {
+  prompt: string;
+  criteria: Record<string, string[]>;
+  matchingWarehouses: any[];
+  conversationHistory: { role: "user" | "ai"; content: string }[];
+  isInitialHandshake: boolean;
+  hasCriteria: boolean;
+}
+
+export interface AIResponsePayload {
+  text: string;
+  refinedWarehouseIds?: string[];
+  usage?: { input_tokens: number; output_tokens: number };
+}
+
+export interface AIStatusResult {
+  model: string;
+  keyConfigured: boolean;
+  apiReachable: boolean;
+  latencyMs: number | null;
+  error: string | null;
+}
+
+let conversations: AIConversationRecord[] = [];
+
+export const aiAPI = {
+  chat: async (payload: AIRequestPayload): Promise<AIResponsePayload> => {
+    await delay(500);
+    // Mock AI response
+    return {
+      text: 'Đây là phản hồi mô phỏng từ AI. Trong môi trường thực tế, đây sẽ là phản hồi từ Claude AI.',
+      refinedWarehouseIds: payload.matchingWarehouses.slice(0, 3).map((w: any) => w.id),
+      usage: { input_tokens: 100, output_tokens: 50 },
+    };
+  },
+
+  status: async (): Promise<AIStatusResult> => {
+    await delay();
+    return {
+      model: 'mock-model',
+      keyConfigured: true,
+      apiReachable: true,
+      latencyMs: 100,
+      error: null,
+    };
+  },
+
+  saveConversation: async (conv: AIConversationRecord): Promise<AIConversationRecord> => {
+    await delay();
+    conversations.push(conv);
+    return conv;
+  },
+
+  getConversationsByUser: async (userId: string): Promise<AIConversationRecord[]> => {
+    await delay();
+    return conversations.filter(c => c.userId === userId);
+  },
+
+  getAllConversations: async (): Promise<AIConversationRecord[]> => {
+    await delay();
+    return [...conversations];
+  },
+
+  deleteConversation: async (id: string) => {
+    await delay();
+    conversations = conversations.filter(c => c.id !== id);
+    return { success: true };
+  },
+};
+
+// ── AI Conversation record ────────────────────────────────────────────────────
+export interface AIConversationRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  criteria: Record<string, string[]>;
+  messages: { role: 'user' | 'ai'; content: string; timestamp: string }[];
+  warehouseCount: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Health / diagnostics (mock implementation) ────────────────────────────────
+export const healthAPI = {
+  check: async () => { await delay(); return { status: 'ok' }; },
+  kvPing: async () => { await delay(); return { status: 'ok', message: 'Mock data ready' }; },
+};
