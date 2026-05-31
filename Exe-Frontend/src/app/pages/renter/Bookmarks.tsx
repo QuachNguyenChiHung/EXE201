@@ -118,7 +118,7 @@ function CertificationList({ warehouse }: { warehouse: ColdStorage }) {
                         : 'var(--color-success)',
                   }}
                 />
-                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{cert.name}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{cert.label}</span>
               </div>
               {expired && (
                 <span className="text-[9px] px-1 py-0.5" style={{ background: 'var(--color-error)', color: '#fff', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -657,7 +657,7 @@ function AIChatSidebar({ warehouses, initialReq, bestId, onBestChange, onClose }
       <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b border-[var(--color-border)]" style={{ background: 'var(--color-bg)' }}>
         {warehouses.map((w) => (
           <span
-            key={w.id}
+            key={w.}
             className="text-[10px] px-2 py-0.5 flex items-center gap-1"
             style={{
               border: w.id === bestId ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',

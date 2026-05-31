@@ -2,21 +2,21 @@ import { ColdStorage } from '../types';
 
 // ── Real Unsplash image URLs used in seed data ────────────────────────────────
 const IMG = {
-  coldInterior:   'https://images.unsplash.com/photo-1649260791830-5404cc5af05b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  frozenRacks:    'https://images.unsplash.com/photo-1730000855881-2e0f5705539a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  loadingDock:    'https://images.unsplash.com/photo-1758789667762-56175fe4601c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  coldInterior: 'https://images.unsplash.com/photo-1649260791830-5404cc5af05b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  frozenRacks: 'https://images.unsplash.com/photo-1730000855881-2e0f5705539a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  loadingDock: 'https://images.unsplash.com/photo-1758789667762-56175fe4601c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
   coldChainTruck: 'https://images.unsplash.com/photo-1734158168764-14c1de7d537a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  packagingLine:  'https://images.unsplash.com/photo-1769411288328-6fd67ee57718?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  forklifts:      'https://images.unsplash.com/photo-1768796373708-e1b62a0f2900?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  vegCoolRoom:    'https://images.unsplash.com/photo-1669154777196-aca4d45b581a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  facilityExt:    'https://images.unsplash.com/photo-1675924074571-e4b2905c779e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  shelvingRows:   'https://images.unsplash.com/photo-1768796372610-f844d490a734?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  meatColdRoom:   'https://images.unsplash.com/photo-1741274955640-d3df122a86e5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  industrialExt:  'https://images.unsplash.com/photo-1567129817987-e719d97301fd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  refrigUnit:     'https://images.unsplash.com/photo-1722858816476-01e6d029b50e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  frozenShelves:  'https://images.unsplash.com/photo-1601599964574-cddabfa36549?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  modernRacks:    'https://images.unsplash.com/photo-1768796373360-95d80c5830fb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
-  tempControl:    'https://images.unsplash.com/photo-1518829154205-6b1fdd0c0f0c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  packagingLine: 'https://images.unsplash.com/photo-1769411288328-6fd67ee57718?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  forklifts: 'https://images.unsplash.com/photo-1768796373708-e1b62a0f2900?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  vegCoolRoom: 'https://images.unsplash.com/photo-1669154777196-aca4d45b581a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  facilityExt: 'https://images.unsplash.com/photo-1675924074571-e4b2905c779e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  shelvingRows: 'https://images.unsplash.com/photo-1768796372610-f844d490a734?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  meatColdRoom: 'https://images.unsplash.com/photo-1741274955640-d3df122a86e5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  industrialExt: 'https://images.unsplash.com/photo-1567129817987-e719d97301fd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  refrigUnit: 'https://images.unsplash.com/photo-1722858816476-01e6d029b50e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  frozenShelves: 'https://images.unsplash.com/photo-1601599964574-cddabfa36549?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  modernRacks: 'https://images.unsplash.com/photo-1768796373360-95d80c5830fb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  tempControl: 'https://images.unsplash.com/photo-1518829154205-6b1fdd0c0f0c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
 };
 
 /**
@@ -30,8 +30,8 @@ const IMG = {
 export const MockWarehouseData: ColdStorage[] = [
   // ── storage-1 — Kho lạnh Cát Lái ─────────────────────────────────────────
   {
-    id: 'storage-1',
-    ownerId: 'user-2',
+    id: 14,
+    ownerId: 2,
     ownerName: 'Cold Storage Solutions',
     name: 'Kho lạnh Cát Lái',
     description:
@@ -55,16 +55,16 @@ export const MockWarehouseData: ColdStorage[] = [
     },
     certifications: [
       {
-        id: 'cert-1-1',
-        name: 'HACCP',
+        id: 101,
+        label: 'HACCP',
         issuer: 'Bộ Y tế',
         issueDate: '2024-01-01',
         expiryDate: '2026-01-01',
         documentUrl: 'https://example.com/docs/haccp-cert.pdf',
       },
       {
-        id: 'cert-1-2',
-        name: 'ISO 22000',
+        id: 102,
+        label: 'ISO 22000',
         issuer: 'ISO Vietnam',
         issueDate: '2023-12-01',
         expiryDate: '2026-12-01',
@@ -75,7 +75,7 @@ export const MockWarehouseData: ColdStorage[] = [
     pricePerCubicMeter: 350000,
     priceTiers: [
       { id: 'pt-1-1', label: 'Giá theo tháng', value: 350000, unit: 'month' as const },
-      { id: 'pt-1-2', label: 'Giá theo ngày',  value: 14000,  unit: 'day'   as const },
+      { id: 'pt-1-2', label: 'Giá theo ngày', value: 14000, unit: 'day' as const },
     ],
     sections: [
       {
@@ -88,7 +88,7 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMax: -18,
         priceTiers: [
           { id: 'pt-1-1-1', label: 'Giá theo tháng', value: 350000, unit: 'month' as const },
-          { id: 'pt-1-1-2', label: 'Giá theo ngày',  value: 14000,  unit: 'day'   as const },
+          { id: 'pt-1-1-2', label: 'Giá theo ngày', value: 14000, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -101,8 +101,8 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMin: -5,
         temperatureMax: 2,
         priceTiers: [
-          { id: 'pt-1-2-1', label: 'Giá theo tháng', value: 280000,  unit: 'month' as const },
-          { id: 'pt-1-2-2', label: 'Giá theo năm',   value: 2900000, unit: 'year'  as const },
+          { id: 'pt-1-2-1', label: 'Giá theo tháng', value: 280000, unit: 'month' as const },
+          { id: 'pt-1-2-2', label: 'Giá theo năm', value: 2900000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -134,7 +134,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-2 — Kho lạnh Tân Thuận ───────────────────────────────────────
   {
     id: 'storage-2',
-    ownerId: 'user-2',
+    ownerId: 2,
     ownerName: 'Cold Storage Solutions',
     name: 'Kho lạnh Tân Thuận',
     description: 'Kho lạnh với vị trí thuận lợi gần cảng, phù hợp cho xuất nhập khẩu. Tiêu chuẩn GMP được chứng nhận.',
@@ -157,8 +157,8 @@ export const MockWarehouseData: ColdStorage[] = [
     },
     certifications: [
       {
-        id: 'cert-2-1',
-        name: 'GMP',
+        id: 201,
+        label: 'GMP',
         issuer: 'Bộ Công Thương',
         issueDate: '2024-02-01',
         expiryDate: '2026-02-01',
@@ -168,9 +168,9 @@ export const MockWarehouseData: ColdStorage[] = [
     hasCertification: true,
     pricePerCubicMeter: 380000,
     priceTiers: [
-      { id: 'pt-2-1', label: 'Giá theo tháng', value: 380000,  unit: 'month' as const },
-      { id: 'pt-2-2', label: 'Giá theo ngày',  value: 15000,   unit: 'day'   as const },
-      { id: 'pt-2-3', label: 'Giá theo năm',   value: 4000000, unit: 'year'  as const },
+      { id: 'pt-2-1', label: 'Giá theo tháng', value: 380000, unit: 'month' as const },
+      { id: 'pt-2-2', label: 'Giá theo ngày', value: 15000, unit: 'day' as const },
+      { id: 'pt-2-3', label: 'Giá theo năm', value: 4000000, unit: 'year' as const },
     ],
     sections: [
       {
@@ -182,9 +182,9 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMin: -20,
         temperatureMax: -15,
         priceTiers: [
-          { id: 'pt-2-1-1', label: 'Giá theo tháng', value: 380000,  unit: 'month' as const },
-          { id: 'pt-2-1-2', label: 'Giá theo ngày',  value: 15000,   unit: 'day'   as const },
-          { id: 'pt-2-1-3', label: 'Giá theo năm',   value: 4000000, unit: 'year'  as const },
+          { id: 'pt-2-1-1', label: 'Giá theo tháng', value: 380000, unit: 'month' as const },
+          { id: 'pt-2-1-2', label: 'Giá theo ngày', value: 15000, unit: 'day' as const },
+          { id: 'pt-2-1-3', label: 'Giá theo năm', value: 4000000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -216,7 +216,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-3 — Kho lạnh Bình Dương ──────────────────────────────────────
   {
     id: 'storage-3',
-    ownerId: 'user-2',
+    ownerId: 2,
     ownerName: 'Cold Storage Solutions',
     name: 'Kho lạnh Bình Dương',
     description: 'Kho lạnh quy mô lớn tại Bình Dương, phù hợp cho các doanh nghiệp sản xuất công nghiệp thực phẩm.',
@@ -241,8 +241,8 @@ export const MockWarehouseData: ColdStorage[] = [
     hasCertification: false,
     pricePerCubicMeter: 280000,
     priceTiers: [
-      { id: 'pt-3-1', label: 'Giá theo tháng', value: 280000,  unit: 'month' as const },
-      { id: 'pt-3-2', label: 'Giá theo năm',   value: 2800000, unit: 'year'  as const },
+      { id: 'pt-3-1', label: 'Giá theo tháng', value: 280000, unit: 'month' as const },
+      { id: 'pt-3-2', label: 'Giá theo năm', value: 2800000, unit: 'year' as const },
     ],
     sections: [
       {
@@ -254,8 +254,8 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMin: -30,
         temperatureMax: -10,
         priceTiers: [
-          { id: 'pt-3-1-1', label: 'Giá theo tháng', value: 280000,  unit: 'month' as const },
-          { id: 'pt-3-1-2', label: 'Giá theo năm',   value: 2800000, unit: 'year'  as const },
+          { id: 'pt-3-1-1', label: 'Giá theo tháng', value: 280000, unit: 'month' as const },
+          { id: 'pt-3-1-2', label: 'Giá theo năm', value: 2800000, unit: 'year' as const },
         ],
         availability: 'available' as const,
       },
@@ -268,8 +268,8 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMin: 0,
         temperatureMax: 8,
         priceTiers: [
-          { id: 'pt-3-2-1', label: 'Giá theo tháng', value: 180000,  unit: 'month' as const },
-          { id: 'pt-3-2-2', label: 'Giá theo năm',   value: 1800000, unit: 'year'  as const },
+          { id: 'pt-3-2-1', label: 'Giá theo tháng', value: 180000, unit: 'month' as const },
+          { id: 'pt-3-2-2', label: 'Giá theo năm', value: 1800000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -288,7 +288,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-4 — Kho lạnh Hà Nội ──────────────────────────────────────────
   {
     id: 'storage-4',
-    ownerId: 'user-2',
+    ownerId: 2,
     ownerName: 'Cold Storage Solutions',
     name: 'Kho lạnh Hà Nội',
     description: 'Kho lạnh hiện đại phục vụ khu vực miền Bắc. Hệ thống hai phân khu tách biệt cho đông lạnh và kho mát.',
@@ -311,8 +311,8 @@ export const MockWarehouseData: ColdStorage[] = [
     },
     certifications: [
       {
-        id: 'cert-4-1',
-        name: 'HACCP',
+        id: '456',
+        label: 'HACCP',
         issuer: 'Bộ Y tế',
         issueDate: '2024-01-15',
         expiryDate: '2026-01-15',
@@ -322,8 +322,8 @@ export const MockWarehouseData: ColdStorage[] = [
     hasCertification: true,
     pricePerCubicMeter: 340000,
     priceTiers: [
-      { id: 'pt-4-1', label: 'Giá theo tháng', value: 340000,  unit: 'month' as const },
-      { id: 'pt-4-2', label: 'Giá theo năm',   value: 3500000, unit: 'year'  as const },
+      { id: 'pt-4-1', label: 'Giá theo tháng', value: 340000, unit: 'month' as const },
+      { id: 'pt-4-2', label: 'Giá theo năm', value: 3500000, unit: 'year' as const },
     ],
     sections: [
       {
@@ -335,8 +335,8 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMin: -22,
         temperatureMax: -16,
         priceTiers: [
-          { id: 'pt-4-1-1', label: 'Giá theo tháng', value: 340000,  unit: 'month' as const },
-          { id: 'pt-4-1-2', label: 'Giá theo năm',   value: 3500000, unit: 'year'  as const },
+          { id: 'pt-4-1-1', label: 'Giá theo tháng', value: 340000, unit: 'month' as const },
+          { id: 'pt-4-1-2', label: 'Giá theo năm', value: 3500000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -350,7 +350,7 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMax: 10,
         priceTiers: [
           { id: 'pt-4-2-1', label: 'Giá theo tháng', value: 190000, unit: 'month' as const },
-          { id: 'pt-4-2-2', label: 'Giá theo ngày',  value: 8000,   unit: 'day'   as const },
+          { id: 'pt-4-2-2', label: 'Giá theo ngày', value: 8000, unit: 'day' as const },
         ],
         availability: 'partially' as const,
       },
@@ -369,7 +369,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-5 — Kho lạnh Đà Nẵng ─────────────────────────────────────────
   {
     id: 'storage-5',
-    ownerId: 'user-2',
+    ownerId: 2,
     ownerName: 'Cold Storage Solutions',
     name: 'Kho lạnh Đà Nẵng',
     description: 'Kho lạnh phục vụ khu vực miền Trung, gần sân bay quốc tế Đà Nẵng, thuận lợi vận chuyển.',
@@ -392,8 +392,8 @@ export const MockWarehouseData: ColdStorage[] = [
     },
     certifications: [
       {
-        id: 'cert-5-1',
-        name: 'ISO 9001',
+        id: 501,
+        label: 'ISO 9001',
         issuer: 'ISO Vietnam',
         issueDate: '2023-11-01',
         expiryDate: '2026-11-01',
@@ -403,9 +403,9 @@ export const MockWarehouseData: ColdStorage[] = [
     hasCertification: true,
     pricePerCubicMeter: 310000,
     priceTiers: [
-      { id: 'pt-5-1', label: 'Giá theo tháng', value: 310000,  unit: 'month' as const },
-      { id: 'pt-5-2', label: 'Giá theo ngày',  value: 12500,   unit: 'day'   as const },
-      { id: 'pt-5-3', label: 'Giá theo năm',   value: 3200000, unit: 'year'  as const },
+      { id: 'pt-5-1', label: 'Giá theo tháng', value: 310000, unit: 'month' as const },
+      { id: 'pt-5-2', label: 'Giá theo ngày', value: 12500, unit: 'day' as const },
+      { id: 'pt-5-3', label: 'Giá theo năm', value: 3200000, unit: 'year' as const },
     ],
     sections: [
       {
@@ -417,9 +417,9 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMin: -18,
         temperatureMax: -12,
         priceTiers: [
-          { id: 'pt-5-1-1', label: 'Giá theo tháng', value: 310000,  unit: 'month' as const },
-          { id: 'pt-5-1-2', label: 'Giá theo ngày',  value: 12500,   unit: 'day'   as const },
-          { id: 'pt-5-1-3', label: 'Giá theo năm',   value: 3200000, unit: 'year'  as const },
+          { id: 'pt-5-1-1', label: 'Giá theo tháng', value: 310000, unit: 'month' as const },
+          { id: 'pt-5-1-2', label: 'Giá theo ngày', value: 12500, unit: 'day' as const },
+          { id: 'pt-5-1-3', label: 'Giá theo năm', value: 3200000, unit: 'year' as const },
         ],
         availability: 'available' as const,
       },
@@ -433,7 +433,7 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMax: 2,
         priceTiers: [
           { id: 'pt-5-2-1', label: 'Giá theo tháng', value: 220000, unit: 'month' as const },
-          { id: 'pt-5-2-2', label: 'Giá theo năm',   value: 2400000, unit: 'year' as const },
+          { id: 'pt-5-2-2', label: 'Giá theo năm', value: 2400000, unit: 'year' as const },
         ],
         availability: 'available' as const,
       },
@@ -452,7 +452,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-6 — Kho lạnh Long An ─────────────────────────────────────────
   {
     id: 'storage-6',
-    ownerId: 'user-2',
+    ownerId: 2,
     ownerName: 'Cold Storage Solutions',
     name: 'Kho lạnh Long An',
     description: 'Kho lạnh mới tại Long An, vị trí thuận lợi cho khu vực Đồng bằng sông Cửu Long.',
@@ -487,7 +487,7 @@ export const MockWarehouseData: ColdStorage[] = [
     pricePerCubicMeter: 260000,
     priceTiers: [
       { id: 'pt-6-1', label: 'Giá theo tháng', value: 260000, unit: 'month' as const },
-      { id: 'pt-6-2', label: 'Giá theo ngày',  value: 10500,  unit: 'day'   as const },
+      { id: 'pt-6-2', label: 'Giá theo ngày', value: 10500, unit: 'day' as const },
     ],
     sections: [
       {
@@ -500,7 +500,7 @@ export const MockWarehouseData: ColdStorage[] = [
         temperatureMax: -15,
         priceTiers: [
           { id: 'pt-6-1-1', label: 'Giá theo tháng', value: 260000, unit: 'month' as const },
-          { id: 'pt-6-1-2', label: 'Giá theo ngày',  value: 10500,  unit: 'day'   as const },
+          { id: 'pt-6-1-2', label: 'Giá theo ngày', value: 10500, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -532,7 +532,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-7 — pending warehouse (visible to employee) ──────────────────
   {
     id: 'storage-7',
-    ownerId: 'user-9',
+    ownerId: 9,
     ownerName: 'Hanoi Cold Hub',
     name: 'Kho lạnh Gia Lâm',
     description: 'Kho lạnh mới đang chờ phê duyệt, phục vụ khu vực phía Đông Hà Nội.',
@@ -591,7 +591,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-8 — GDP + ATTP — Quận Bình Tân ──────────────────────────────
   {
     id: 'storage-8',
-    ownerId: 'user-10',
+    ownerId: 10,
     ownerName: 'Saigon Cold Chain',
     name: 'Kho lạnh Bình Tân Logistics',
     description: 'Kho lạnh chuyên phân phối dược phẩm và thực phẩm đông lạnh, đạt chuẩn GDP và ATTP. Nằm trên trục đường chính kết nối các quận nội thành.',
@@ -619,8 +619,8 @@ export const MockWarehouseData: ColdStorage[] = [
     hasCertification: true,
     pricePerCubicMeter: 370000,
     priceTiers: [
-      { id: 'pt-8-1', label: 'Giá theo tháng', value: 370000,  unit: 'month' as const },
-      { id: 'pt-8-2', label: 'Giá theo năm',   value: 3800000, unit: 'year'  as const },
+      { id: 'pt-8-1', label: 'Giá theo tháng', value: 370000, unit: 'month' as const },
+      { id: 'pt-8-2', label: 'Giá theo năm', value: 3800000, unit: 'year' as const },
     ],
     sections: [
       {
@@ -628,7 +628,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 1500, availableCapacity: 800, temperatureMin: 2, temperatureMax: 8,
         priceTiers: [
           { id: 'pt-8-1-1', label: 'Giá theo tháng', value: 450000, unit: 'month' as const },
-          { id: 'pt-8-1-2', label: 'Giá theo ngày',  value: 18000,  unit: 'day'   as const },
+          { id: 'pt-8-1-2', label: 'Giá theo ngày', value: 18000, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -636,8 +636,8 @@ export const MockWarehouseData: ColdStorage[] = [
         id: 'sec-8-2', name: 'Kho đông lạnh thực phẩm', description: 'Thực phẩm chế biến, kem, hải sản đông lạnh',
         capacity: 2000, availableCapacity: 1000, temperatureMin: -25, temperatureMax: -18,
         priceTiers: [
-          { id: 'pt-8-2-1', label: 'Giá theo tháng', value: 370000,  unit: 'month' as const },
-          { id: 'pt-8-2-2', label: 'Giá theo năm',   value: 3800000, unit: 'year'  as const },
+          { id: 'pt-8-2-1', label: 'Giá theo tháng', value: 370000, unit: 'month' as const },
+          { id: 'pt-8-2-2', label: 'Giá theo năm', value: 3800000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -664,7 +664,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-9 — ISO 22000 + HACCP — Quận 12 ─────────────────────────────
   {
     id: 'storage-9',
-    ownerId: 'user-10',
+    ownerId: 10,
     ownerName: 'Saigon Cold Chain',
     name: 'Kho lạnh Tân Thới Hiệp',
     description: 'Kho lạnh chuẩn quốc tế đạt ISO 22000 và HACCP, chuyên phục vụ chuỗi siêu thị và nhà hàng khu vực phía Bắc Sài Gòn.',
@@ -692,16 +692,16 @@ export const MockWarehouseData: ColdStorage[] = [
     hasCertification: true,
     pricePerCubicMeter: 390000,
     priceTiers: [
-      { id: 'pt-9-1', label: 'Giá theo tháng', value: 390000,  unit: 'month' as const },
-      { id: 'pt-9-2', label: 'Giá theo năm',   value: 4100000, unit: 'year'  as const },
+      { id: 'pt-9-1', label: 'Giá theo tháng', value: 390000, unit: 'month' as const },
+      { id: 'pt-9-2', label: 'Giá theo năm', value: 4100000, unit: 'year' as const },
     ],
     sections: [
       {
         id: 'sec-9-1', name: 'Kho đông lạnh A', description: 'Thịt heo, bò, gà đông lạnh cho siêu thị',
         capacity: 2000, availableCapacity: 800, temperatureMin: -22, temperatureMax: -18,
         priceTiers: [
-          { id: 'pt-9-1-1', label: 'Giá theo tháng', value: 390000,  unit: 'month' as const },
-          { id: 'pt-9-1-2', label: 'Giá theo năm',   value: 4100000, unit: 'year'  as const },
+          { id: 'pt-9-1-1', label: 'Giá theo tháng', value: 390000, unit: 'month' as const },
+          { id: 'pt-9-1-2', label: 'Giá theo năm', value: 4100000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -710,7 +710,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 1500, availableCapacity: 700, temperatureMin: 0, temperatureMax: 5,
         priceTiers: [
           { id: 'pt-9-2-1', label: 'Giá theo tháng', value: 280000, unit: 'month' as const },
-          { id: 'pt-9-2-2', label: 'Giá theo ngày',  value: 11000,  unit: 'day'   as const },
+          { id: 'pt-9-2-2', label: 'Giá theo ngày', value: 11000, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -729,7 +729,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-10 — ATTP only — Quận 9 (Thủ Đức) ──────────────────────────
   {
     id: 'storage-10',
-    ownerId: 'user-11',
+    ownerId: 11,
     ownerName: 'Mekong Freeze Logistics',
     name: 'Kho lạnh Khu CNC Quận 9',
     description: 'Kho lạnh trong khu công nghệ cao Quận 9, phục vụ các doanh nghiệp thực phẩm & nông sản xuất khẩu. Đạt chứng nhận ATTP.',
@@ -763,8 +763,8 @@ export const MockWarehouseData: ColdStorage[] = [
         id: 'sec-10-1', name: 'Kho siêu đông', description: 'Tôm, cá tra fillet xuất khẩu, hải sản cao cấp',
         capacity: 2500, availableCapacity: 2000, temperatureMin: -28, temperatureMax: -20,
         priceTiers: [
-          { id: 'pt-10-1-1', label: 'Giá theo tháng', value: 340000,  unit: 'month' as const },
-          { id: 'pt-10-1-2', label: 'Giá theo năm',   value: 3500000, unit: 'year'  as const },
+          { id: 'pt-10-1-1', label: 'Giá theo tháng', value: 340000, unit: 'month' as const },
+          { id: 'pt-10-1-2', label: 'Giá theo năm', value: 3500000, unit: 'year' as const },
         ],
         availability: 'available' as const,
       },
@@ -781,7 +781,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 1500, availableCapacity: 1000, temperatureMin: 2, temperatureMax: 10,
         priceTiers: [
           { id: 'pt-10-3-1', label: 'Giá theo tháng', value: 200000, unit: 'month' as const },
-          { id: 'pt-10-3-2', label: 'Giá theo ngày',  value: 8500,   unit: 'day'   as const },
+          { id: 'pt-10-3-2', label: 'Giá theo ngày', value: 8500, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -800,7 +800,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-11 — BRC + ISO 22000 — Quận Bình Chánh ──────────────────────
   {
     id: 'storage-11',
-    ownerId: 'user-10',
+    ownerId: 10,
     ownerName: 'Saigon Cold Chain',
     name: 'Kho lạnh Bình Chánh Premium',
     description: 'Kho lạnh đạt chuẩn BRC Global và ISO 22000, phục vụ chuỗi cung ứng thực phẩm xuất khẩu sang EU và Nhật Bản.',
@@ -836,8 +836,8 @@ export const MockWarehouseData: ColdStorage[] = [
         id: 'sec-11-1', name: 'Kho blast freezer', description: 'Cấp đông nhanh IQF cho thủy sản xuất khẩu EU',
         capacity: 2000, availableCapacity: 800, temperatureMin: -30, temperatureMax: -25,
         priceTiers: [
-          { id: 'pt-11-1-1', label: 'Giá theo tháng', value: 500000,  unit: 'month' as const },
-          { id: 'pt-11-1-2', label: 'Giá theo năm',   value: 5200000, unit: 'year'  as const },
+          { id: 'pt-11-1-1', label: 'Giá theo tháng', value: 500000, unit: 'month' as const },
+          { id: 'pt-11-1-2', label: 'Giá theo năm', value: 5200000, unit: 'year' as const },
         ],
         availability: 'partially' as const,
       },
@@ -872,7 +872,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-12 — ISO 14001 + GMP — Quận Gò Vấp ─────────────────────────
   {
     id: 'storage-12',
-    ownerId: 'user-11',
+    ownerId: 11,
     ownerName: 'Mekong Freeze Logistics',
     name: 'Kho lạnh Gò Vấp Green',
     description: 'Kho lạnh xanh đạt chuẩn ISO 14001 về quản lý môi trường và GMP. Sử dụng hệ thống làm lạnh tiết kiệm năng lượng, phù hợp doanh nghiệp ưu tiên ESG.',
@@ -894,14 +894,14 @@ export const MockWarehouseData: ColdStorage[] = [
       securityLevel: 'medium',
     },
     certifications: [
-      { id: 'cert-12-1', name: 'ISO 14001 - Quản lý môi trường', issuer: 'BSI Vietnam', issueDate: '2024-08-01', expiryDate: '2027-08-01', documentUrl: 'https://example.com/docs/iso14001-govap.pdf' },
-      { id: 'cert-12-2', name: 'GMP - Thực hành sản xuất tốt', issuer: 'Bộ Công Thương', issueDate: '2024-07-10', expiryDate: '2027-07-10', documentUrl: 'https://example.com/docs/gmp-govap.pdf' },
+      { id: 324, name: 'ISO 14001 - Quản lý môi trường', issuer: 'BSI Vietnam', issueDate: '2024-08-01', expiryDate: '2027-08-01', documentUrl: 'https://example.com/docs/iso14001-govap.pdf' },
+      { id: 325, name: 'GMP - Thực hành sản xuất tốt', issuer: 'Bộ Công Thương', issueDate: '2024-07-10', expiryDate: '2027-07-10', documentUrl: 'https://example.com/docs/gmp-govap.pdf' },
     ],
     hasCertification: true,
     pricePerCubicMeter: 330000,
     priceTiers: [
       { id: 'pt-12-1', label: 'Giá theo tháng', value: 330000, unit: 'month' as const },
-      { id: 'pt-12-2', label: 'Giá theo ngày',  value: 13000,  unit: 'day'   as const },
+      { id: 'pt-12-2', label: 'Giá theo ngày', value: 13000, unit: 'day' as const },
     ],
     sections: [
       {
@@ -909,7 +909,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 1500, availableCapacity: 900, temperatureMin: -20, temperatureMax: -15,
         priceTiers: [
           { id: 'pt-12-1-1', label: 'Giá theo tháng', value: 330000, unit: 'month' as const },
-          { id: 'pt-12-1-2', label: 'Giá theo ngày',  value: 13000,  unit: 'day'   as const },
+          { id: 'pt-12-1-2', label: 'Giá theo ngày', value: 13000, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -917,8 +917,8 @@ export const MockWarehouseData: ColdStorage[] = [
         id: 'sec-12-2', name: 'Kho mát GMP', description: 'Thực phẩm chế biến, sữa, nước ép, bánh kẹo',
         capacity: 1500, availableCapacity: 900, temperatureMin: 0, temperatureMax: 8,
         priceTiers: [
-          { id: 'pt-12-2-1', label: 'Giá theo tháng', value: 240000,  unit: 'month' as const },
-          { id: 'pt-12-2-2', label: 'Giá theo năm',   value: 2500000, unit: 'year'  as const },
+          { id: 'pt-12-2-1', label: 'Giá theo tháng', value: 240000, unit: 'month' as const },
+          { id: 'pt-12-2-2', label: 'Giá theo năm', value: 2500000, unit: 'year' as const },
         ],
         availability: 'available' as const,
       },
@@ -937,7 +937,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-13 — GDP only — Quận 2 (Thủ Đức) ───────────────────────────
   {
     id: 'storage-13',
-    ownerId: 'user-10',
+    ownerId: 10,
     ownerName: 'Saigon Cold Chain',
     name: 'Kho lạnh Thảo Điền Pharma',
     description: 'Kho lạnh chuyên dụng cho dược phẩm và sinh phẩm, đạt GDP. Kiểm soát nhiệt độ chính xác ±0.5°C, phục vụ các công ty dược và bệnh viện.',
@@ -1006,7 +1006,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-14 — ISO 9001 + ATTP — Quận Tân Phú ────────────────────────
   {
     id: 'storage-14',
-    ownerId: 'user-11',
+    ownerId: 11,
     ownerName: 'Mekong Freeze Logistics',
     name: 'Kho lạnh Tân Phú Center',
     description: 'Kho lạnh nội thành đạt ISO 9001 và ATTP, phục vụ nhà hàng, khách sạn, và chuỗi F&B tại trung tâm Sài Gòn.',
@@ -1035,7 +1035,7 @@ export const MockWarehouseData: ColdStorage[] = [
     pricePerCubicMeter: 360000,
     priceTiers: [
       { id: 'pt-14-1', label: 'Giá theo tháng', value: 360000, unit: 'month' as const },
-      { id: 'pt-14-2', label: 'Giá theo ngày',  value: 14500,  unit: 'day'   as const },
+      { id: 'pt-14-2', label: 'Giá theo ngày', value: 14500, unit: 'day' as const },
     ],
     sections: [
       {
@@ -1043,7 +1043,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 1200, availableCapacity: 500, temperatureMin: -20, temperatureMax: -15,
         priceTiers: [
           { id: 'pt-14-1-1', label: 'Giá theo tháng', value: 360000, unit: 'month' as const },
-          { id: 'pt-14-1-2', label: 'Giá theo ngày',  value: 14500,  unit: 'day'   as const },
+          { id: 'pt-14-1-2', label: 'Giá theo ngày', value: 14500, unit: 'day' as const },
         ],
         availability: 'partially' as const,
       },
@@ -1052,7 +1052,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 1300, availableCapacity: 700, temperatureMin: 0, temperatureMax: 10,
         priceTiers: [
           { id: 'pt-14-2-1', label: 'Giá theo tháng', value: 260000, unit: 'month' as const },
-          { id: 'pt-14-2-2', label: 'Giá theo ngày',  value: 10000,  unit: 'day'   as const },
+          { id: 'pt-14-2-2', label: 'Giá theo ngày', value: 10000, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -1071,7 +1071,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-15 — Pending — Nhà Bè (no certs yet, awaiting employee review) ──
   {
     id: 'storage-15',
-    ownerId: 'user-11',
+    ownerId: 11,
     ownerName: 'Mekong Freeze Logistics',
     name: 'Kho lạnh Nhà Bè Mới',
     description: 'Kho lạnh mới xây tại Nhà Bè, gần cảng Hiệp Phước, đang chờ nhân viên xác minh chứng nhận GDP và ATTP từ hồ sơ PDF đã nộp.',
@@ -1097,7 +1097,7 @@ export const MockWarehouseData: ColdStorage[] = [
     pricePerCubicMeter: 310000,
     priceTiers: [
       { id: 'pt-15-1', label: 'Giá theo tháng', value: 310000, unit: 'month' as const },
-      { id: 'pt-15-2', label: 'Giá theo năm',   value: 3600000, unit: 'year' as const },
+      { id: 'pt-15-2', label: 'Giá theo năm', value: 3600000, unit: 'year' as const },
     ],
     sections: [
       {
@@ -1105,7 +1105,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 3000, availableCapacity: 3000, temperatureMin: -25, temperatureMax: -18,
         priceTiers: [
           { id: 'pt-15-1-1', label: 'Giá theo tháng', value: 340000, unit: 'month' as const },
-          { id: 'pt-15-1-2', label: 'Giá theo năm',   value: 3600000, unit: 'year' as const },
+          { id: 'pt-15-1-2', label: 'Giá theo năm', value: 3600000, unit: 'year' as const },
         ],
         availability: 'available' as const,
       },
@@ -1130,7 +1130,7 @@ export const MockWarehouseData: ColdStorage[] = [
   // ── storage-16 — Pending — Củ Chi (submitted HACCP + ATTP docs) ──────────
   {
     id: 'storage-16',
-    ownerId: 'user-10',
+    ownerId: 10,
     ownerName: 'Saigon Cold Chain',
     name: 'Kho lạnh Củ Chi Agri',
     description: 'Kho lạnh nông sản tại Củ Chi phục vụ nông dân & HTX vùng ven. Chủ kho đã nộp hồ sơ HACCP và ATTP, chờ nhân viên xác nhận.',
@@ -1156,7 +1156,7 @@ export const MockWarehouseData: ColdStorage[] = [
     pricePerCubicMeter: 220000,
     priceTiers: [
       { id: 'pt-16-1', label: 'Giá theo tháng', value: 220000, unit: 'month' as const },
-      { id: 'pt-16-2', label: 'Giá theo ngày',  value: 9000,   unit: 'day'   as const },
+      { id: 'pt-16-2', label: 'Giá theo ngày', value: 9000, unit: 'day' as const },
     ],
     sections: [
       {
@@ -1164,7 +1164,7 @@ export const MockWarehouseData: ColdStorage[] = [
         capacity: 2000, availableCapacity: 2000, temperatureMin: -18, temperatureMax: -10,
         priceTiers: [
           { id: 'pt-16-1-1', label: 'Giá theo tháng', value: 220000, unit: 'month' as const },
-          { id: 'pt-16-1-2', label: 'Giá theo ngày',  value: 9000,   unit: 'day'   as const },
+          { id: 'pt-16-1-2', label: 'Giá theo ngày', value: 9000, unit: 'day' as const },
         ],
         availability: 'available' as const,
       },
@@ -1188,11 +1188,12 @@ export const MockWarehouseData: ColdStorage[] = [
 ];
 
 /** Convenience filters */
-export const ActiveWarehouses  = MockWarehouseData.filter(w => w.status === 'active');
+export const ActiveWarehouses = MockWarehouseData.filter(w => w.status === 'active');
 export const PendingWarehouses = MockWarehouseData.filter(w => w.status === 'pending');
 
-export const getWarehouseById      = (id: string)      => MockWarehouseData.find(w => w.id === id);
-export const getWarehousesByOwner  = (ownerId: string) => MockWarehouseData.filter(w => w.ownerId === ownerId);
+export const getWarehouseById = (id: string) => MockWarehouseData.find(w => w.id === id);
+export const getWarehousesByOwner = (ownerId: number) =>
+  MockWarehouseData.filter(w => w.ownerId === ownerId);
 
 /** Static reference data */
 export const availableFeatures = [

@@ -2,17 +2,17 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { getUser } from '../../../utils/auth';
-import { warehousesAPI, requestsAPI, contractsAPI, usersAPI } from '../../../services/apiClient';
+import { MockUsers } from '../../../data/mockUsers';
+import { MockWarehouseData as MockWarehouses } from '../../../data/mockWarehouses';
+import { MockRentRequests } from '../../../data/mockRequests';
+import { contractsAPI } from '../../../services/apiClient';
 import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Database, Shield } from 'lucide-react';
 import { AIStatusPanel } from '../../components/AIStatusPanel';
-import type { User as UserType, ColdStorage, RentRequest, RentalContract } from '../../../types';
+import type { RentalContract } from '../../../types';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const user = getUser();
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [warehouseList, setWarehouseList] = useState<ColdStorage[]>([]);
-  const [requestList, setRequestList] = useState<RentRequest[]>([]);
   const [contractList, setContractList] = useState<RentalContract[]>([]);
 
   useEffect(() => {
@@ -21,56 +21,48 @@ export default function EmployeeDashboard() {
       return;
     }
 
-    Promise.all([
-      usersAPI.getAll(),
-      warehousesAPI.getAll(),
-      requestsAPI.getAll(),
-      contractsAPI.getAll(),
-    ]).then(([u, w, r, c]) => {
-      setUsers(u);
-      setWarehouseList(w);
-      setRequestList(r);
-      setContractList(c);
-    }).catch(err => console.error('Failed to load dashboard:', err));
+    contractsAPI.getAll()
+      .then(c => setContractList(c))
+      .catch(err => console.error('Failed to load contracts:', err));
   }, [user, navigate]);
 
-  // ── Live stats from Redux ─────────────────────────────────────────────────
+  // ── Stats from mock data ──────────────────────────────────────────────────
   const stats = useMemo(() => [
     {
       label: 'Tổng người dùng',
-      value: users.length,
-      sub: `${users.filter(u => u.role === 'renter').length} DN · ${users.filter(u => u.role === 'warehouse').length} Chủ kho`,
+      value: MockUsers.length,
+      sub: `${MockUsers.filter(u => u.role === 'renter').length} DN · ${MockUsers.filter(u => u.role === 'warehouse').length} Chủ kho`,
       icon: <Users className="h-5 w-5" />,
       color: 'var(--color-primary)',
     },
     {
       label: 'Tổng kho lạnh',
-      value: warehouseList.length,
-      sub: `${warehouseList.filter(w => w.status === 'active').length} đang hoạt động`,
+      value: MockWarehouses.length,
+      sub: `${MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động`,
       icon: <Warehouse className="h-5 w-5" />,
       color: 'var(--color-secondary, #7c3aed)',
     },
     {
       label: 'Kho chờ duyệt',
-      value: warehouseList.filter(w => w.status === 'pending').length,
+      value: MockWarehouses.filter(w => w.status === 'pending').length,
       sub: 'Cần kiểm duyệt',
       icon: <Clock className="h-5 w-5" />,
       color: 'var(--color-warning, #f59e0b)',
-      urgent: warehouseList.some(w => w.status === 'pending'),
+      urgent: MockWarehouses.some(w => w.status === 'pending'),
     },
     {
       label: 'Yêu cầu thuê',
-      value: requestList.length,
-      sub: `${requestList.filter(r => r.status === 'inprogress').length} đang thương lượng`,
+      value: MockRentRequests.length,
+      sub: `${MockRentRequests.filter(r => r.status === 'inprogress').length} đang thương lượng`,
       icon: <ClipboardList className="h-5 w-5" />,
       color: 'var(--color-success, #22c55e)',
     },
-  ], [users, warehouseList, requestList]);
+  ], []);
 
   // ── Recent pending warehouses ──────────────────────────────────────────────
   const pendingWarehouses = useMemo(
-    () => warehouseList.filter(w => w.status === 'pending').slice(0, 3),
-    [warehouseList],
+    () => MockWarehouses.filter(w => w.status === 'pending').slice(0, 3),
+    [],
   );
 
   // ── Active contracts ───────────────────────────────────────────────────────
@@ -84,7 +76,7 @@ export default function EmployeeDashboard() {
       icon: <Users className="h-8 w-8" />,
       color: 'var(--color-primary)',
       title: 'Quản lý người dùng',
-      desc: `${users.length} tài khoản đang đăng ký`,
+      desc: `${MockUsers.length} tài khoản đang đăng ký`,
       badge: null,
       path: '/employee/users',
     },
@@ -92,8 +84,8 @@ export default function EmployeeDashboard() {
       icon: <Warehouse className="h-8 w-8" />,
       color: 'var(--color-secondary, #7c3aed)',
       title: 'Quản lý kho lạnh',
-      desc: `${warehouseList.filter(w => w.status === 'active').length} đang hoạt động · ${warehouseList.filter(w => w.status === 'pending').length} chờ duyệt`,
-      badge: warehouseList.filter(w => w.status === 'pending').length || null,
+      desc: `${MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động · ${MockWarehouses.filter(w => w.status === 'pending').length} chờ duyệt`,
+      badge: MockWarehouses.filter(w => w.status === 'pending').length || null,
       path: '/employee/warehouses',
     },
     {
@@ -157,7 +149,7 @@ export default function EmployeeDashboard() {
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" style={{ color: 'var(--color-warning, #f59e0b)' }} />
                 <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                  Kho đang chờ duyệt ({warehouseList.filter(w => w.status === 'pending').length})
+                  Kho đang chờ duyệt ({MockWarehouses.filter(w => w.status === 'pending').length})
                 </span>
               </div>
               <button onClick={() => navigate('/employee/warehouses')}
@@ -225,7 +217,7 @@ export default function EmployeeDashboard() {
           </div>
           <div className="divide-y divide-[var(--color-border)]">
             {activeContracts.slice(0, 4).map(c => {
-              const wh = warehouseList.find(w => w.id === c.warehouseId);
+              const wh = MockWarehouses.find(w => w.id === c.warehouseId);
               return (
                 <div key={c.id} className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">

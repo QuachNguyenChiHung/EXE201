@@ -36,7 +36,7 @@ export default function RenterDashboard() {
 
     Promise.all([
       warehousesAPI.getAll(),
-      user?.id ? aiAPI.getConversationsByUser(user.id) : Promise.resolve([])
+      user?.id_user ? aiAPI.getConversationsByUser(user.id_user) : Promise.resolve([])
     ]).then(([whs, convs]) => {
       setWarehouses(whs);
       const stats = convs.reduce(

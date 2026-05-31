@@ -663,7 +663,7 @@ export default function EditWarehouse() {
   // New cert files being added
   const [certFiles, setCertFiles] = useState<CertFile[]>([]);
   // Track which existing cert is currently uploading a replacement PDF
-  const [uploadingCertId, setUploadingCertId] = useState<string | null>(null);
+  const [uploadingCertId, setUploadingCertId] = useState<number | null>(null);
 
   // Geocoding state
   const [geocoding, setGeocoding] = useState(false);
@@ -773,7 +773,7 @@ export default function EditWarehouse() {
       }
     };
     load();
-  }, [id, navigate, warehouseList]);
+  }, [id, navigate, warehouse]);
 
   // ── Reverse geocode ───────────────────────────────────────────────────────
   const performReverse = useCallback(async (lat: number, lng: number) => {
@@ -924,10 +924,10 @@ export default function EditWarehouse() {
   };
   const removeCertFile = (idx: number) =>
     setCertFiles((prev) => prev.filter((_, i) => i !== idx));
-  const removeExistingCert = (certId: string) =>
+  const removeExistingCert = (certId: number) =>
     setExistingCerts((prev) => prev.filter((c) => c.id !== certId));
 
-  const handleReuploadCert = async (certId: string, file: File) => {
+  const handleReuploadCert = async (certId: number, file: File) => {
     if (file.type !== "application/pdf") {
       toast.warning("Chỉ chấp nhận file PDF");
       return;
@@ -1045,8 +1045,8 @@ export default function EditWarehouse() {
       }
 
       const newCertsFromFiles: Certification[] = certFiles.map((f, i) => ({
-        id: `cert-new-${Date.now()}-${i}`,
-        name: f.name.replace(/\.pdf$/i, ""),
+        id: Date.now() + i,
+        label: f.name.replace(/\.pdf$/i, ""),
         issuer: "Tự khai báo",
         issueDate: new Date().toISOString().split("T")[0],
         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
@@ -1627,7 +1627,7 @@ export default function EditWarehouse() {
                               }}
                             />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{cert.name}</p>
+                              <p className="text-sm font-medium truncate">{cert.label}</p>
                               <div className="flex flex-wrap items-center gap-3 mt-0.5">
                                 {cert.issuer && (
                                   <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>

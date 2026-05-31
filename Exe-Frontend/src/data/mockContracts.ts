@@ -7,7 +7,7 @@ import { RentalContract } from '../types';
 export const MockRentalContracts: RentalContract[] = [];
 
 /** Helper selectors */
-export const getContractsByRenter = (renterId: string) =>
+export const getContractsByRenter = (renterId: number) =>
   MockRentalContracts.filter(c => c.renterId === renterId);
 
 export const getContractsByWarehouse = (warehouseId: string) =>

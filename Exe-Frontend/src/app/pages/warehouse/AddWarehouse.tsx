@@ -930,7 +930,7 @@ export default function AddWarehouse() {
 
       const newWarehouse: import("../../../types").ColdStorage = {
         id: `storage-${Date.now()}`,
-        ownerId: user.id,
+        ownerId: user.id_user,
         ownerName: user.companyName || user.name,
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -952,8 +952,8 @@ export default function AddWarehouse() {
           securityLevel: formData.securityLevel,
         },
         certifications: certFiles.map((f, i) => ({
-          id: `cert-new-${Date.now()}-${i}`,
-          name: f.name.replace(/\.pdf$/i, ""),
+          id: Date.now() + i,
+          label: f.name.replace(/\.pdf$/i, ""),
           issuer: "Tự khai báo",
           issueDate: new Date().toISOString().split("T")[0],
           expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],

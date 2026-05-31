@@ -126,7 +126,7 @@ export function UserConversationsModal({
   userName,
   onClose,
 }: {
-  userId: string;
+  userId: number;
   userName: string;
   onClose: () => void;
 }) {

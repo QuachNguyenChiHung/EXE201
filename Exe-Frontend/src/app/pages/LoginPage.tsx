@@ -36,7 +36,7 @@ export default function LoginPage() {
       
       // Load bookmarks
       try {
-        const bookmarks = await bookmarksAPI.getByUser(user.id);
+        const bookmarks = await bookmarksAPI.getByUser(user.id_user);
         localStorage.setItem('bookmarks', JSON.stringify(bookmarks.warehouseIds || []));
       } catch (err) {
         console.warn('Failed to load bookmarks:', err);

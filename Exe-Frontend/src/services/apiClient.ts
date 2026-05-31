@@ -25,26 +25,26 @@ let contracts: RentalContract[] = [...MockRentalContracts];
 let ratings: WarehouseRating[] = [...MockRatings];
 let bookmarks: Record<string, string[]> = {};
 let certTypes: CertificationType[] = [
-  { id: 'cert-type-1', code: 'HACCP', name: 'HACCP', description: 'Hazard Analysis Critical Control Point', category: 'food_safety', createdAt: new Date().toISOString() },
-  { id: 'cert-type-2', code: 'ISO-22000', name: 'ISO 22000', description: 'Food Safety Management', category: 'food_safety', createdAt: new Date().toISOString() },
-  { id: 'cert-type-3', code: 'GMP', name: 'GMP', description: 'Good Manufacturing Practice', category: 'manufacturing', createdAt: new Date().toISOString() },
-  { id: 'cert-type-4', code: 'GDP', name: 'GDP', description: 'Good Distribution Practice', category: 'distribution', createdAt: new Date().toISOString() },
-  { id: 'cert-type-5', code: 'ISO-9001', name: 'ISO 9001', description: 'Quality Management', category: 'quality', createdAt: new Date().toISOString() },
-  { id: 'cert-type-6', code: 'ATTP', name: 'ATTP', description: 'An toàn thực phẩm', category: 'food_safety', createdAt: new Date().toISOString() },
+  { id: 1, label: 'HACCP', update: new Date().toISOString(), law_references: 'Hazard Analysis Critical Control Point' },
+  { id: 2, label: 'ISO 22000', update: new Date().toISOString(), law_references: 'Food Safety Management' },
+  { id: 3, label: 'GMP', update: new Date().toISOString(), law_references: 'Good Manufacturing Practice' },
+  { id: 4, label: 'GDP', update: new Date().toISOString(), law_references: 'Good Distribution Practice' },
+  { id: 5, label: 'ISO 9001', update: new Date().toISOString(), law_references: 'Quality Management' },
+  { id: 6, label: 'ATTP', update: new Date().toISOString(), law_references: 'An toàn thực phẩm' },
 ];
 
 // ── Helper to simulate async delay ────────────────────────────────────────────
 const delay = (ms: number = 100) => new Promise(resolve => setTimeout(resolve, ms));
+let bookmarks: Record<number, string[]> = {};
 
 // ── Resource CRUD clients (mock implementation) ───────────────────────────────
 export const usersAPI = {
   getAll: async () => { await delay(); return [...users]; },
-  getById: async (id: string) => { await delay(); const user = users.find(u => u.id === id); if (!user) throw new Error('User not found'); return user; },
+  getById: async (id: number) => { await delay(); const user = users.find(u => u.id_user === id); if (!user) throw new Error('User not found'); return user; },
   create: async (data: RegisteredUser) => { await delay(); users.push(data); return data; },
-  update: async (id: string, data: Partial<RegisteredUser>) => { await delay(); const idx = users.findIndex(u => u.id === id); if (idx === -1) throw new Error('User not found'); users[idx] = { ...users[idx], ...data }; return users[idx]; },
-  delete: async (id: string) => { await delay(); users = users.filter(u => u.id !== id); return { success: true }; },
+  update: async (id: number, data: Partial<User>) => { await delay(); const idx = users.findIndex(u => u.id_user === id); if (idx === -1) throw new Error('User not found'); users[idx] = { ...users[idx], ...data }; return users[idx]; },
+  delete: async (id: number) => { await delay(); users = users.filter(u => u.id_user !== id); return { success: true }; },
 };
-
 export const warehousesAPI = {
   getAll: async () => { await delay(); return [...warehouses]; },
   getById: async (id: string) => { await delay(); const wh = warehouses.find(w => w.id === id); if (!wh) throw new Error('Warehouse not found'); return wh; },
@@ -79,10 +79,10 @@ export const ratingsAPI = {
 
 export const certTypesAPI = {
   getAll: async () => { await delay(); return [...certTypes]; },
-  getById: async (id: string) => { await delay(); const cert = certTypes.find(c => c.id === id); if (!cert) throw new Error('Cert type not found'); return cert; },
+  getById: async (id: number) => { await delay(); const cert = certTypes.find(c => c.id === id); if (!cert) throw new Error('Cert type not found'); return cert; },
   create: async (data: CertificationType) => { await delay(); certTypes.push(data); return data; },
-  update: async (id: string, data: Partial<CertificationType>) => { await delay(); const idx = certTypes.findIndex(c => c.id === id); if (idx === -1) throw new Error('Cert type not found'); certTypes[idx] = { ...certTypes[idx], ...data }; return certTypes[idx]; },
-  delete: async (id: string) => { await delay(); certTypes = certTypes.filter(c => c.id !== id); return { success: true }; },
+  update: async (id: number, data: Partial<CertificationType>) => { await delay(); const idx = certTypes.findIndex(c => c.id === id); if (idx === -1) throw new Error('Cert type not found'); certTypes[idx] = { ...certTypes[idx], ...data }; return certTypes[idx]; },
+  delete: async (id: number) => { await delay(); certTypes = certTypes.filter(c => c.id !== id); return { success: true }; },
 };
 
 // ── Auth endpoints (mock implementation) ──────────────────────────────────────
@@ -93,9 +93,9 @@ export const authAPI = {
    */
   login: async (email: string, password: string): Promise<User> => {
     await delay();
-    const user = users.find(u => u.email === email && u.password === password);
+    const user = users.find(u => u.email === email && u.hash_password === password);
     if (!user) throw new Error('Invalid credentials');
-    const { password: _, ...userWithoutPassword } = user;
+    const { hash_password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   },
 
@@ -109,19 +109,19 @@ export const authAPI = {
       throw new Error('Email already exists');
     }
     users.push(user);
-    const { password: _, ...userWithoutPassword } = user;
+    const { hash_password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   },
 };
 
 // ── Bookmarks endpoints (mock implementation) ─────────────────────────────────
 export const bookmarksAPI = {
-  getByUser: async (userId: string) => {
+  getByUser: async (userId: number) => {
     await delay();
     return { warehouseIds: bookmarks[userId] || [] };
   },
 
-  saveForUser: async (userId: string, warehouseIds: string[]) => {
+  saveForUser: async (userId: number, warehouseIds: string[]) => {
     await delay();
     bookmarks[userId] = warehouseIds;
     return { warehouseIds };
@@ -135,11 +135,11 @@ export interface SeedCheckResult {
 }
 
 export interface SeedPayload {
-  users:      RegisteredUser[];
+  users: RegisteredUser[];
   warehouses: ColdStorage[];
-  requests:   RentRequest[];
-  contracts:  RentalContract[];
-  ratings:    WarehouseRating[];
+  requests: RentRequest[];
+  contracts: RentalContract[];
+  ratings: WarehouseRating[];
 }
 
 let seeded = false;
@@ -156,13 +156,13 @@ export const seedAPI = {
     if (seeded && !force) {
       return { status: 'already seeded', counts: {} };
     }
-    
+
     users = [...payload.users];
     warehouses = [...payload.warehouses];
     requests = [...payload.requests];
     contracts = [...payload.contracts];
     ratings = [...payload.ratings];
-    
+
     seeded = true;
     seedMeta = {
       ts: new Date().toISOString(),
@@ -175,7 +175,7 @@ export const seedAPI = {
       },
       dataVersion,
     };
-    
+
     return { status: 'seeded', counts: seedMeta.counts };
   },
 
@@ -293,7 +293,7 @@ export const aiAPI = {
     return conv;
   },
 
-  getConversationsByUser: async (userId: string): Promise<AIConversationRecord[]> => {
+  getConversationsByUser: async (userId: number): Promise<AIConversationRecord[]> => {
     await delay();
     return conversations.filter(c => c.userId === userId);
   },
@@ -313,7 +313,7 @@ export const aiAPI = {
 // ── AI Conversation record ────────────────────────────────────────────────────
 export interface AIConversationRecord {
   id: string;
-  userId: string;
+  userId: number;
   userName: string;
   userEmail?: string;
   criteria: Record<string, string[]>;

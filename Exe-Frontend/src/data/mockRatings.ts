@@ -212,5 +212,5 @@ export const MockRatings: WarehouseRating[] = [
 export const getRatingsByWarehouse = (warehouseId: string) =>
   MockRatings.filter(r => r.warehouseId === warehouseId);
 
-export const getRatingsByRenter = (renterId: string) =>
-  MockRatings.filter(r => r.renterId === renterId);
+export const getRatingsByRenter = (renterId: number) =>
+  MockRatings.filter(r => r.renterId === (renterId as any));

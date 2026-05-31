@@ -1,89 +1,26 @@
-Reverse Geocoding🔗
-Reverse geocoding generates an address from a coordinate given as latitude and longitude.
+This doc is kept intentionally small and matches how the frontend uses Nominatim today.
 
-How it works🔗
-The reverse geocoding API does not exactly compute the address for the coordinate it receives. It works by finding the closest suitable OSM object and returning its address information. This may occasionally lead to unexpected results.
+## Frontend Contract
 
-First of all, Nominatim only includes OSM objects in its index that are suitable for searching. Small, unnamed paths for example are missing from the database and can therefore not be used for reverse geocoding either.
+- Endpoint: `https://nominatim.openstreetmap.org/reverse`
+- Method: `GET`
+- Headers: `Accept-Language: vi`
+- Query parameters used by the frontend:
+  - `format=jsonv2`
+  - `addressdetails=1`
+  - `zoom=18`
+  - `lat=<latitude>`
+  - `lon=<longitude>`
 
-The other issue to be aware of is that the closest OSM object may not always have a similar enough address to the coordinate you were requesting. For example, in dense city areas it may belong to a completely different street.
+## Used By
 
-Endpoint🔗
-The main format of the reverse API is
+- [src/app/pages/warehouse/AddWarehouse.tsx](../app/pages/warehouse/AddWarehouse.tsx)
+- [src/app/pages/warehouse/EditWarehouse.tsx](../app/pages/warehouse/EditWarehouse.tsx)
 
-https://nominatim.openstreetmap.org/reverse?lat=<value>&lon=<value>&<params>
-where lat and lon are latitude and longitude of a coordinate in WGS84 projection. The API returns exactly one result or an error when the coordinate is in an area with no OSM data coverage.
+## Notes
 
-Tip
-
-The reverse API allows a lookup of object by coordinate. If you want to look up an object by ID, use the Address Lookup API instead.
-
-Deprecation warning
-
-The API can also be used with the URL https://nominatim.openstreetmap.org/reverse.php. This is now deprecated and will be removed in future versions.
-
-Parameters🔗
-This section lists additional parameters to further influence the output.
-
-Output format🔗
-Parameter	Value	Default
-format	one of: xml, json, jsonv2, geojson, geocodejson	xml
-See Place Output Formats for details on each format.
-
-Parameter	Value	Default
-json_callback	function name	unset
-When given, then JSON output will be wrapped in a callback function with the given name. See JSONP for more information.
-
-Only has an effect for JSON output formats.
-
-Output details🔗
-Parameter	Value	Default
-addressdetails	0 or 1	1
-When set to 1, include a breakdown of the address into elements. The exact content of the address breakdown depends on the output format.
-
-Tip
-
-If you are interested in a stable classification of address categories (suburb, city, state, etc), have a look at the geocodejson format. All other formats return classifications according to OSM tagging. There is a much larger set of categories and they are not always consistent, which makes them very hard to work with.
-
-Parameter	Value	Default
-extratags	0 or 1	0
-When set to 1, the response include any additional information in the result that is available in the database, e.g. wikipedia link, opening hours.
-
-Parameter	Value	Default
-namedetails	0 or 1	0
-When set to 1, include a full list of names for the result. These may include language variants, older names, references and brand.
-
-Parameter	Value	Default
-entrances	0 or 1	0
-When set to 1, include the tagged entrances in the result.
-
-Language of results🔗
-Parameter	Value	Default
-accept-language	browser language string	content of "Accept-Language" HTTP header
-Preferred language order for showing search results. This may either be a simple comma-separated list of language codes or have the same format as the "Accept-Language" HTTP header.
-
-Tip
-
-First-time users of Nominatim tend to be confused that they get different results when using Nominatim in the browser versus in a command-line tool like wget or curl. The command-line tools usually don't send any Accept-Language header, prompting Nominatim to show results in the local language. Browsers on the contrary always send the currently chosen browser language.
-
-Result restriction🔗
-Parameter	Value	Default
-zoom	0-18	18
-Level of detail required for the address. This is a number that corresponds roughly to the zoom level used in XYZ tile sources in frameworks like Leaflet.js, Openlayers etc. In terms of address details the zoom levels are as follows:
-
-zoom	address detail
-3	country
-5	state
-8	county
-10	city
-12	town / borough
-13	village / suburb
-14	neighbourhood
-15	any settlement
-16	major streets
-17	major and minor streets
-18	building
-Parameter	Value	Default
+- The frontend uses reverse geocoding to turn selected map coordinates into a Vietnamese address.
+- The request is skipped if coordinates are unavailable.
 layer	comma-separated list of: address, poi, railway, natural, manmade	unset (no restriction)
 The layer filter allows to select places by themes.
 

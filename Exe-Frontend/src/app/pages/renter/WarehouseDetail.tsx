@@ -54,21 +54,21 @@ const UNIT_SHORT: Record<string, string> = { month: "tháng", day: "ngày", year
 
 // Cargo type options
 const CARGO_TYPES = [
-  { value: 'frozen_food', label: 'Thực phẩm đông lạnh',      temp: '≤ -18°C' },
-  { value: 'seafood',     label: 'Hải sản tươi sống',         temp: '-5°C ~ 2°C' },
-  { value: 'vegetables',  label: 'Rau củ quả tươi',           temp: '2°C ~ 8°C' },
-  { value: 'dairy',       label: 'Sữa & chế phẩm',            temp: '2°C ~ 6°C' },
-  { value: 'pharma',      label: 'Dược phẩm / y tế',          temp: '2°C ~ 8°C' },
-  { value: 'beverage',    label: 'Đồ uống / nước giải khát',  temp: '4°C ~ 12°C' },
-  { value: 'cosmetics',   label: 'Mỹ phẩm',                   temp: '15°C ~ 25°C' },
-  { value: 'chemical',    label: 'Hóa chất kiểm soát',        temp: 'Tuỳ loại' },
-  { value: 'other',       label: 'Loại hàng khác',            temp: '' },
+  { value: 'frozen_food', label: 'Thực phẩm đông lạnh', temp: '≤ -18°C' },
+  { value: 'seafood', label: 'Hải sản tươi sống', temp: '-5°C ~ 2°C' },
+  { value: 'vegetables', label: 'Rau củ quả tươi', temp: '2°C ~ 8°C' },
+  { value: 'dairy', label: 'Sữa & chế phẩm', temp: '2°C ~ 6°C' },
+  { value: 'pharma', label: 'Dược phẩm / y tế', temp: '2°C ~ 8°C' },
+  { value: 'beverage', label: 'Đồ uống / nước giải khát', temp: '4°C ~ 12°C' },
+  { value: 'cosmetics', label: 'Mỹ phẩm', temp: '15°C ~ 25°C' },
+  { value: 'chemical', label: 'Hóa chất kiểm soát', temp: 'Tuỳ loại' },
+  { value: 'other', label: 'Loại hàng khác', temp: '' },
 ];
 
 const DURATION_UNITS = [
-  { value: 'day',   label: 'Ngày'   },
-  { value: 'month', label: 'Tháng'  },
-  { value: 'year',  label: 'Năm'    },
+  { value: 'day', label: 'Ngày' },
+  { value: 'month', label: 'Tháng' },
+  { value: 'year', label: 'Năm' },
 ];
 
 // Fallback gallery used when a warehouse has no images yet (e.g. user-created)
@@ -102,25 +102,25 @@ export default function WarehouseDetail() {
   const { bookmarkedIds, compareIds, user, warehouses: warehouseList, ratings: allRatings, toggleBookmark, toggleCompare, createRequest } = useApp();
 
   const [warehouse, setWarehouse] = useState<ColdStorage | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [activeImage, setActiveImage]         = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState(0);
   const [showInquirySuccess, setShowInquirySuccess] = useState(false);
 
   // Inquiry form — pre-fill contact from logged-in user
   const [inquiryForm, setInquiryForm] = useState<InquiryForm>({
-    name:                user?.name  ?? "",
-    phone:               user?.phone ?? "",
-    email:               user?.email ?? "",
-    isWholeWarehouse:    false,
-    selectedSectionIds:  [],
+    name: user?.name ?? "",
+    phone: user?.phone ?? "",
+    email: user?.email ?? "",
+    isWholeWarehouse: false,
+    selectedSectionIds: [],
     selectedPriceTierId: "",
-    cargoType:           "",
-    capacity:            "",
-    durationValue:       "",
-    durationUnit:        "month",
-    startDate:           "",
-    endDate:             "",
-    message:             "",
+    cargoType: "",
+    capacity: "",
+    durationValue: "",
+    durationUnit: "month",
+    startDate: "",
+    endDate: "",
+    message: "",
   });
   const [submittingInquiry, setSubmittingInquiry] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
@@ -132,11 +132,11 @@ export default function WarehouseDetail() {
     const val = parseInt(inquiryForm.durationValue, 10);
     if (isNaN(val) || val <= 0) return;
     const end = new Date(inquiryForm.startDate);
-    if (inquiryForm.durationUnit === 'day')   end.setDate(end.getDate() + val);
+    if (inquiryForm.durationUnit === 'day') end.setDate(end.getDate() + val);
     if (inquiryForm.durationUnit === 'month') end.setMonth(end.getMonth() + val);
-    if (inquiryForm.durationUnit === 'year')  end.setFullYear(end.getFullYear() + val);
+    if (inquiryForm.durationUnit === 'year') end.setFullYear(end.getFullYear() + val);
     setInquiryForm(f => ({ ...f, endDate: end.toISOString().split('T')[0] }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inquiryForm.startDate, inquiryForm.durationValue, inquiryForm.durationUnit]);
 
   // Re-fill contact fields if user logs in after page load
@@ -144,7 +144,7 @@ export default function WarehouseDetail() {
     if (user) {
       setInquiryForm(f => ({
         ...f,
-        name:  f.name  || user.name  || "",
+        name: f.name || user.name || "",
         phone: f.phone || user.phone || "",
         email: f.email || user.email || "",
       }));
@@ -238,9 +238,9 @@ export default function WarehouseDetail() {
     }
 
     const resolvedTier = sourceTiers.find(t => t.id === resolvedTierId);
-    const tierValue  = resolvedTier?.value  ?? (inquiryForm.isWholeWarehouse || isMulti ? undefined : warehouse.pricePerCubicMeter);
-    const tierUnit   = resolvedTier?.unit   ?? 'month';
-    const tierLabel  = resolvedTier?.label  ?? 'Giá theo tháng';
+    const tierValue = resolvedTier?.value ?? (inquiryForm.isWholeWarehouse || isMulti ? undefined : warehouse.pricePerCubicMeter);
+    const tierUnit = resolvedTier?.unit ?? 'month';
+    const tierLabel = resolvedTier?.label ?? 'Giá theo tháng';
 
     // Build duration label
     const DUR_MAP: Record<string, string> = { day: 'ngày', month: 'tháng', year: 'năm' };
@@ -251,32 +251,32 @@ export default function WarehouseDetail() {
 
     const now = new Date().toISOString();
     const newRequest: RentRequest = {
-      id:            `req-${Date.now()}`,
-      warehouseId:   warehouse.id,
-      renterId:      user.id,
-      sectionId:     isSingleSection ? inquiryForm.selectedSectionIds[0] : undefined,
-      sectionName:   selectedSection?.name,
-      sectionIds:    inquiryForm.selectedSectionIds.length > 0 ? inquiryForm.selectedSectionIds : undefined,
+      id: `req-${Date.now()}`,
+      warehouseId: warehouse.id,
+      renterId: user.id_user,
+      sectionId: isSingleSection ? inquiryForm.selectedSectionIds[0] : undefined,
+      sectionName: selectedSection?.name,
+      sectionIds: inquiryForm.selectedSectionIds.length > 0 ? inquiryForm.selectedSectionIds : undefined,
       isWholeWarehouse: inquiryForm.isWholeWarehouse || undefined,
       // Renter identity (from form, pre-filled from auth)
-      renterName:    inquiryForm.name.trim(),
-      renterPhone:   inquiryForm.phone.trim(),
-      renterEmail:   (inquiryForm.email.trim() || user.email),
+      renterName: inquiryForm.name.trim(),
+      renterPhone: inquiryForm.phone.trim(),
+      renterEmail: (inquiryForm.email.trim() || user.email),
       renterCompany: user.companyName,
       // Cargo & logistics
-      cargoType:         inquiryForm.cargoType,
+      cargoType: inquiryForm.cargoType,
       requestedCapacity: parseFloat(inquiryForm.capacity),
       durationLabel,
-      startDate:   inquiryForm.startDate || new Date().toISOString().split('T')[0],
-      endDate:     inquiryForm.endDate   || undefined,
+      startDate: inquiryForm.startDate || new Date().toISOString().split('T')[0],
+      endDate: inquiryForm.endDate || undefined,
       priceTierValue: tierValue,
-      priceTierUnit:  tierValue ? tierUnit : undefined,
+      priceTierUnit: tierValue ? tierUnit : undefined,
       priceTierLabel: tierValue ? tierLabel : undefined,
-      message:     inquiryForm.message.trim() || undefined,
+      message: inquiryForm.message.trim() || undefined,
       // Lifecycle
-      status:      'sent',
+      status: 'sent',
       submittedAt: now,
-      updatedAt:   now,
+      updatedAt: now,
     };
 
     setSubmittingInquiry(true);
@@ -303,16 +303,16 @@ export default function WarehouseDetail() {
     // Reset cargo/logistics fields, keep contact info
     setInquiryForm(f => ({
       ...f,
-      isWholeWarehouse:    false,
-      selectedSectionIds:  [],
+      isWholeWarehouse: false,
+      selectedSectionIds: [],
       selectedPriceTierId: "",
-      cargoType:           "",
-      capacity:            "",
-      durationValue:       "",
-      durationUnit:        "month",
-      startDate:           "",
-      endDate:             "",
-      message:             "",
+      cargoType: "",
+      capacity: "",
+      durationValue: "",
+      durationUnit: "month",
+      startDate: "",
+      endDate: "",
+      message: "",
     }));
   };
 
@@ -385,7 +385,7 @@ export default function WarehouseDetail() {
     ((warehouse.stats.totalCapacity -
       warehouse.stats.availableCapacity) /
       warehouse.stats.totalCapacity) *
-      100,
+    100,
   );
 
   return (
@@ -742,7 +742,7 @@ export default function WarehouseDetail() {
                       const availColor =
                         sec.availability === "available" ? "var(--color-success)"
                           : sec.availability === "partially" ? "var(--color-warning)"
-                          : "var(--color-error)";
+                            : "var(--color-error)";
                       const availLbl =
                         { available: "Còn trống", partially: "Gần đầy", full: "Đã đầy" }[sec.availability]
                         ?? sec.availability;
@@ -855,180 +855,180 @@ export default function WarehouseDetail() {
             </div>
 
             {false && <div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Capacity */}
-                <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="bento-icon-container-sm bg-blue-100">
-                      <Package className="h-4 w-4 text-[var(--color-primary)]" />
-                    </div>
-                    <span className="text-sm text-[var(--color-text-muted)]">
-                      Sức chứa
-                    </span>
+              {/* Capacity */}
+              <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="bento-icon-container-sm bg-blue-100">
+                    <Package className="h-4 w-4 text-[var(--color-primary)]" />
                   </div>
-                  <p
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "1.25rem",
-                    }}
-                  >
-                    {warehouse.stats.totalCapacity.toLocaleString()}{" "}
+                  <span className="text-sm text-[var(--color-text-muted)]">
+                    Sức chứa
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontWeight: 700,
+                    fontSize: "1.25rem",
+                  }}
+                >
+                  {warehouse.stats.totalCapacity.toLocaleString()}{" "}
+                  m³
+                </p>
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                    <span>Đã dùng</span>
+                    <span>{capacityPercent}%</span>
+                  </div>
+                  <div className="w-full bg-[var(--color-bg-tertiary)] rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-light)]"
+                      style={{ width: `${capacityPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--color-success)]">
+                    Còn trống:{" "}
+                    {warehouse.stats.availableCapacity.toLocaleString()}{" "}
                     m³
-                  </p>
-                  <div className="mt-2 space-y-1">
-                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                      <span>Đã dùng</span>
-                      <span>{capacityPercent}%</span>
-                    </div>
-                    <div className="w-full bg-[var(--color-bg-tertiary)] rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-light)]"
-                        style={{ width: `${capacityPercent}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-[var(--color-success)]">
-                      Còn trống:{" "}
-                      {warehouse.stats.availableCapacity.toLocaleString()}{" "}
-                      m³
-                    </p>
-                  </div>
-                </div>
-
-                {/* Temperature */}
-                <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="bento-icon-container-sm bg-cyan-100">
-                      <Thermometer className="h-4 w-4 text-cyan-500" />
-                    </div>
-                    <span className="text-sm text-[var(--color-text-muted)]">
-                      Nhiệt độ
-                    </span>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <p
-                      style={{
-                        fontWeight: 700,
-                        fontSize: "1.25rem",
-                      }}
-                    >
-                      {warehouse.stats.temperatureMin}°C
-                    </p>
-                    <span className="text-[var(--color-text-muted)] mb-1">
-                      đến
-                    </span>
-                    <p
-                      style={{
-                        fontWeight: 700,
-                        fontSize: "1.25rem",
-                      }}
-                    >
-                      {warehouse.stats.temperatureMax}°C
-                    </p>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-sm">
-                    <Droplets className="h-4 w-4 text-blue-400" />
-                    <span className="text-[var(--color-text-muted)]">
-                      Độ ẩm:{" "}
-                      <strong>
-                        {warehouse.stats.humidity}%
-                      </strong>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Security */}
-                <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="bento-icon-container-sm bg-purple-100">
-                      <Shield className="h-4 w-4 text-purple-500" />
-                    </div>
-                    <span className="text-sm text-[var(--color-text-muted)]">
-                      Bảo mật
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "1.25rem",
-                    }}
-                  >
-                    {
-                      securityLabel[
-                        warehouse.stats.securityLevel
-                      ]
-                    }
-                  </p>
-                  <div className="mt-2 flex items-center gap-2 text-sm">
-                    {warehouse.stats.securityLevel ===
-                    "high" ? (
-                      <>
-                        <Lock className="h-4 w-4 text-[var(--color-success)]" />
-                        <span className="text-[var(--color-success)]">
-                          Bảo mật tối đa
-                        </span>
-                      </>
-                    ) : warehouse.stats.securityLevel ===
-                      "medium" ? (
-                      <>
-                        <Lock className="h-4 w-4 text-[var(--color-warning)]" />
-                        <span className="text-[var(--color-warning)]">
-                          Bảo mật tiêu chuẩn
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-4 w-4 text-[var(--color-text-muted)]" />
-                        <span className="text-[var(--color-text-muted)]">
-                          Bảo mật cơ bản
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Power Backup */}
-                <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="bento-icon-container-sm bg-yellow-100">
-                      <Zap className="h-4 w-4 text-yellow-500" />
-                    </div>
-                    <span className="text-sm text-[var(--color-text-muted)]">
-                      Điện dự phòng
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {warehouse.stats.powerBackup ? (
-                      <>
-                        <div className="w-6 h-6 rounded-full bg-[var(--color-success)] flex items-center justify-center">
-                          <Check className="h-3.5 w-3.5 text-white" />
-                        </div>
-                        <p
-                          style={{ fontWeight: 700 }}
-                          className="text-[var(--color-success)]"
-                        >
-                          Có dự phòng
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-6 h-6 rounded-full bg-[var(--color-error)] flex items-center justify-center">
-                          <X className="h-3.5 w-3.5 text-white" />
-                        </div>
-                        <p
-                          style={{ fontWeight: 700 }}
-                          className="text-[var(--color-error)]"
-                        >
-                          Không có
-                        </p>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-2">
-                    {warehouse.stats.powerBackup
-                      ? "Máy phát điện dự phòng 24/7"
-                      : "Không có máy phát điện dự phòng"}
                   </p>
                 </div>
               </div>
+
+              {/* Temperature */}
+              <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="bento-icon-container-sm bg-cyan-100">
+                    <Thermometer className="h-4 w-4 text-cyan-500" />
+                  </div>
+                  <span className="text-sm text-[var(--color-text-muted)]">
+                    Nhiệt độ
+                  </span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <p
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1.25rem",
+                    }}
+                  >
+                    {warehouse.stats.temperatureMin}°C
+                  </p>
+                  <span className="text-[var(--color-text-muted)] mb-1">
+                    đến
+                  </span>
+                  <p
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1.25rem",
+                    }}
+                  >
+                    {warehouse.stats.temperatureMax}°C
+                  </p>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <Droplets className="h-4 w-4 text-blue-400" />
+                  <span className="text-[var(--color-text-muted)]">
+                    Độ ẩm:{" "}
+                    <strong>
+                      {warehouse.stats.humidity}%
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Security */}
+              <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="bento-icon-container-sm bg-purple-100">
+                    <Shield className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <span className="text-sm text-[var(--color-text-muted)]">
+                    Bảo mật
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontWeight: 700,
+                    fontSize: "1.25rem",
+                  }}
+                >
+                  {
+                    securityLabel[
+                    warehouse.stats.securityLevel
+                    ]
+                  }
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  {warehouse.stats.securityLevel ===
+                    "high" ? (
+                    <>
+                      <Lock className="h-4 w-4 text-[var(--color-success)]" />
+                      <span className="text-[var(--color-success)]">
+                        Bảo mật tối đa
+                      </span>
+                    </>
+                  ) : warehouse.stats.securityLevel ===
+                    "medium" ? (
+                    <>
+                      <Lock className="h-4 w-4 text-[var(--color-warning)]" />
+                      <span className="text-[var(--color-warning)]">
+                        Bảo mật tiêu chuẩn
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span className="text-[var(--color-text-muted)]">
+                        Bảo mật cơ bản
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Power Backup */}
+              <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="bento-icon-container-sm bg-yellow-100">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                  </div>
+                  <span className="text-sm text-[var(--color-text-muted)]">
+                    Điện dự phòng
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {warehouse.stats.powerBackup ? (
+                    <>
+                      <div className="w-6 h-6 rounded-full bg-[var(--color-success)] flex items-center justify-center">
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      </div>
+                      <p
+                        style={{ fontWeight: 700 }}
+                        className="text-[var(--color-success)]"
+                      >
+                        Có dự phòng
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-6 h-6 rounded-full bg-[var(--color-error)] flex items-center justify-center">
+                        <X className="h-3.5 w-3.5 text-white" />
+                      </div>
+                      <p
+                        style={{ fontWeight: 700 }}
+                        className="text-[var(--color-error)]"
+                      >
+                        Không có
+                      </p>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                  {warehouse.stats.powerBackup
+                    ? "Máy phát điện dự phòng 24/7"
+                    : "Không có máy phát điện dự phòng"}
+                </p>
+              </div>
+            </div>
             </div>}
 
             {/* Phân khu kho duplicate removed */}
@@ -1053,7 +1053,7 @@ export default function WarehouseDetail() {
                     const availColor =
                       sec.availability === "available" ? "var(--color-success)"
                         : sec.availability === "partially" ? "var(--color-warning)"
-                        : "var(--color-error)";
+                          : "var(--color-error)";
                     const availLbl =
                       { available: "Còn trống", partially: "Gần đầy", full: "Đã đầy" }[sec.availability]
                       ?? sec.availability;
@@ -1225,7 +1225,7 @@ export default function WarehouseDetail() {
                             {avgRating.toFixed(1)}
                           </p>
                           <div className="flex items-center gap-0.5 mt-1 justify-center">
-                            {[1,2,3,4,5].map(n => (
+                            {[1, 2, 3, 4, 5].map(n => (
                               <Star
                                 key={n}
                                 className="h-4 w-4"
@@ -1241,7 +1241,7 @@ export default function WarehouseDetail() {
                           </p>
                         </div>
                         <div className="flex-1 space-y-1.5">
-                          {[5,4,3,2,1].map(star => {
+                          {[5, 4, 3, 2, 1].map(star => {
                             const count = warehouseRatings.filter(r => r.stars === star).length;
                             const pct = warehouseRatings.length ? (count / warehouseRatings.length) * 100 : 0;
                             return (
@@ -1273,7 +1273,7 @@ export default function WarehouseDetail() {
                               </div>
                               <div className="flex flex-col items-end gap-1">
                                 <div className="flex items-center gap-0.5">
-                                  {[1,2,3,4,5].map(n => (
+                                  {[1, 2, 3, 4, 5].map(n => (
                                     <Star
                                       key={n}
                                       className="h-3.5 w-3.5"
@@ -1377,7 +1377,7 @@ export default function WarehouseDetail() {
                     const now = new Date();
                     const daysLeft = Math.ceil(
                       (expiry.getTime() - now.getTime()) /
-                        (1000 * 60 * 60 * 24),
+                      (1000 * 60 * 60 * 24),
                     );
                     const isExpiringSoon = daysLeft < 90;
                     const isExpired = daysLeft < 0;
@@ -1397,7 +1397,7 @@ export default function WarehouseDetail() {
                             </div>
                             <div>
                               <h4 style={{ fontWeight: 600 }}>
-                                {cert.name}
+                                {cert.label}
                               </h4>
                               <p className="text-sm text-[var(--color-text-muted)]">
                                 Cấp bởi: {cert.issuer}
@@ -1899,7 +1899,7 @@ export default function WarehouseDetail() {
                           className="h-10 text-base flex-1 rounded-none" />
                         <div className="relative w-32 shrink-0">
                           <select value={inquiryForm.durationUnit}
-                            onChange={e => setInquiryForm(f => ({ ...f, durationUnit: e.target.value as 'day'|'month'|'year' }))}
+                            onChange={e => setInquiryForm(f => ({ ...f, durationUnit: e.target.value as 'day' | 'month' | 'year' }))}
                             className="w-full h-10 text-base px-2 pr-6 border appearance-none focus:outline-none"
                             style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
                             {DURATION_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}

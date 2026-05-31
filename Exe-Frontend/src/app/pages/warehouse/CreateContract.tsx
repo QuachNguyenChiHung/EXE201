@@ -343,8 +343,10 @@ export default function CreateContract() {
       notes: existingDraft.notes ?? '',
     });
     if (existingDraft.pdfFileName) {
-      // Simulate that a PDF was already uploaded
-      setPdfFile(new File([], existingDraft.pdfFileName, { type: 'application/pdf' }));
+      const blob = new Blob([], { type: 'application/pdf' });
+      // assign a name so it behaves like a File for our usage
+      (blob as any).name = existingDraft.pdfFileName;
+      setPdfFile(blob as unknown as File);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

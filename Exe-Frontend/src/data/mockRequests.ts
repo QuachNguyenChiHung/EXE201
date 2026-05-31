@@ -11,7 +11,7 @@ export const MockRentRequests: RentRequest[] = [
   {
     id: 'req-1',
     warehouseId: 'storage-1',
-    renterId: 'user-1',
+    renterId: 1,
     sectionId: 'sec-1-1',
     sectionName: 'Phòng đông lạnh',
     renterName: 'Nguyễn Văn A',
@@ -45,4 +45,4 @@ export const getRequestsByWarehouse = (warehouseId: string) =>
   MockRentRequests.filter(r => r.warehouseId === warehouseId);
 
 export const getRequestsByOwnerWarehouses = (warehouseIds: string[]) =>
-  MockRentRequests.filter(r => warehouseIds.includes(r.warehouseId));
+  MockRentRequests.filter(r => warehouseIds.includes(r.warehouseId));seId));

@@ -351,7 +351,7 @@ export default function AISearchWarehouse() {
       if (!currentUser || !conversationIdRef.current || msgs.length === 0) return;
       const record: AIConversationRecord = {
         id: conversationIdRef.current,
-        userId: currentUser.id,
+        userId: currentUser.id_user,
         userName: currentUser.name,
         userEmail: currentUser.email,
         criteria,

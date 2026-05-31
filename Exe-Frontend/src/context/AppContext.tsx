@@ -4,32 +4,32 @@
  */
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User, ColdStorage, RentRequest, RentalContract, WarehouseRating } from '../types';
-import { 
-  authAPI, 
-  warehousesAPI, 
-  requestsAPI, 
-  contractsAPI, 
+import {
+  authAPI,
+  warehousesAPI,
+  requestsAPI,
+  contractsAPI,
   ratingsAPI,
   bookmarksAPI,
-  usersAPI 
+  usersAPI
 } from '../services/apiClient';
 
 interface AppState {
   // Auth
   user: User | null;
   isAuthenticated: boolean;
-  
+
   // Data
   users: User[];
   warehouses: ColdStorage[];
   requests: RentRequest[];
   contracts: RentalContract[];
   ratings: WarehouseRating[];
-  
+
   // Bookmarks
   bookmarkedIds: string[];
   compareIds: string[];
-  
+
   // Loading states
   loading: {
     users: boolean;
@@ -45,37 +45,37 @@ interface AppContextValue extends AppState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User | null) => void;
-  
+
   // Data actions
   refreshUsers: () => Promise<void>;
   refreshWarehouses: () => Promise<void>;
   refreshRequests: () => Promise<void>;
   refreshContracts: () => Promise<void>;
   refreshRatings: () => Promise<void>;
-  
+
   // User actions
-  adminUpdateUser: (id: string, updates: Partial<User>) => Promise<void>;
-  
+  adminUpdateUser: (id: number, updates: Partial<User>) => Promise<void>;
+
   // Warehouse actions
   createWarehouse: (warehouse: ColdStorage) => Promise<void>;
   updateWarehouse: (id: string, updates: Partial<ColdStorage>) => Promise<void>;
   deleteWarehouse: (id: string) => Promise<void>;
-  
+
   // Request actions
   createRequest: (request: RentRequest) => Promise<void>;
   updateRequest: (id: string, updates: Partial<RentRequest>) => Promise<void>;
   withdrawRequest: (id: string) => Promise<void>;
-  
+
   // Contract actions
   createContract: (contract: RentalContract) => Promise<void>;
   updateContract: (id: string, updates: Partial<RentalContract>) => Promise<void>;
   cancelContract: (id: string) => Promise<void>;
-  
+
   // Rating actions
   submitRating: (rating: WarehouseRating) => Promise<void>;
   updateRating: (id: string, updates: Partial<WarehouseRating>) => Promise<void>;
   deleteRating: (id: string) => Promise<void>;
-  
+
   // Bookmark actions
   toggleBookmark: (warehouseId: string) => Promise<void>;
   toggleCompare: (warehouseId: string) => void;
@@ -121,13 +121,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Load bookmarks when user changes
   useEffect(() => {
     if (state.user) {
-      bookmarksAPI.getByUser(state.user.id).then(data => {
+      bookmarksAPI.getByUser(state.user.id_user).then(data => {
         setState(prev => ({ ...prev, bookmarkedIds: data.warehouseIds }));
       }).catch(console.error);
     } else {
       setState(prev => ({ ...prev, bookmarkedIds: [], compareIds: [] }));
     }
-  }, [state.user?.id]);
+  }, [state.user?.id_user]);
 
   // Auth actions
   const login = async (email: string, password: string) => {
@@ -138,9 +138,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('user');
-    setState(prev => ({ 
-      ...prev, 
-      user: null, 
+    setState(prev => ({
+      ...prev,
+      user: null,
       isAuthenticated: false,
       bookmarkedIds: [],
       compareIds: [],
@@ -208,7 +208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // User actions
-  const adminUpdateUser = async (id: string, updates: Partial<User>) => {
+  const adminUpdateUser = async (id: number, updates: Partial<User>) => {
     await usersAPI.update(id, updates);
     await refreshUsers();
   };
@@ -283,12 +283,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Bookmark actions
   const toggleBookmark = async (warehouseId: string) => {
     if (!state.user) return;
-    
+
     const newBookmarks = state.bookmarkedIds.includes(warehouseId)
       ? state.bookmarkedIds.filter(id => id !== warehouseId)
       : [...state.bookmarkedIds, warehouseId];
-    
-    await bookmarksAPI.saveForUser(state.user.id, newBookmarks);
+
+    await bookmarksAPI.saveForUser(state.user.id_user, newBookmarks);
     setState(prev => ({ ...prev, bookmarkedIds: newBookmarks }));
   };
 
@@ -307,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearAllBookmarks = async () => {
     if (!state.user) return;
-    await bookmarksAPI.saveForUser(state.user.id, []);
+    await bookmarksAPI.saveForUser(state.user.id_user, []);
     setState(prev => ({ ...prev, bookmarkedIds: [] }));
   };
 
@@ -339,6 +339,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearCompare,
     clearAllBookmarks,
   };
+
+  // Auto-load mock data on app start so pages have initial data without needing Data Migration
+  useEffect(() => {
+    // Fire-and-forget — these populate the in-memory mock stores exposed by services/apiClient
+    refreshUsers().catch(() => { });
+    refreshWarehouses().catch(() => { });
+    refreshRequests().catch(() => { });
+    refreshContracts().catch(() => { });
+    refreshRatings().catch(() => { });
+  }, []);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
