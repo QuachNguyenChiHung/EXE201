@@ -168,9 +168,9 @@ export default function WarehouseDetail() {
       setLoading(false);
       return;
     }
-    // Fallback to API (handles deep-link before store hydrates)
-    import("../../../services/api").then(({ warehouseAPI }) => {
-      warehouseAPI.getById(id)
+    // Fallback to mock API client (handles deep-link before store hydrates)
+    import("../../../services/apiClient").then(({ warehousesAPI }) => {
+      warehousesAPI.getById(id)
         .then(data => {
           if (data) setWarehouse(data);
           else { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); }
