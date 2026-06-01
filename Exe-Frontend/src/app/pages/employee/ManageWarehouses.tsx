@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
-import { ColdStorage } from '../../../types';
+import { CompositeWarehouse } from '../../../types';
 import {
   ArrowLeft,
 } from 'lucide-react';
@@ -13,7 +13,7 @@ import ConfirmModal from '../../components/employee/ConfirmModal';
 import useWarehouses from '../../hooks/useWarehouses';
 
 // ── Types & constants ───────────────────────────────────────────────────────
-type StatusFilter = 'all' | ColdStorage['status'];
+type StatusFilter = 'all' | CompositeWarehouse['status'];
 const TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'pending', label: 'Chờ duyệt' },
@@ -55,7 +55,7 @@ export default function ManageWarehouses() {
 
         <div className="space-y-3">
           {filtered.map(w => (
-            <WarehouseRowComp key={w.id} warehouse={w} ownerEmail={ownerEmailMap[w.id_owner]} onApprove={handleApprove} onDeactivate={handleDeactivate} onDelete={() => setConfirmModal({
+            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerEmailMap[w.id_owner || 0]} onApprove={handleApprove} onDeactivate={handleDeactivate} onDelete={() => setConfirmModal({
               title: 'Xoá kho',
               message: `Bạn có chắc muốn xoá kho "${w.name}" không?`,
               confirmLabel: 'Xoá',

@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
-import { RentRequest, ColdStorage, RentalContract } from '../../../types';
+import { CompositeRentRequest, CompositeContract } from '../../../types/renter';
+import { CompositeWarehouse } from '../../../types/warehouse';
 import {
   ClipboardList, Send, Eye, XCircle, MessageSquare, CheckCircle,
   Clock, Phone, Mail, Building, User, Calendar, ChevronDown,
@@ -12,8 +13,8 @@ import {
 import { toast } from 'sonner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type RequestStatus = RentRequest['status'];
-type IncomingRequest = RentRequest;
+type RequestStatus = CompositeRentRequest['status'];
+type IncomingRequest = CompositeRentRequest;
 
 const CARGO_LABEL: Record<string, string> = {
   frozen_food: 'Thực phẩm đông lạnh',
@@ -77,7 +78,7 @@ function relativeTime(iso: string): string {
 // ── Response modal ────────────────────────────────────────────────────────────
 interface ResponseModalProps {
   request: IncomingRequest;
-  warehouse: ColdStorage;
+  warehouse: CompositeWarehouse;
   onClose: () => void;
   onAccept: (id: string, offeredPrice: number, note: string) => void;
   onReject: (id: string, reason: string) => void;
@@ -89,7 +90,7 @@ function ResponseModal({ request, warehouse, onClose, onAccept, onReject }: Resp
   const [note, setNote]     = useState('');
   const [reason, setReason] = useState('');
 
-  const section = warehouse.sections?.find(s => s.id === request.sectionId);
+  const section = warehouse.sections?.find(s => s.id_section === request.sectionId);
   const suggestedPrice = section
     ? (section.priceTiers?.find(t => t.unit === 'month')?.value ?? warehouse.pricePerCubicMeter)
     : warehouse.pricePerCubicMeter;
@@ -135,7 +136,7 @@ function ResponseModal({ request, warehouse, onClose, onAccept, onReject }: Resp
           <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
             <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {request.requestedCapacity.toLocaleString()} m³</span>
             <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {CARGO_LABEL[request.cargoType] ?? request.cargoType}</span>
-            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {fmtDate(request.startDate)} · {request.durationLabel}</span>
+            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {fmtDate(request.start_at)} · {request.durationLabel}</span>
             {request.sectionName && (
               <span className="flex items-center gap-1"><Snowflake className="h-3 w-3" /> {request.sectionName}</span>
             )}
@@ -272,8 +273,8 @@ function RequestCard({
   req, warehouse, existingContract, onOpenModal, onMarkViewed, onCreateContract, onViewContract,
 }: {
   req: IncomingRequest;
-  warehouse: ColdStorage | undefined;
-  existingContract: RentalContract | undefined;
+  warehouse: CompositeWarehouse | undefined;
+  existingContract: CompositeContract | undefined;
   onOpenModal: (r: IncomingRequest) => void;
   onMarkViewed: (id: string) => void;
   onCreateContract: (requestId: string) => void;
@@ -288,7 +289,7 @@ function RequestCard({
   };
 
   const section = req.sectionId
-    ? warehouse.sections?.find(s => s.id === req.sectionId)
+    ? warehouse.sections?.find(s => s.id_section === req.sectionId)
     : undefined;
 
   return (
@@ -404,7 +405,7 @@ function RequestCard({
                 )}
                 <div>
                   <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Từ ngày</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{fmtDate(req.startDate)}</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{fmtDate(req.start_at)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Thời hạn</p>
@@ -456,13 +457,13 @@ function RequestCard({
                       <div>
                         <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Nhiệt độ</p>
                         <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                          {section.temperatureMin}°C ~ {section.temperatureMax}°C
+                          {section.temp_min}°C ~ {section.temp_max}°C
                         </p>
                       </div>
                       <div>
                         <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Sức chứa trống</p>
                         <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                          {section.availableCapacity.toLocaleString()} / {section.capacity.toLocaleString()} m³
+                          {section.available_capacity.toLocaleString()} / {section.capacity.toLocaleString()} m³
                         </p>
                       </div>
                       {section.description && (
@@ -514,7 +515,7 @@ function RequestCard({
                   <div className="flex flex-col gap-2 w-full">
                     {req.status === 'sent' && (
                       <button
-                        onClick={() => onMarkViewed(req.id)}
+                        onClick={() => onMarkViewed(req.id_rentRequest)}
                         className="w-full text-xs py-2 border flex items-center justify-center gap-1.5 transition-colors hover:border-[#f59e0b]"
                         style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
                       >
@@ -587,7 +588,7 @@ function RequestCard({
                   <div className="pt-1">
                     {!existingContract ? (
                       <button
-                        onClick={() => onCreateContract(req.id)}
+                        onClick={() => onCreateContract(req.id_rentRequest)}
                         className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
                         style={{ background: 'var(--color-primary)' }}
                       >
@@ -628,8 +629,8 @@ function RequestCard({
                         <p className="text-xs font-semibold" style={{ color: ccfg.color }}>{ccfg.label}</p>
                         <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                           {ccfg.sublabel}
-                          {existingContract.status === 'active' && existingContract.startDate && (
-                            <> · {fmtDate(existingContract.startDate)} — {fmtDate(existingContract.endDate)}</>
+                          {existingContract.status === 'active' && (existingContract as any).start_at && (
+                            <> · {fmtDate((existingContract as any).start_at)} — {fmtDate((existingContract as any).end_at)}</>
                           )}
                         </p>
                       </div>
@@ -692,17 +693,17 @@ export default function WarehouseRequests() {
   const [tab, setTab]         = useState<FilterTab>('all');
   const [modalReq, setModalReq] = useState<IncomingRequest | null>(null);
 
-  const warehouses = useMemo<Record<string, ColdStorage>>(() =>
-    Object.fromEntries(warehouseList.map(w => [w.id, w])),
+  const warehouses = useMemo<Record<string, CompositeWarehouse>>(() =>
+    Object.fromEntries(warehouseList.map(w => [w.id_warehouse, w])),
   [warehouseList]);
 
   const ownerWarehouseIds = useMemo(
-    () => warehouseList.filter(w => w.ownerId === user?.id).map(w => w.id),
+    () => warehouseList.filter(w => w.id_owner === user?.id).map(w => w.id_warehouse),
     [warehouseList, user],
   );
 
   const requests = useMemo(() =>
-    allRequests.filter(r => ownerWarehouseIds.includes(r.warehouseId)) as IncomingRequest[],
+    allRequests.filter(r => ownerWarehouseIds.includes(r.id_warehouse)) as IncomingRequest[],
   [allRequests, ownerWarehouseIds]);
 
   const handleMarkViewed = async (id: string) => {
@@ -747,10 +748,10 @@ export default function WarehouseRequests() {
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Navbar />
 
-      {modalReq && warehouses[modalReq.warehouseId] && (
+      {modalReq && warehouses[modalReq.id_warehouse] && (
         <ResponseModal
           request={modalReq}
-          warehouse={warehouses[modalReq.warehouseId]}
+          warehouse={warehouses[modalReq.id_warehouse]}
           onClose={() => setModalReq(null)}
           onAccept={handleAccept}
           onReject={handleReject}
@@ -871,14 +872,14 @@ export default function WarehouseRequests() {
             )}
             {filtered.map(req => (
               <RequestCard
-                key={req.id}
+                key={req.id_rentRequest}
                 req={req}
-                warehouse={warehouses[req.warehouseId]}
-                existingContract={contracts.find(c => c.requestId === req.id)}
+                warehouse={warehouses[req.id_warehouse]}
+                existingContract={contracts.find(c => c.id_rent_request === req.id_rentRequest)}
                 onOpenModal={r => setModalReq(r)}
                 onMarkViewed={handleMarkViewed}
                 onCreateContract={id => navigate(`/warehouse/contracts/create/${id}`)}
-                onViewContract={() => navigate(`/warehouse/contracts/create/${req.id}`)}
+                onViewContract={() => navigate(`/warehouse/contracts/create/${req.id_rentRequest}`)}
               />
             ))}
           </div>

@@ -32,8 +32,8 @@ const LogViewer = forwardRef<HTMLDivElement, Props>(({ logs, onClear, logColors,
                     ? <span style={{ color: 'var(--color-text-muted)' }}>Chưa có hoạt động nào. Nhấn Migrate để bắt đầu.</span>
                     : logs.map((l, i) => (
                         <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0, fontSize: 10 }}>{l.ts}</span>
-                            <span style={{ color: logColors[l.level] }}>{l.msg}</span>
+                            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0, fontSize: 10 }}>{l.timestamp}</span>
+                            <span style={{ color: logColors[l.level] }}>{l.message}</span>
                         </div>
                     ))}
             </div>

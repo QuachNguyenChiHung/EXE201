@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Star, X, CheckCircle, Edit3, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { WarehouseRating } from '../../types';
+import { Rating } from '../../types';
 import { toast } from 'sonner';
 
 interface Props {
-  warehouseId: string;
+  warehouse_id: string;
   warehouseName: string;
   contractId: string;
   contractRef: string;
@@ -59,7 +59,7 @@ export function RateWarehouseModal({
         id: `rating-${Date.now()}`,
         warehouseId,
         contractId,
-        renterId: user.id_user,
+        id_renter: user.id_user,
         renterName: user.name,
         renterCompany: user.company?.company_name,
         stars,

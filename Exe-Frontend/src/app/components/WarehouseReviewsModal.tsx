@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 
 interface Props {
-  warehouseId: string;
+  warehouseId: number;
   warehouseName: string;
   onClose: () => void;
 }
@@ -20,12 +20,12 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
   const { ratings: allRatings } = useApp();
 
   const ratings = allRatings
-    .filter(r => r.warehouseId === warehouseId)
+    .filter(r => r.warehouse_id === warehouseId)
     .slice() // avoid mutating
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const count = ratings.length;
-  const avg = count > 0 ? ratings.reduce((s, r) => s + r.stars, 0) / count : 0;
+  const avg = count > 0 ? ratings.reduce((s, r) => s + r.rate, 0) / count : 0;
 
   return (
     <div
@@ -101,7 +101,7 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
                 {/* Distribution bars */}
                 <div className="flex-1 space-y-2">
                   {[5, 4, 3, 2, 1].map(star => {
-                    const cnt = ratings.filter(r => r.stars === star).length;
+                    const cnt = ratings.filter(r => r.rate === star).length;
                     const pct = count > 0 ? (cnt / count) * 100 : 0;
                     return (
                       <div key={star} className="flex items-center gap-2">

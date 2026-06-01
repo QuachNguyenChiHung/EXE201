@@ -156,7 +156,7 @@ export default function WarehouseDetail() {
   // Ratings for this warehouse
   const warehouseRatings = allRatings.filter(r => r.warehouseId === id);
   const avgRating = warehouseRatings.length
-    ? warehouseRatings.reduce((sum, r) => sum + r.stars, 0) / warehouseRatings.length
+    ? warehouseRatings.reduce((sum, r) => sum + r.rate, 0) / warehouseRatings.length
     : 0;
 
   // ── Load warehouse from Redux store (instant) ────────────────────────────────
@@ -789,7 +789,7 @@ export default function WarehouseDetail() {
                               </p>
                               <div className="space-y-1">
                                 {filledTiers.map((tier, idx) => (
-                                  <div key={tier.id} className="flex items-center justify-between">
+                                  <div key={tier.id_rating} className="flex items-center justify-between">
                                     <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>{tier.label || "Giá thuê"}</span>
                                     <span style={{ fontWeight: idx === 0 ? 700 : 500, color: idx === 0 ? "var(--color-primary)" : "var(--color-text-secondary)", fontSize: idx === 0 ? "0.85rem" : "0.78rem" }}>
                                       {formatCurrency(tier.value)}
@@ -1125,7 +1125,7 @@ export default function WarehouseDetail() {
                             </p>
                             <div className="space-y-1">
                               {filledTiers.map((tier, idx) => (
-                                <div key={tier.id} className="flex items-center justify-between">
+                                <div key={tier.id_rating} className="flex items-center justify-between">
                                   <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                                     {tier.label || "Giá thuê"}
                                   </span>
@@ -1242,7 +1242,7 @@ export default function WarehouseDetail() {
                         </div>
                         <div className="flex-1 space-y-1.5">
                           {[5, 4, 3, 2, 1].map(star => {
-                            const count = warehouseRatings.filter(r => r.stars === star).length;
+                            const count = warehouseRatings.filter(r => r.rate === star).length;
                             const pct = warehouseRatings.length ? (count / warehouseRatings.length) * 100 : 0;
                             return (
                               <div key={star} className="flex items-center gap-2">
@@ -1278,8 +1278,8 @@ export default function WarehouseDetail() {
                                       key={n}
                                       className="h-3.5 w-3.5"
                                       style={{
-                                        color: n <= rating.stars ? '#f59e0b' : 'var(--color-border)',
-                                        fill: n <= rating.stars ? '#f59e0b' : 'transparent',
+                                        color: n <= rating.rate ? '#f59e0b' : 'var(--color-border)',
+                                        fill: n <= rating.rate ? '#f59e0b' : 'transparent',
                                       }}
                                     />
                                   ))}
@@ -1526,7 +1526,7 @@ export default function WarehouseDetail() {
                           const isFirst = globalIdx === 0;
                           const extraTiers = (sec.priceTiers ?? []).filter(t => t.value > 0).length - 1;
                           rows.push(
-                            <div key={`${sec.id}-${firstTier.id}`}
+                            <div key={`${sec.id}-${firstTier.id_rating}`}
                               className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--color-border)]"
                               style={{ background: isFirst ? 'var(--color-primary)' : 'var(--color-surface)' }}>
                               <div className="min-w-0 flex-1 mr-2">
@@ -1577,7 +1577,7 @@ export default function WarehouseDetail() {
                     </p>
                     <div className="space-y-1.5">
                       {warehouse.priceTiers.filter(t => t.value > 0).map(tier => (
-                        <div key={tier.id} className="flex items-center justify-between px-2.5 py-1.5 border" style={{ borderColor: 'var(--color-success)', background: 'rgba(34,197,94,0.04)' }}>
+                        <div key={tier.id_rating} className="flex items-center justify-between px-2.5 py-1.5 border" style={{ borderColor: 'var(--color-success)', background: 'rgba(34,197,94,0.04)' }}>
                           <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{tier.label}</span>
                           <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-success)' }}>
                             {formatCurrency(tier.value)}
@@ -1795,10 +1795,10 @@ export default function WarehouseDetail() {
                               const isSel = inquiryForm.selectedPriceTierId === tier.id || (autoSel && tiers.length === 1);
                               const unitLabel: Record<string, string> = { month: 'tháng', day: 'ngày', year: 'năm' };
                               return (
-                                <div key={tier.id}
+                                <div key={tier.id_rating}
                                   onClick={() => setInquiryForm(f => ({
                                     ...f,
-                                    selectedPriceTierId: tier.id,
+                                    selectedPriceTierId: tier.id_rating,
                                     durationUnit: (tier.unit as 'day' | 'month' | 'year'),
                                   }))}
                                   className="flex items-center justify-between px-3 py-2.5 border cursor-pointer transition-colors"

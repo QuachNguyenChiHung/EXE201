@@ -13,8 +13,8 @@ import { useEffect, useState, ReactNode } from 'react';
 import { seedAPI, warehousesAPI, requestsAPI, contractsAPI, ratingsAPI, usersAPI } from '../../services/apiClient';
 import { MockUsers } from '../../data/mockUsers';
 import { MockWarehouseData } from '../../data/mockWarehouses';
-import { MockRentRequests } from '../../data/mockRequests';
-import { MockRentalContracts } from '../../data/mockContracts';
+import { MockCompositeRentRequests } from '../../data/mockRequests';
+import { MockCompositeContracts } from '../../data/mockContracts';
 import { MockRatings } from '../../data/mockRatings';
 import { Warehouse, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 
@@ -78,8 +78,8 @@ export function DataLoader({ children }: Props) {
             {
               users: MockUsers,
               warehouses: MockWarehouseData,
-              requests: MockRentRequests,
-              contracts: MockRentalContracts,
+              requests: MockCompositeRentRequests,
+              contracts: MockCompositeContracts,
               ratings: MockRatings,
             },
             true,

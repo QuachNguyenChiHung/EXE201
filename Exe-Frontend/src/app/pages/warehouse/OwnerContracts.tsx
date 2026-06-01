@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 
 import { useApp } from "../../../context/AppContext";
-import { RentalContract, ColdStorage } from "../../../types";
+import { CompositeContract, CompositeWarehouse } from "../../../types";
 import {
   FileText,
   Plus,
@@ -44,7 +44,7 @@ const fmtDate = (d: string) =>
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<
-  RentalContract["status"],
+  CompositeContract["status"],
   {
     label: string;
     color: string;
@@ -83,7 +83,7 @@ const STATUS_CFG: Record<
   },
 };
 
-type FilterTab = "all" | RentalContract["status"];
+type FilterTab = "all" | CompositeContract["status"];
 const TABS: { key: FilterTab; label: string }[] = [
   { key: "all", label: "Tất cả" },
   { key: "draft", label: "Bản nháp" },
@@ -203,10 +203,10 @@ function ContractCard({
   onEdit,
   onCancel,
 }: {
-  contract: RentalContract;
-  warehouse: ColdStorage | undefined;
-  onEdit: (c: RentalContract) => void;
-  onCancel: (c: RentalContract) => void;
+  contract: CompositeContract;
+  warehouse: CompositeWarehouse | undefined;
+  onEdit: (c: CompositeContract) => void;
+  onCancel: (c: CompositeContract) => void;
 }) {
   const cfg = STATUS_CFG[contract.status];
   const monthly =
@@ -265,7 +265,7 @@ function ContractCard({
             {contract.contractTitle ||
               (warehouse
                 ? warehouse.name
-                : `Kho #${contract.warehouseId}`)}
+                : `Kho #${(contract as any).id_warehouse}`)}
           </p>
 
           {/* Warehouse */}
@@ -284,28 +284,28 @@ function ContractCard({
 
           {/* Renter info */}
           <div className="flex flex-wrap gap-3 text-xs">
-            {(contract.renterLegalName ||
+            {(contract.renter_legal_name ||
               contract.renterCompany) && (
               <span
                 className="flex items-center gap-1"
                 style={{ color: "var(--color-text-secondary)" }}
               >
                 <User className="h-3 w-3" />
-                {contract.renterLegalName ||
+                {contract.renter_legal_name ||
                   contract.renterCompany}
               </span>
             )}
-            {contract.renterTaxCode && (
+            {contract.renter_tax_code && (
               <span
                 className="flex items-center gap-1 font-mono"
                 style={{ color: "var(--color-text-muted)" }}
               >
                 <Hash className="h-3 w-3" /> MST:{" "}
-                {contract.renterTaxCode}
+                {contract.renter_tax_code}
               </span>
             )}
             {contract.renterCompany &&
-              contract.renterLegalName && (
+              contract.renter_legal_name && (
                 <span
                   className="flex items-center gap-1"
                   style={{ color: "var(--color-text-muted)" }}
@@ -352,8 +352,8 @@ function ContractCard({
               style={{ color: "var(--color-text-secondary)" }}
             >
               <Calendar className="h-3 w-3" />{" "}
-              {fmtDate(contract.startDate)} →{" "}
-              {fmtDate(contract.endDate)}
+              {fmtDate(contract.start_at)} →{" "}
+              {fmtDate(contract.end_at)}
             </span>
             {contract.monthlyRate > 0 && (
               <span
@@ -477,7 +477,7 @@ export default function OwnerContracts() {
 
   const [tab, setTab] = useState<FilterTab>("all");
   const [cancelTarget, setCancelTarget] =
-    useState<RentalContract | null>(null);
+    useState<CompositeContract | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "warehouse")
@@ -489,15 +489,15 @@ export default function OwnerContracts() {
     () =>
       new Set(
         warehouseList
-          .filter((w) => w.ownerId === user?.id)
-          .map((w) => w.id),
+          .filter((w) => w.id_owner === user?.id)
+          .map((w) => w.id_warehouse),
       ),
     [warehouseList, user],
   );
 
-  const warehouseMap = useMemo<Record<string, ColdStorage>>(
+  const warehouseMap = useMemo<Record<string, CompositeWarehouse>>(
     () =>
-      Object.fromEntries(warehouseList.map((w) => [w.id, w])),
+      Object.fromEntries(warehouseList.map((w) => [w.id_warehouse, w])),
     [warehouseList],
   );
 
@@ -506,8 +506,8 @@ export default function OwnerContracts() {
     () =>
       allContracts.filter(
         (c) =>
-          ownerWarehouseIds.has(c.warehouseId) ||
-          c.ownerId === user?.id,
+          ownerWarehouseIds.has(c.id_warehouse) ||
+          c.id_owner === user?.id,
       ),
     [allContracts, ownerWarehouseIds, user],
   );
@@ -517,9 +517,9 @@ export default function OwnerContracts() {
     () =>
       requests.filter(
         (r) =>
-          ownerWarehouseIds.has(r.warehouseId) &&
+          ownerWarehouseIds.has(r.id_warehouse) &&
           r.status === "inprogress" &&
-          !allContracts.some((c) => c.requestId === r.id),
+          !allContracts.some((c) => c.id_rent_request === r.id),
       ),
     [requests, ownerWarehouseIds, allContracts],
   );
@@ -541,9 +541,9 @@ export default function OwnerContracts() {
       ? contracts
       : contracts.filter((c) => c.status === tab);
 
-  const handleEdit = (c: RentalContract) => {
-    if (c.requestId) {
-      navigate(`/warehouse/contracts/create/${c.requestId}`);
+  const handleEdit = (c: CompositeContract) => {
+    if (c.id_rent_request) {
+      navigate(`/warehouse/contracts/create/${c.id_rent_request}`);
     } else {
       toast.error(
         "Không tìm thấy yêu cầu liên kết với hợp đồng này.",
@@ -787,7 +787,7 @@ export default function OwnerContracts() {
               <ContractCard
                 key={c.id}
                 contract={c}
-                warehouse={warehouseMap[c.warehouseId]}
+                warehouse={warehouseMap[c.id_warehouse]}
                 onEdit={handleEdit}
                 onCancel={setCancelTarget}
               />

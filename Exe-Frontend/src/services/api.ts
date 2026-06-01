@@ -3,7 +3,7 @@
  * Search/filter logic operates on warehouse arrays passed as parameters.
  * All data comes from mock data stores.
  */
-import { ColdStorage, FilterOptions, SearchResult, SUBSCRIPTION_TIERS } from '../types';
+import { CompositeWarehouse, FilterOptions, SearchResult, SUBSCRIPTION_TIERS } from '../types';
 
 // ── Warehouse search (pure function — operates on provided list) ──────────────
 
@@ -12,7 +12,7 @@ import { ColdStorage, FilterOptions, SearchResult, SUBSCRIPTION_TIERS } from '..
  * Accepts the full warehouse list (from Redux) and returns a paginated SearchResult.
  */
 export function searchWarehouses(
-  warehouses: ColdStorage[],
+  warehouses: CompositeWarehouse[],
   filters: FilterOptions,
   page = 1,
   pageSize = 10,
@@ -25,48 +25,48 @@ export function searchWarehouses(
     filtered = filtered.filter(w =>
       w.name.toLowerCase().includes(kw) ||
       w.description.toLowerCase().includes(kw) ||
-      w.location.address.toLowerCase().includes(kw) ||
-      w.location.city.toLowerCase().includes(kw) ||
-      w.location.province.toLowerCase().includes(kw)
+      (w.address || '').toLowerCase().includes(kw) ||
+      (w.location_commune || '').toLowerCase().includes(kw) ||
+      (w.location_province || '').toLowerCase().includes(kw)
     );
   }
 
   // ── helper: lowest monthly price across top-level tiers + all section tiers ──
-  const effectiveMinPrice = (w: ColdStorage): number => {
-    const prices: number[] = [w.pricePerCubicMeter];
+  const effectiveMinPrice = (w: CompositeWarehouse): number => {
+    const prices: number[] = [(w.pricePerCubicMeter || 0)];
     w.priceTiers?.forEach(t => { if (t.unit === 'month' && t.value > 0) prices.push(t.value); });
     w.sections?.forEach(s => s.priceTiers?.forEach(t => { if (t.unit === 'month' && t.value > 0) prices.push(t.value); }));
-    return Math.min(...prices);
+    return Math.min(...prices.filter(p => p > 0));
   };
 
   // Apply filters
   if (filters.provinces && filters.provinces.length > 0) {
-    filtered = filtered.filter(w => filters.provinces!.includes(w.location.province));
+    filtered = filtered.filter(w => filters.provinces!.includes((w.location_province || '')));
   }
 
   if (filters.cities && filters.cities.length > 0) {
-    filtered = filtered.filter(w => filters.cities!.includes(w.location.city));
+    filtered = filtered.filter(w => filters.cities!.includes((w.location_commune || '')));
   }
 
   // Capacity: main stats OR any section has enough available space
   if (filters.minCapacity !== undefined) {
     filtered = filtered.filter(w =>
-      w.stats.availableCapacity >= filters.minCapacity! ||
-      (w.sections?.some(s => s.availableCapacity >= filters.minCapacity!) ?? false)
+      w.stats?.availableCapacity >= filters.minCapacity! ||
+      (w.sections?.some(s => s.available_capacity >= filters.minCapacity!) ?? false)
     );
   }
 
   if (filters.maxCapacity !== undefined) {
     filtered = filtered.filter(w =>
-      w.stats.availableCapacity <= filters.maxCapacity! ||
-      (w.sections?.some(s => s.availableCapacity <= filters.maxCapacity!) ?? false)
+      w.stats?.availableCapacity <= filters.maxCapacity! ||
+      (w.sections?.some(s => s.available_capacity <= filters.maxCapacity!) ?? false)
     );
   }
 
   // Price: main price OR any section monthly tier falls in range
   if (filters.minPrice !== undefined) {
     filtered = filtered.filter(w =>
-      w.pricePerCubicMeter >= filters.minPrice! ||
+      (w.pricePerCubicMeter || 0) >= filters.minPrice! ||
       (w.sections?.some(s => s.priceTiers?.some(t => t.unit === 'month' && t.value >= filters.minPrice!)) ?? false)
     );
   }
@@ -81,8 +81,8 @@ export function searchWarehouses(
   if (filters.temperatureRange) {
     const { min, max } = filters.temperatureRange;
     filtered = filtered.filter(w => {
-      const mainOk = w.stats.temperatureMin <= max && w.stats.temperatureMax >= min;
-      const sectionOk = w.sections?.some(s => s.temperatureMin <= max && s.temperatureMax >= min) ?? false;
+      const mainOk = w.stats?.temperatureMin <= max && w.stats?.temperatureMax >= min;
+      const sectionOk = w.sections?.some(s => s.temp_min <= max && s.temp_max >= min) ?? false;
       return mainOk || sectionOk;
     });
   }
@@ -92,17 +92,17 @@ export function searchWarehouses(
   }
 
   if (filters.certificationRequired) {
-    filtered = filtered.filter(w => w.hasCertification);
+    filtered = filtered.filter(w => w.certifications && (w.certifications as any[]).length > 0);
   }
 
   if (filters.features && filters.features.length > 0) {
     filtered = filtered.filter(w =>
-      filters.features!.some(f => w.features.includes(f))
+      filters.features!.some(f => (w.features || []).includes(f))
     );
   }
 
   if (filters.securityLevel && filters.securityLevel.length > 0) {
-    filtered = filtered.filter(w => filters.securityLevel!.includes(w.stats.securityLevel));
+    filtered = filtered.filter(w => filters.securityLevel!.includes(w.stats?.securityLevel));
   }
 
   // ── Sort by subscription tier boost (higher tier = higher priority) ──────────

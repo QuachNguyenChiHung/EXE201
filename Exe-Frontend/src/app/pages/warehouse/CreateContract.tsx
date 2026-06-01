@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { requestsAPI, warehousesAPI, contractsAPI } from '../../../services/apiClient';
-import { RentalContract } from '../../../types';
+import { CompositeContract } from '../../../types/renter';
 import {
   ArrowLeft, FileText, Upload, Save, Send, X, CheckCircle,
   Building, User, Phone, Mail, Hash, MapPin, Package,
@@ -232,7 +232,7 @@ export default function CreateContract() {
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } });
   const [request, setRequest] = useState<any | undefined>(undefined);
   const [warehouse, setWarehouse] = useState<any | undefined>(undefined);
-  const [existingDraft, setExistingDraft] = useState<RentalContract | undefined>(undefined);
+  const [existingDraft, setExistingDraft] = useState<CompositeContract | undefined>(undefined);
 
   useEffect(() => {
     if (!requestId) return;
@@ -243,13 +243,13 @@ export default function CreateContract() {
         if (!mounted) return;
         setRequest(req);
         try {
-          const wh = await warehousesAPI.getById(req.warehouseId);
+          const wh = await warehousesAPI.getById(req.id_warehouse);
           if (mounted) setWarehouse(wh);
         } catch (e) {
           // ignore
         }
         const allContracts = await contractsAPI.getAll();
-        const draft = allContracts.find(c => c.requestId === requestId && (c.status === 'draft' || c.status === 'pending_renter')) as RentalContract | undefined;
+        const draft = allContracts.find(c => c.id_rent_request === requestId && (c.status === 'draft' || c.status === 'pending_renter')) as CompositeContract | undefined;
         if (draft && mounted) setExistingDraft(draft);
       } catch (err) {
         console.warn('[CreateContract] load data failed', err);
@@ -378,12 +378,12 @@ export default function CreateContract() {
   };
 
   // ── Build contract object ─────────────────────────────────────────────────
-  const buildContract = (status: 'draft' | 'pending_renter'): RentalContract => ({
+  const buildContract = (status: 'draft' | 'pending_renter'): CompositeContract => ({
     id: contractId,
     requestId: requestId ?? undefined,
     renterId: request?.renterId ?? '',
     ownerId: user?.id ?? '',
-    warehouseId: request?.warehouseId ?? '',
+    warehouseId: request?.id_warehouse ?? '',
     sectionId: request?.sectionId,
     sectionIds: request?.sectionIds,
     isWholeWarehouse: request?.isWholeWarehouse,

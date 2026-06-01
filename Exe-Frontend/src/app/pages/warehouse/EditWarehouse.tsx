@@ -7,7 +7,7 @@ import {
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { warehousesAPI, storageAPI } from "../../../services/apiClient";
-import { ColdStorage, Certification } from "../../../types";
+import { CompositeWarehouse } from "../../../types";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -50,7 +50,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { vietnamProvinces } from "../../../data/mockWarehouses";
-import { PriceUnit } from "../../../types";
+import { string } from "../../../types";
 import L from "leaflet";
 import { ImageUploader } from "../../components/ImageUploader";
 
@@ -206,7 +206,7 @@ interface PriceTierDraft {
   id: string;
   label: string;
   value: string;  // raw input string
-  unit: PriceUnit;
+  unit: string;
 }
 
 // ── Section draft ──────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ interface SectionDraft {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const UNIT_SHORT: Record<PriceUnit, string> = {
+const UNIT_SHORT: Record< string> = {
   month: "tháng",
   day:   "ngày",
   year:  "năm",
@@ -629,7 +629,7 @@ export default function EditWarehouse() {
 
   const [pageLoading, setPageLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [warehouse, setWarehouse] = useState<ColdStorage | null>(null);
+  const [warehouse, setWarehouse] = useState<CompositeWarehouse | null>(null);
   const loadedRef = useRef(false); // prevent re-loading when warehouseList changes
 
   const [formData, setFormData] = useState({
@@ -721,7 +721,7 @@ export default function EditWarehouse() {
           humidity: String(data.stats.humidity),
           powerBackup: data.stats.powerBackup,
           securityLevel: data.stats.securityLevel,
-          hasCertification: data.hasCertification,
+          hasCertification: data.has
           availability: data.availability,
           status: data.status,
         });
@@ -1033,7 +1033,7 @@ export default function EditWarehouse() {
     try {
       // Upload new certification PDFs to storage
       const certUploadResults: { name: string; url: string }[] = [];
-      if (formData.hasCertification && certFiles.length > 0) {
+      if (formData.hasCertificationType && certFiles.length > 0) {
         for (const cf of certFiles) {
           try {
             const url = await storageAPI.uploadDoc(cf.file);
@@ -1054,7 +1054,7 @@ export default function EditWarehouse() {
           .split("T")[0],
         documentUrl: certUploadResults.find(r => r.name === f.name)?.url,
       }));
-      const updated: import("../../../types").ColdStorage = {
+      const updated: import("../../../types").CompositeWarehouse = {
         ...warehouse,
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -1078,7 +1078,7 @@ export default function EditWarehouse() {
           securityLevel: formData.securityLevel,
         },
         certifications: [...existingCerts, ...newCertsFromFiles],
-        hasCertification: formData.hasCertification,
+        hasCertification: formData.has
         pricePerCubicMeter: primaryPrice,
         priceTiers: warehouseTiers
           .filter((t) => t.value)
@@ -1577,7 +1577,7 @@ export default function EditWarehouse() {
                 </Label>
               </div>
 
-              {!formData.hasCertification && (
+              {!formData.hasCertificationType && (
                 <div className="flex items-start gap-3 border-l-4 border-[var(--color-warning)] px-4 py-3">
                   <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: "var(--color-warning)" }} />
                   <div className="text-sm">
@@ -1589,7 +1589,7 @@ export default function EditWarehouse() {
                 </div>
               )}
 
-              {formData.hasCertification && (
+              {formData.hasCertificationType && (
                 <div className="space-y-3">
                   {/* Existing certifications */}
                   {existingCerts.length > 0 && (

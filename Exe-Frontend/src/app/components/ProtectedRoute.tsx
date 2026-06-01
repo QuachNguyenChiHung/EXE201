@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router';
 import { getUser } from '../../utils/auth';
-import type { UserRole } from '../../types';
+import type { UserRole } from '../../types/public';
 
 interface Props {
   allowedRoles?: UserRole[];

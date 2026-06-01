@@ -3,7 +3,7 @@
  * Replaces Redux with React Context + mock API
  */
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User, ColdStorage, RentRequest, RentalContract, WarehouseRating } from '../types';
+import type { User, CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating } from '../types';
 import {
   authAPI,
   warehousesAPI,
@@ -21,14 +21,14 @@ interface AppState {
 
   // Data
   users: User[];
-  warehouses: ColdStorage[];
-  requests: RentRequest[];
-  contracts: RentalContract[];
-  ratings: WarehouseRating[];
+  warehouses: CompositeWarehouse[];
+  requests: CompositeRentRequest[];
+  contracts: CompositeContract[];
+  ratings: Rating[];
 
   // Bookmarks
-  bookmarkedIds: string[];
-  compareIds: string[];
+  bookmarkedIds: number[];
+  compareIds: number[];
 
   // Loading states
   loading: {
@@ -57,28 +57,28 @@ interface AppContextValue extends AppState {
   adminUpdateUser: (id: number, updates: Partial<User>) => Promise<void>;
 
   // Warehouse actions
-  createWarehouse: (warehouse: ColdStorage) => Promise<void>;
-  updateWarehouse: (id: string, updates: Partial<ColdStorage>) => Promise<void>;
-  deleteWarehouse: (id: string) => Promise<void>;
+  createWarehouse: (warehouse: CompositeWarehouse) => Promise<void>;
+  updateWarehouse: (id: string | number, updates: Partial<CompositeWarehouse>) => Promise<void>;
+  deleteWarehouse: (id: string | number) => Promise<void>;
 
   // Request actions
-  createRequest: (request: RentRequest) => Promise<void>;
-  updateRequest: (id: string, updates: Partial<RentRequest>) => Promise<void>;
-  withdrawRequest: (id: string) => Promise<void>;
+  createRequest: (request: CompositeRentRequest) => Promise<void>;
+  updateRequest: (id: string | number, updates: Partial<CompositeRentRequest>) => Promise<void>;
+  withdrawRequest: (id: string | number) => Promise<void>;
 
   // Contract actions
-  createContract: (contract: RentalContract) => Promise<void>;
-  updateContract: (id: string, updates: Partial<RentalContract>) => Promise<void>;
-  cancelContract: (id: string) => Promise<void>;
+  createContract: (contract: CompositeContract) => Promise<void>;
+  updateContract: (id: string | number, updates: Partial<CompositeContract>) => Promise<void>;
+  cancelContract: (id: string | number) => Promise<void>;
 
   // Rating actions
-  submitRating: (rating: WarehouseRating) => Promise<void>;
-  updateRating: (id: string, updates: Partial<WarehouseRating>) => Promise<void>;
-  deleteRating: (id: string) => Promise<void>;
+  submitRating: (rating: Rating) => Promise<void>;
+  updateRating: (id: string | number, updates: Partial<Rating>) => Promise<void>;
+  deleteRating: (id: string | number) => Promise<void>;
 
   // Bookmark actions
-  toggleBookmark: (warehouseId: string) => Promise<void>;
-  toggleCompare: (warehouseId: string) => void;
+  toggleBookmark: (warehouseId: number) => Promise<void>;
+  toggleCompare: (warehouseId: number) => void;
   clearCompare: () => void;
   clearAllBookmarks: () => Promise<void>;
 }
@@ -214,74 +214,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // Warehouse actions
-  const createWarehouse = async (warehouse: ColdStorage) => {
-    await warehousesAPI.create(warehouse);
+  const createWarehouse = async (warehouse: CompositeWarehouse) => {
+    await warehousesAPI.create(warehouse as any);
     await refreshWarehouses();
   };
 
-  const updateWarehouse = async (id: string, updates: Partial<ColdStorage>) => {
-    await warehousesAPI.update(id, updates);
+  const updateWarehouse = async (id: string | number, updates: Partial<CompositeWarehouse>) => {
+    await warehousesAPI.update(id as any, updates as any);
     await refreshWarehouses();
   };
 
-  const deleteWarehouse = async (id: string) => {
-    await warehousesAPI.delete(id);
+  const deleteWarehouse = async (id: string | number) => {
+    await warehousesAPI.delete(id as any);
     await refreshWarehouses();
   };
 
   // Request actions
-  const createRequest = async (request: RentRequest) => {
-    await requestsAPI.create(request);
+  const createRequest = async (request: CompositeRentRequest) => {
+    await requestsAPI.create(request as any);
     await refreshRequests();
   };
 
-  const updateRequest = async (id: string, updates: Partial<RentRequest>) => {
-    await requestsAPI.update(id, updates);
+  const updateRequest = async (id: string | number, updates: Partial<CompositeRentRequest>) => {
+    await requestsAPI.update(id as any, updates as any);
     await refreshRequests();
   };
 
-  const withdrawRequest = async (id: string) => {
-    await requestsAPI.delete(id);
+  const withdrawRequest = async (id: string | number) => {
+    await requestsAPI.delete(id as any);
     await refreshRequests();
   };
 
   // Contract actions
-  const createContract = async (contract: RentalContract) => {
-    await contractsAPI.create(contract);
+  const createContract = async (contract: CompositeContract) => {
+    await contractsAPI.create(contract as any);
     await refreshContracts();
   };
 
-  const updateContract = async (id: string, updates: Partial<RentalContract>) => {
-    await contractsAPI.update(id, updates);
+  const updateContract = async (id: string | number, updates: Partial<CompositeContract>) => {
+    await contractsAPI.update(id as any, updates as any);
     await refreshContracts();
   };
 
-  const cancelContract = async (id: string) => {
-    await contractsAPI.update(id, { status: 'cancelled' as any });
+  const cancelContract = async (id: string | number) => {
+    await contractsAPI.update(id as any, { status: 'cancelled' as any });
     await refreshContracts();
   };
 
   // Rating actions
-  const submitRating = async (rating: WarehouseRating) => {
-    await ratingsAPI.create(rating);
+  const submitRating = async (rating: Rating) => {
+    await ratingsAPI.create(rating as any);
     await refreshRatings();
     await refreshWarehouses(); // Refresh to update rating stats
   };
 
-  const updateRating = async (id: string, updates: Partial<WarehouseRating>) => {
-    await ratingsAPI.update(id, updates);
+  const updateRating = async (id: string | number, updates: Partial<Rating>) => {
+    await ratingsAPI.update(id as any, updates as any);
     await refreshRatings();
     await refreshWarehouses();
   };
 
-  const deleteRating = async (id: string) => {
-    await ratingsAPI.delete(id);
+  const deleteRating = async (id: string | number) => {
+    await ratingsAPI.delete(id as any);
     await refreshRatings();
     await refreshWarehouses();
   };
 
   // Bookmark actions
-  const toggleBookmark = async (warehouseId: string) => {
+  const toggleBookmark = async (warehouseId: number) => {
     if (!state.user) return;
 
     const newBookmarks = state.bookmarkedIds.includes(warehouseId)
@@ -292,7 +292,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, bookmarkedIds: newBookmarks }));
   };
 
-  const toggleCompare = (warehouseId: string) => {
+  const toggleCompare = (warehouseId: number) => {
     setState(prev => ({
       ...prev,
       compareIds: prev.compareIds.includes(warehouseId)

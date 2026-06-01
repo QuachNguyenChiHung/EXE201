@@ -13,13 +13,13 @@ import {
   Crown, TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ColdStorage, Certification, SUBSCRIPTION_TIERS, SubscriptionTierLevel } from '../../../types';
+import { CompositeWarehouse,  SUBSCRIPTION_TIERS, SubscriptionTierLevel } from '../../../types';
 import { storageAPI } from '../../../services/apiClient';
 import { SubscriptionTierBadge } from '../../components/SubscriptionTierBadge';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function getMinMaxPrice(warehouse: ColdStorage): { min: number; max: number | null } {
+function getMinMaxPrice(warehouse: CompositeWarehouse): { min: number; max: number | null } {
   const monthlyPrices: number[] = [];
   warehouse.sections?.forEach(s =>
     s.priceTiers?.forEach(t => {
@@ -95,7 +95,7 @@ function MainImage({ src, alt }: { src?: string; alt: string }) {
 
 // ── Re-upload Certs Modal ────────────────────────────────────────────────────
 interface CertUploadSlot {
-  cert: Certification;
+  cert: CertificationType;
   file: File | null;
   uploading: boolean;
   uploaded: boolean;
@@ -107,9 +107,9 @@ function ReuploadCertsModal({
   onClose,
   onSaved,
 }: {
-  warehouse: ColdStorage;
+  warehouse: CompositeWarehouse;
   onClose: () => void;
-  onSaved: (updated: ColdStorage) => void;
+  onSaved: (updated: CompositeWarehouse) => void;
 }) {
   const [slots, setSlots] = useState<CertUploadSlot[]>(
     () => (warehouse.certifications ?? []).map(cert => ({
@@ -171,7 +171,7 @@ function ReuploadCertsModal({
       const f = files[i];
       if (f.type !== 'application/pdf') continue;
       const certName = f.name.replace(/\.pdf$/i, '');
-      const newCert: Certification = {
+      const newCert: CertificationType = {
         id: `cert-reup-${Date.now()}-${i}`,
         name: certName,
         issuer: 'Tự khai báo',
@@ -213,15 +213,15 @@ function ReuploadCertsModal({
 
     // Read current slots via setState callback to get the latest
     setSlots(currentSlots => {
-      const updatedCerts: Certification[] = currentSlots.map(s => ({
+      const updatedCerts: CertificationType[] = currentSlots.map(s => ({
         ...s.cert,
         documentUrl: s.existingUrl || s.cert.documentUrl,
       }));
 
-      const updatedWarehouse: ColdStorage = {
+      const updatedWarehouse: CompositeWarehouse = {
         ...warehouse,
         certifications: updatedCerts,
-        hasCertification: updatedCerts.length > 0,
+        certifications: updatedCerts.length > 0,
         updatedAt: new Date().toISOString(),
       };
 
@@ -447,9 +447,9 @@ function ReuploadCertsModal({
 export default function MyWarehouses() {
   const navigate  = useNavigate();
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } });
-  const [allWarehouses, setAllWarehouses] = useState<ColdStorage[]>([]);
+  const [allWarehouses, setAllWarehouses] = useState<CompositeWarehouse[]>([]);
   const [showHidden, setShowHidden] = useState(false);
-  const [reuploadTarget, setReuploadTarget] = useState<ColdStorage | null>(null);
+  const [reuploadTarget, setReuploadTarget] = useState<CompositeWarehouse | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -458,7 +458,7 @@ export default function MyWarehouses() {
   }, []);
 
   const myWarehouses = useMemo(
-    () => allWarehouses.filter(w => w.ownerId === user?.id),
+    () => allWarehouses.filter(w => w.id_owner === user?.id),
     [allWarehouses, user],
   );
 
@@ -479,11 +479,11 @@ export default function MyWarehouses() {
 
   const warehouses = showHidden ? hiddenWarehouses : activeWarehouses;
 
-  const handleHide = async (warehouse: ColdStorage) => {
+  const handleHide = async (warehouse: CompositeWarehouse) => {
     if (!confirm(`Ẩn kho "${warehouse.name}"? Kho sẽ không hiển thị cho người thuê nhưng bạn có thể khôi phục bất cứ lúc nào.`)) return;
     try {
       await warehousesAPI.update(warehouse.id, { status: 'inactive', updatedAt: new Date().toISOString() });
-      setAllWarehouses(prev => prev.map(w => w.id === warehouse.id ? { ...w, status: 'inactive', updatedAt: new Date().toISOString() } : w));
+      setAllWarehouses(prev => prev.map(w => w.id_warehouse === warehouse.id ? { ...w, status: 'inactive', updatedAt: new Date().toISOString() } : w));
       toast.success(`Đã ẩn kho "${warehouse.name}".`);
     } catch (err: any) {
       console.error('[MyWarehouses] hide failed', err);
@@ -491,10 +491,10 @@ export default function MyWarehouses() {
     }
   };
 
-  const handleRestore = async (warehouse: ColdStorage) => {
+  const handleRestore = async (warehouse: CompositeWarehouse) => {
     try {
       await warehousesAPI.update(warehouse.id, { status: 'active', updatedAt: new Date().toISOString() });
-      setAllWarehouses(prev => prev.map(w => w.id === warehouse.id ? { ...w, status: 'active', updatedAt: new Date().toISOString() } : w));
+      setAllWarehouses(prev => prev.map(w => w.id_warehouse === warehouse.id ? { ...w, status: 'active', updatedAt: new Date().toISOString() } : w));
       toast.success(`Đã khôi phục kho "${warehouse.name}".`);
     } catch (err: any) {
       console.error('[MyWarehouses] restore failed', err);
@@ -502,10 +502,10 @@ export default function MyWarehouses() {
     }
   };
 
-  const handleCertSaved = async (updated: ColdStorage) => {
+  const handleCertSaved = async (updated: CompositeWarehouse) => {
     try {
       await warehousesAPI.update(updated.id, updated);
-      setAllWarehouses(prev => prev.map(w => w.id === updated.id ? updated : w));
+      setAllWarehouses(prev => prev.map(w => w.id_warehouse === updated.id ? updated : w));
       toast.success(`Đã cập nhật chứng nhận cho kho "${updated.name}".`);
       setReuploadTarget(null);
     } catch (err: any) {
@@ -839,7 +839,7 @@ export default function MyWarehouses() {
                         );
                       })()}
 
-                      {/* ── Certification status + re-upload for pending warehouses ── */}
+                      {/* ── CertificationType status + re-upload for pending warehouses ── */}
                       {isPending && (warehouse.certifications ?? []).length > 0 && (() => {
                         const total = warehouse.certifications.length;
                         const withDoc = warehouse.certifications.filter(c => c.documentUrl).length;

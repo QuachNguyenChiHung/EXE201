@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Clock, CheckCircle, XCircle, Trash2, MapPin, Package, Thermometer, DollarSign, Shield, LayoutGrid, ChevronDown, ChevronUp, AlertCircle, Building } from 'lucide-react';
-import { ColdStorage } from '../../../types';
+import { CompositeWarehouse } from '../../../types';
 
-const STATUS_CFG: Record<ColdStorage['status'], { label: string; color: string }> = {
+const STATUS_CFG: Record<CompositeWarehouse['status'], { label: string; color: string }> = {
     pending: { label: 'Chờ duyệt', color: 'var(--color-warning, #f59e0b)' },
     active: { label: 'Đang hoạt động', color: 'var(--color-success, #22c55e)' },
     inactive: { label: 'Đã ẩn / vô hiệu', color: 'var(--color-text-muted)' },
@@ -12,11 +12,11 @@ const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeactivate, onDelete, }: {
-    warehouse: ColdStorage;
+    warehouse: CompositeWarehouse;
     ownerEmail?: string;
-    onApprove: (w: ColdStorage) => void;
-    onDeactivate: (w: ColdStorage) => void;
-    onDelete: (w: ColdStorage) => void;
+    onApprove: (w: CompositeWarehouse) => void;
+    onDeactivate: (w: CompositeWarehouse) => void;
+    onDelete: (w: CompositeWarehouse) => void;
 }) {
     const [expanded, setExpanded] = useState(warehouse.status === 'pending');
     const cfg = STATUS_CFG[warehouse.status];
@@ -35,7 +35,7 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
                     <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{warehouse.name}</p>
                     <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                         <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{warehouse.location.address}, {warehouse.location.city}, {warehouse.location.province}</span>
+                        <span className="truncate">{warehouse.location.address}, {warehouse.location_commune}, {warehouse.location_province}</span>
                     </div>
                 </div>
 
@@ -122,9 +122,9 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {warehouse.sections.map(sec => (
-                                    <div key={sec.id} className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                                    <div key={sec.id_section} className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
                                         <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>{sec.name}</p>
-                                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{sec.temperatureMin}°C ~ {sec.temperatureMax}°C · {sec.capacity.toLocaleString()} m³</p>
+                                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{sec.temp_min}°C ~ {sec.temp_max}°C · {sec.total_capacity.toLocaleString()} m³</p>
                                     </div>
                                 ))}
                             </div>

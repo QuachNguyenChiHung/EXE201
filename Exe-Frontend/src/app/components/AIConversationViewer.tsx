@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { aiAPI } from '../../services/apiClient';
-import type { AIConversationRecord } from '../../services/apiClient';
+import type { CompositeAiConversations as AIConversationRecord } from '../../types';
 import {
   Sparkles, Bot, User as UserIcon, ChevronDown, ChevronUp,
   MessageSquare, Calendar, Warehouse, X,
@@ -52,7 +52,8 @@ function CriteriaChips({ criteria }: { criteria: Record<string, string[]> }) {
 // ── Single conversation card ──────────────────────────────────────────────────
 function ConversationCard({ conv }: { conv: AIConversationRecord }) {
   const [expanded, setExpanded] = useState(false);
-  const userMsgCount = conv.messages.filter(m => m.role === 'user').length;
+  const messages: any[] = conv.message || [];
+  const userMsgCount = messages.filter(m => m.role === 'user').length;
 
   return (
     <div className="border border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -66,17 +67,17 @@ function ConversationCard({ conv }: { conv: AIConversationRecord }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-              {fmtDate(conv.createdAt)}
+              {fmtDate(conv.create_at)}
             </p>
             <span className="text-[10px] px-1.5 py-0.5 flex items-center gap-1" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-muted)' }}>
-              <MessageSquare className="h-2.5 w-2.5" /> {conv.messages.length} tin nhan
+              <MessageSquare className="h-2.5 w-2.5" /> {messages.length} tin nhan
             </span>
             <span className="text-[10px] px-1.5 py-0.5 flex items-center gap-1" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-muted)' }}>
               <Warehouse className="h-2.5 w-2.5" /> {conv.warehouseCount} kho
             </span>
-            {(conv.totalInputTokens > 0 || conv.totalOutputTokens > 0) && (
+            {(conv.total_input_tokens > 0 || conv.total_output_tokens > 0) && (
               <span className="text-[10px] px-1.5 py-0.5 flex items-center gap-1" style={{ background: 'var(--color-accent, #fef3c7)', color: 'var(--color-accent-dark, #92400e)' }}>
-                <Sparkles className="h-2.5 w-2.5" /> {((conv.totalInputTokens ?? 0) + (conv.totalOutputTokens ?? 0)).toLocaleString()} tokens
+                <Sparkles className="h-2.5 w-2.5" /> {((conv.total_input_tokens ?? 0) + (conv.total_output_tokens ?? 0)).toLocaleString()} tokens
               </span>
             )}
           </div>
@@ -91,7 +92,7 @@ function ConversationCard({ conv }: { conv: AIConversationRecord }) {
 
       {expanded && (
         <div className="border-t border-[var(--color-border)] px-4 py-3 space-y-2.5 max-h-[400px] overflow-y-auto" style={{ background: 'var(--color-bg-secondary)' }}>
-          {conv.messages.map((msg, i) => (
+          {messages.map((msg, i) => (
             <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'ai' && (
                 <div className="w-5 h-5 shrink-0 flex items-center justify-center mt-0.5" style={{ background: 'var(--color-primary)' }}>
@@ -186,12 +187,12 @@ export function UserConversationsModal({
                 </p>
                 <span className="text-[10px] px-2 py-1 flex items-center gap-1" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
                   <Sparkles className="h-3 w-3" />
-                  Tong token: {convs.reduce((s, c) => s + (c.totalInputTokens ?? 0) + (c.totalOutputTokens ?? 0), 0).toLocaleString()}
-                  ({convs.reduce((s, c) => s + (c.totalInputTokens ?? 0), 0).toLocaleString()} in / {convs.reduce((s, c) => s + (c.totalOutputTokens ?? 0), 0).toLocaleString()} out)
+                  Tong token: {convs.reduce((s, c) => s + (c.total_input_tokens ?? 0) + (c.total_output_tokens ?? 0), 0).toLocaleString()}
+                  ({convs.reduce((s, c) => s + (c.total_input_tokens ?? 0), 0).toLocaleString()} in / {convs.reduce((s, c) => s + (c.total_output_tokens ?? 0), 0).toLocaleString()} out)
                 </span>
               </div>
               {convs.map((c) => (
-                <ConversationCard key={c.id} conv={c} />
+                <ConversationCard key={c.id_ai_conversations} conv={c} />
               ))}
             </>
           )}

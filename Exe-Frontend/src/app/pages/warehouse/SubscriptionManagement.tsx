@@ -5,9 +5,9 @@ import { useApp } from '../../../context/AppContext';
 import { Button } from '../../components/ui/button';
 import {
   SUBSCRIPTION_TIERS,
-  TIER_ORDER,
+  
   SubscriptionTierLevel,
-  ColdStorage,
+  CompositeWarehouse,
 } from '../../../types';
 import {
   Crown,
@@ -42,21 +42,21 @@ export default function SubscriptionManagement() {
   const { user: currentUser, warehouses: allWarehouses, updateWarehouse } = useApp();
 
   const myWarehouses = useMemo(
-    () => allWarehouses.filter(w => w.ownerId === currentUser?.id),
+    () => allWarehouses.filter(w => w.id_owner === currentUser?.id),
     [allWarehouses, currentUser],
   );
 
-  const [selectedWarehouse, setSelectedWarehouse] = useState<ColdStorage | null>(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<CompositeWarehouse | null>(null);
   const [upgrading, setUpgrading] = useState(false);
   const [showConfirm, setShowConfirm] = useState<{
-    warehouse: ColdStorage;
+    warehouse: CompositeWarehouse;
     tier: SubscriptionTierLevel;
   } | null>(null);
 
-  const handleUpgrade = async (warehouse: ColdStorage, tier: SubscriptionTierLevel) => {
+  const handleUpgrade = async (warehouse: CompositeWarehouse, tier: SubscriptionTierLevel) => {
     setUpgrading(true);
     try {
-      const updated: ColdStorage = {
+      const updated: CompositeWarehouse = {
         ...warehouse,
         subscriptionTier: tier,
         updatedAt: new Date().toISOString(),
@@ -73,8 +73,8 @@ export default function SubscriptionManagement() {
     }
   };
 
-  const currentTier = (w: ColdStorage) => w.subscriptionTier ?? 'free';
-  const tierIdx = (t: SubscriptionTierLevel) => TIER_ORDER.indexOf(t);
+  const currentTier = (w: CompositeWarehouse) => w.subscriptionTier ?? 'free';
+  const tierIdx = (t: SubscriptionTierLevel) => Object.keys(SUBSCRIPTION_TIERS).indexOf(t);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -100,7 +100,7 @@ export default function SubscriptionManagement() {
 
         {/* Pricing grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--color-border)] border border-[var(--color-border)] mb-8">
-          {TIER_ORDER.map(level => {
+          {Object.keys(SUBSCRIPTION_TIERS).map(level => {
             const config = SUBSCRIPTION_TIERS[level];
             const isPopular = level === 'gold';
             return (
@@ -278,7 +278,7 @@ export default function SubscriptionManagement() {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--color-border)]">
-              {TIER_ORDER.map(level => {
+              {Object.keys(SUBSCRIPTION_TIERS).map(level => {
                 const config = SUBSCRIPTION_TIERS[level];
                 const isCurrent = currentTier(selectedWarehouse) === level;
                 const isDowngrade = tierIdx(level) < tierIdx(currentTier(selectedWarehouse));

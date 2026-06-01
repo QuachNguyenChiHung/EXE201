@@ -1,23 +1,15 @@
-import { RentRequest } from '../types';
+import { CompositeRentRequest } from '../types/renter';
 
-/**
- * Centralized rental request mock data.
- *
- * Filtering convention:
- *  - Renter view  → filter by renterId === currentUser.id
- *  - Owner view   → filter by warehouseId in owner's warehouse list
- */
-export const MockRentRequests: RentRequest[] = [
+export const MockCompositeRentRequests: CompositeRentRequest[] = [
   {
-    id: 'req-1',
-    warehouseId: 'storage-1',
-    renterId: 1,
-    sectionId: 'sec-1-1',
+    id_rentRequest: 1,
+    id_warehouse: 1,
+    id_renter: 1,
+    sectionId: 1,
     sectionName: 'Phòng đông lạnh',
     renterName: 'Nguyễn Văn A',
     renterPhone: '+84 901 234 567',
     renterEmail: 'renter@example.com',
-    renterCompany: 'ABC Foods Vietnam',
     cargoType: 'seafood',
     requestedCapacity: 500,
     durationLabel: '12 tháng',
@@ -26,23 +18,26 @@ export const MockRentRequests: RentRequest[] = [
     priceTierValue: 340000,
     priceTierUnit: 'month',
     priceTierLabel: 'Giá theo tháng',
-    message:
-      'Chúng tôi cần bảo quản thủy hải sản đông lạnh, yêu cầu nhiệt độ ổn định -22°C. Hàng nhập/xuất khoảng 3 lần/tuần.',
+    cargo_description: 'Thủy hải sản',
+    other_detail: '',
+    duration: 12,
+    duration_unit: 'month',
+    renter_rejection_reason: '',
+    message: 'Chúng tôi cần bảo quản thủy hải sản đông lạnh.',
     status: 'inprogress',
     submittedAt: '2026-03-01T08:30:00Z',
     updatedAt: '2026-03-04T14:15:00Z',
     offeredPrice: 330000,
-    ownerNote:
-      'Chào anh/chị, tôi đã xem yêu cầu và rất quan tâm. Hãy liên hệ để chúng ta thảo luận chi tiết về điều khoản hợp đồng và lịch tham quan kho nhé.',
+    ownerNote: 'Chào anh/chị, tôi đã xem yêu cầu.',
   },
 ];
 
 /** Helper selectors */
-export const getRequestsByRenter = (renterId: string) =>
-  MockRentRequests.filter(r => r.renterId === renterId);
+export const getRequestsByRenter = (id_renter: string | number) =>
+  MockCompositeRentRequests.filter(r => r.id_renter == id_renter);
 
-export const getRequestsByWarehouse = (warehouseId: string) =>
-  MockRentRequests.filter(r => r.warehouseId === warehouseId);
+export const getRequestsByWarehouse = (id_warehouse: string | number) =>
+  MockCompositeRentRequests.filter(r => r.id_warehouse == id_warehouse);
 
-export const getRequestsByOwnerWarehouses = (warehouseIds: string[]) =>
-  MockRentRequests.filter(r => warehouseIds.includes(r.warehouseId));seId));
+export const getRequestsByOwnerWarehouses = (warehouseIds: (string | number)[]) =>
+  MockCompositeRentRequests.filter(r => r.id_warehouse && warehouseIds.includes(r.id_warehouse as any));

@@ -11,12 +11,12 @@ import {
   TrendingUp,
   Package,
 } from "lucide-react";
-import type { ColdStorage } from "../../../types";
+import type { CompositeWarehouse } from "../../../types";
 
 export default function WarehouseDashboard() {
   const navigate = useNavigate();
   const user = getUser();
-  const [allWarehouses, setAllWarehouses] = useState<ColdStorage[]>([]);
+  const [allWarehouses, setAllWarehouses] = useState<CompositeWarehouse[]>([]);
 
   useEffect(() => {
     if (!user || user.role !== "warehouse") {
@@ -29,7 +29,7 @@ export default function WarehouseDashboard() {
     });
   }, [user, navigate]);
 
-  const warehouses = allWarehouses.filter((w) => w.ownerId === user?.id);
+  const warehouses = allWarehouses.filter((w) => w.id_owner === user?.id);
 
   const totalCapacity = warehouses.reduce(
     (s, w) => s + w.stats.totalCapacity,
@@ -169,7 +169,7 @@ export default function WarehouseDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {warehouses.map((w) => (
                 <div
-                  key={w.id}
+                  key={w.id_warehouse}
                   className="bg-[var(--color-surface)] overflow-hidden"
                 >
                   <div className="aspect-video bg-[var(--color-primary-100)] flex items-center justify-center overflow-hidden">
@@ -210,7 +210,7 @@ export default function WarehouseDashboard() {
                       variant="outline"
                       className="w-full rounded-none border border-[var(--color-border)] hover:border-[var(--color-primary)]"
                       onClick={() =>
-                        navigate(`/warehouse/edit/${w.id}`)
+                        navigate(`/warehouse/edit/${w.id_warehouse}`)
                       }
                     >
                       Chỉnh sửa

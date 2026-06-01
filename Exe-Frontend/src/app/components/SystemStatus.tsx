@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { healthAPI, seedAPI, aiAPI } from "../../services/apiClient";
 import { MockUsers } from "../../data/mockUsers";
 import { MockWarehouseData } from "../../data/mockWarehouses";
-import { MockRentRequests } from "../../data/mockRequests";
-import { MockRentalContracts } from "../../data/mockContracts";
+import { MockCompositeRentRequests } from "../../data/mockRequests";
+import { MockCompositeContracts } from "../../data/mockContracts";
 import { MockRatings } from "../../data/mockRatings";
 import {
   CheckCircle, XCircle, Loader, Database, Server, Key, Layers,
@@ -151,8 +151,8 @@ export function SystemStatus() {
         {
           users: MockUsers,
           warehouses: MockWarehouseData,
-          requests: MockRentRequests,
-          contracts: MockRentalContracts,
+          requests: MockCompositeRentRequests,
+          contracts: MockCompositeContracts,
           ratings: MockRatings,
         },
         true, // force

@@ -1,4 +1,4 @@
-import { ColdStorage } from '../../types';
+import { CompositeWarehouse } from '../../types';
 import { Button } from './ui/button';
 import {
   MapPin,
@@ -23,14 +23,14 @@ import { toast } from 'sonner';
 import { WarehouseReviewsModal } from './WarehouseReviewsModal';
 
 interface WarehouseCardProps {
-  warehouse: ColdStorage;
-  onSelect?: (warehouse: ColdStorage) => void;
+  warehouse: CompositeWarehouse;
+  onSelect?: (warehouse: CompositeWarehouse) => void;
   compact?: boolean;
   openInNewTab?: boolean;
 }
 
 // ─── Helpers to derive stats from sections ────────────────────────────────────
-function getEffectivePrice(warehouse: ColdStorage): number {
+function getEffectivePrice(warehouse: CompositeWarehouse): number {
   // Prefer the minimum monthly price across all section tiers
   const sectionPrices: number[] = [];
   warehouse.sections?.forEach(s =>
@@ -47,7 +47,7 @@ function getEffectivePrice(warehouse: ColdStorage): number {
   return warehouse.pricePerCubicMeter;
 }
 
-function getMaxEffectivePrice(warehouse: ColdStorage): number | null {
+function getMaxEffectivePrice(warehouse: CompositeWarehouse): number | null {
   const sectionPrices: number[] = [];
   warehouse.sections?.forEach(s =>
     s.priceTiers?.forEach(t => {
@@ -62,24 +62,24 @@ function getMaxEffectivePrice(warehouse: ColdStorage): number | null {
   return null;
 }
 
-function getEffectiveTempRange(warehouse: ColdStorage): { min: number; max: number } {
+function getEffectiveTempRange(warehouse: CompositeWarehouse): { min: number; max: number } {
   if (warehouse.sections && warehouse.sections.length > 0) {
     return {
-      min: Math.min(...warehouse.sections.map(s => s.temperatureMin)),
-      max: Math.max(...warehouse.sections.map(s => s.temperatureMax)),
+      min: Math.min(...warehouse.sections.map(s => s.temp_min)),
+      max: Math.max(...warehouse.sections.map(s => s.temp_max)),
     };
   }
   return {
-    min: warehouse.stats.temperatureMin,
-    max: warehouse.stats.temperatureMax,
+    min: warehouse.stats.temp_min,
+    max: warehouse.stats.temp_max,
   };
 }
 
-function getEffectiveAvailableCapacity(warehouse: ColdStorage): number {
+function getEffectiveAvailableCapacity(warehouse: CompositeWarehouse): number {
   if (warehouse.sections && warehouse.sections.length > 0) {
-    return warehouse.sections.reduce((sum, s) => sum + s.availableCapacity, 0);
+    return warehouse.sections.reduce((sum, s) => sum + s.available_capacity, 0);
   }
-  return warehouse.stats.availableCapacity;
+  return warehouse.stats.available_capacity;
 }
 
 export function WarehouseCard({
@@ -98,18 +98,18 @@ export function WarehouseCard({
     setAllRatings(ratings || []);
   }, [ratings]);
   
-  const warehouseRatings = allRatings.filter(r => r.warehouseId === warehouse.id);
+  const warehouseRatings = allRatings.filter(r => r.warehouse_id === warehouse.id_warehouse);
   const liveRatingCount = warehouseRatings.length;
   const liveRatingScore = liveRatingCount > 0
-    ? warehouseRatings.reduce((sum, r) => sum + r.stars, 0) / liveRatingCount
+    ? warehouseRatings.reduce((sum, r) => sum + r.rate, 0) / liveRatingCount
     : (warehouse.ratingScore ?? null);
   const displayScore = liveRatingCount > 0 ? liveRatingScore : (warehouse.ratingScore ?? null);
   const displayCount = liveRatingCount > 0 ? liveRatingCount : (warehouse.ratingCount ?? 0);
 
   const [showReviews, setShowReviews] = useState(false);
 
-  const isBookmarked = bookmarkedIds.includes(warehouse.id);
-  const isInCompare = compareIds.includes(warehouse.id);
+  const isBookmarked = bookmarkedIds.includes(warehouse.id_warehouse);
+  const isInCompare = compareIds.includes(warehouse.id_warehouse);
   const compareIsFull = compareIds.length >= 3 && !isInCompare;
 
   // Show the compare button only when on the bookmarks/compare page
@@ -156,7 +156,7 @@ export function WarehouseCard({
   const handleClick = () => {
     if (onSelect) onSelect(warehouse);
     else {
-      const url = `/renter/warehouse/${warehouse.id}`;
+      const url = `/renter/warehouse/${warehouse.id_warehouse}`;
       if (openInNewTab) window.open(url, '_blank');
       else navigate(url);
     }
@@ -164,7 +164,7 @@ export function WarehouseCard({
 
   const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await toggleBookmark(warehouse.id);
+    await toggleBookmark(warehouse.id_warehouse);
     toast.success(
       isBookmarked ? 'Đã xoá khỏi danh sách lưu' : 'Đã lưu kho lạnh!',
     );
@@ -176,7 +176,7 @@ export function WarehouseCard({
       toast.error('Chỉ được so sánh tối đa 3 kho cùng lúc');
       return;
     }
-    toggleCompare(warehouse.id);
+    toggleCompare(warehouse.id_warehouse);
   };
 
   return (
@@ -196,7 +196,7 @@ export function WarehouseCard({
       >
         {warehouse.images && warehouse.images.length > 0 ? (
           <img
-            src={warehouse.images[0]}
+            src={typeof warehouse.images[0] === 'string' ? warehouse.images[0] : warehouse.images[0].image_url}
             alt={warehouse.name}
             className="w-full h-full object-cover"
             loading="lazy"
@@ -222,7 +222,7 @@ export function WarehouseCard({
         </div>
 
         {/* Multiple images indicator — top-left when >1 image */}
-        {!warehouse.hasCertification && (
+        {!(warehouse.certifications && warehouse.certifications.length > 0) && (
           <div
             className="absolute top-0 left-0 flex items-center gap-1.5 text-white px-3 py-1.5"
             style={{
@@ -238,7 +238,7 @@ export function WarehouseCard({
         )}
 
         {/* Image count badge — top-left when certified and >1 image */}
-        {warehouse.hasCertification && warehouse.images && warehouse.images.length > 1 && (
+        {(warehouse.certifications && warehouse.certifications.length > 0) && warehouse.images && warehouse.images.length > 1 && (
           <div
             className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5"
             style={{
@@ -334,7 +334,7 @@ export function WarehouseCard({
           >
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
-              {warehouse.location.city}, {warehouse.location.province}
+              {warehouse.location_commune}, {warehouse.location_province}
             </span>
           </div>
 
@@ -432,7 +432,7 @@ export function WarehouseCard({
             <span>
               <strong>{availableSections}</strong> / {warehouse.sections!.length} phân khu còn trống
               {warehouse.sections!.length > 0 && (() => {
-                const temps = warehouse.sections!.map(s => `${s.temperatureMin}~${s.temperatureMax}°C`);
+                const temps = warehouse.sections!.map(s => `${s.temp_min}~${s.temp_max}°C`);
                 const unique = [...new Set(temps)];
                 return unique.length > 1
                   ? ` · ${unique.length} dải nhiệt độ`
@@ -450,7 +450,7 @@ export function WarehouseCard({
           <div className="flex flex-wrap gap-1.5 py-1.5 px-1">
             {warehouse.priceTiers.map((tier) => (
               <span
-                key={tier.id}
+                key={tier.id_price_tier}
                 className="inline-flex items-center gap-1 text-[10px] px-2 py-1 border"
                 style={{
                   borderColor: 'var(--color-success)',
@@ -495,7 +495,7 @@ export function WarehouseCard({
             style={compact ? { fontSize: '0.7rem', padding: '0.25rem 0.5rem', height: 'auto' } : {}}
             onClick={(e) => {
               e.stopPropagation();
-              const url = `/renter/warehouse/${warehouse.id}`;
+              const url = `/renter/warehouse/${warehouse.id_warehouse}`;
               if (openInNewTab) window.open(url, '_blank');
               else navigate(url);
             }}
@@ -531,7 +531,7 @@ export function WarehouseCard({
 
       {showReviews && (
         <WarehouseReviewsModal
-          warehouseId={warehouse.id}
+          warehouseId={warehouse.id_warehouse}
           warehouseName={warehouse.name}
           onClose={() => setShowReviews(false)}
         />

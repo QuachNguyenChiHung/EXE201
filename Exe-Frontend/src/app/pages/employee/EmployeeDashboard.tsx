@@ -4,16 +4,16 @@ import { Navbar } from '../../components/Navbar';
 import { getUser } from '../../../utils/auth';
 import { MockUsers } from '../../../data/mockUsers';
 import { MockWarehouseData as MockWarehouses } from '../../../data/mockWarehouses';
-import { MockRentRequests } from '../../../data/mockRequests';
+import { MockCompositeRentRequests as MockRentRequests } from '../../../data/mockRequests';
 import { contractsAPI } from '../../../services/apiClient';
 import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Database, Shield } from 'lucide-react';
 import { AIStatusPanel } from '../../components/AIStatusPanel';
-import type { RentalContract } from '../../../types';
+import type { CompositeContract } from '../../../types';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const user = getUser();
-  const [contractList, setContractList] = useState<RentalContract[]>([]);
+  const [contractList, setContractList] = useState<CompositeContract[]>([]);
 
   useEffect(() => {
     if (!user || user.role !== 'employee') {
@@ -159,7 +159,7 @@ export default function EmployeeDashboard() {
             </div>
             <div className="divide-y divide-[var(--color-border)]">
               {pendingWarehouses.map(w => (
-                <div key={w.id} className="flex items-center justify-between px-4 py-3">
+                <div key={w.id_warehouse} className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{w.name}</p>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
@@ -217,9 +217,9 @@ export default function EmployeeDashboard() {
           </div>
           <div className="divide-y divide-[var(--color-border)]">
             {activeContracts.slice(0, 4).map(c => {
-              const wh = MockWarehouses.find(w => w.id === c.warehouseId);
+              const wh = MockWarehouses.find(w => w.id_warehouse === c.warehouseId);
               return (
-                <div key={c.id} className="flex items-center justify-between px-4 py-3">
+                <div key={c.id_contract} className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>
                       {c.contractRef}

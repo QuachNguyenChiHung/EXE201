@@ -47,7 +47,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { vietnamProvinces } from "../../../data/mockWarehouses";
-import { PriceUnit } from "../../../types";
+import { string } from "../../../types";
 import L from "leaflet";
 import { ImageUploader } from "../../components/ImageUploader";
 import { storageAPI } from "../../../services/apiClient";
@@ -185,7 +185,7 @@ interface PriceTierDraft {
   id: string;
   label: string;
   value: string;  // raw input string
-  unit: PriceUnit;
+  unit: string;
 }
 
 // ── Section draft ──────────────────────────────────────────────────────────
@@ -203,12 +203,12 @@ interface SectionDraft {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const UNIT_LABEL: Record<PriceUnit, string> = {
+const UNIT_LABEL: Record< string> = {
   month: "/ tháng",
   day: "/ ngày",
   year: "/ năm",
 };
-const UNIT_SHORT: Record<PriceUnit, string> = {
+const UNIT_SHORT: Record< string> = {
   month: "tháng",
   day: "ngày",
   year: "năm",
@@ -928,7 +928,7 @@ export default function AddWarehouse() {
         }
       }
 
-      const newWarehouse: import("../../../types").ColdStorage = {
+      const newWarehouse: import("../../../types").CompositeWarehouse = {
         id: `storage-${Date.now()}`,
         ownerId: user.id_user,
         ownerName: user.companyName || user.name,

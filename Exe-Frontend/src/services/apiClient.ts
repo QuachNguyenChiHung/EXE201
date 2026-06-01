@@ -4,85 +4,81 @@
  */
 import type {
   User,
-  RegisteredUser,
-  ColdStorage,
-  RentRequest,
-  RentalContract,
-  WarehouseRating,
-  CertificationType,
+  CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating,
+  CertificationType, CompositeAiConversations
 } from '../types';
 import { MockUsers } from '../data/mockUsers';
 import { MockWarehouseData } from '../data/mockWarehouses';
-import { MockRentRequests } from '../data/mockRequests';
-import { MockRentalContracts } from '../data/mockContracts';
+import { MockCompositeRentRequests } from '../data/mockRequests';
+import { MockCompositeContracts } from '../data/mockContracts';
 import { MockRatings } from '../data/mockRatings';
 
 // ── In-memory data stores ─────────────────────────────────────────────────────
-let users: RegisteredUser[] = [...MockUsers];
-let warehouses: ColdStorage[] = [...MockWarehouseData];
-let requests: RentRequest[] = [...MockRentRequests];
-let contracts: RentalContract[] = [...MockRentalContracts];
-let ratings: WarehouseRating[] = [...MockRatings];
+let users: User[] = [...MockUsers];
+let warehouses: CompositeWarehouse[] = [...MockWarehouseData];
+let requests: CompositeRentRequest[] = [...MockCompositeRentRequests];
+let contracts: CompositeContract[] = [...MockCompositeContracts];
+let ratings: Rating[] = [...MockRatings];
 let bookmarks: Record<string, string[]> = {};
-let certTypes: CertificationType[] = [
-  { id: 1, label: 'HACCP', update: new Date().toISOString(), law_references: 'Hazard Analysis Critical Control Point' },
-  { id: 2, label: 'ISO 22000', update: new Date().toISOString(), law_references: 'Food Safety Management' },
-  { id: 3, label: 'GMP', update: new Date().toISOString(), law_references: 'Good Manufacturing Practice' },
-  { id: 4, label: 'GDP', update: new Date().toISOString(), law_references: 'Good Distribution Practice' },
-  { id: 5, label: 'ISO 9001', update: new Date().toISOString(), law_references: 'Quality Management' },
-  { id: 6, label: 'ATTP', update: new Date().toISOString(), law_references: 'An toàn thực phẩm' },
+let certTypes: any[] = [
+  { id_certification: 1, label: 'HACCP', update: new Date().toISOString(), law_references: 'Hazard Analysis Critical Control Point' },
+  { id_certification: 2, label: 'ISO 22000', update: new Date().toISOString(), law_references: 'Food Safety Management' },
+  { id_certification: 3, label: 'GMP', update: new Date().toISOString(), law_references: 'Good Manufacturing Practice' },
+  { id_certification: 4, label: 'GDP', update: new Date().toISOString(), law_references: 'Good Distribution Practice' },
+  { id_certification: 5, label: 'ISO 9001', update: new Date().toISOString(), law_references: 'Quality Management' },
+  { id_certification: 6, label: 'ATTP', update: new Date().toISOString(), law_references: 'An toàn thực phẩm' },
 ];
 
 // ── Helper to simulate async delay ────────────────────────────────────────────
 const delay = (ms: number = 100) => new Promise(resolve => setTimeout(resolve, ms));
-let bookmarks: Record<number, string[]> = {};
+// removed duplicate bookmarks
 
 // ── Resource CRUD clients (mock implementation) ───────────────────────────────
 export const usersAPI = {
   getAll: async () => { await delay(); return [...users]; },
   getById: async (id: number) => { await delay(); const user = users.find(u => u.id_user === id); if (!user) throw new Error('User not found'); return user; },
-  create: async (data: RegisteredUser) => { await delay(); users.push(data); return data; },
+  create: async (data: User) => { await delay(); users.push(data); return data; },
   update: async (id: number, data: Partial<User>) => { await delay(); const idx = users.findIndex(u => u.id_user === id); if (idx === -1) throw new Error('User not found'); users[idx] = { ...users[idx], ...data }; return users[idx]; },
   delete: async (id: number) => { await delay(); users = users.filter(u => u.id_user !== id); return { success: true }; },
 };
 export const warehousesAPI = {
   getAll: async () => { await delay(); return [...warehouses]; },
-  getById: async (id: string) => { await delay(); const wh = warehouses.find(w => w.id === id); if (!wh) throw new Error('Warehouse not found'); return wh; },
-  create: async (data: ColdStorage) => { await delay(); warehouses.push(data); return data; },
-  update: async (id: string, data: Partial<ColdStorage>) => { await delay(); const idx = warehouses.findIndex(w => w.id === id); if (idx === -1) throw new Error('Warehouse not found'); warehouses[idx] = { ...warehouses[idx], ...data }; return warehouses[idx]; },
-  delete: async (id: string) => { await delay(); warehouses = warehouses.filter(w => w.id !== id); return { success: true }; },
+  getById: async (id: string | number) => { await delay(); const wh = warehouses.find(w => w.id_warehouse === Number(id)); if (!wh) throw new Error('Warehouse not found'); return wh; },
+  create: async (data: CompositeWarehouse) => { await delay(); warehouses.push(data); return data; },
+  update: async (id: string | number, data: Partial<CompositeWarehouse>) => { await delay(); const idx = warehouses.findIndex(w => w.id_warehouse === Number(id)); if (idx === -1) throw new Error('Warehouse not found'); warehouses[idx] = { ...warehouses[idx], ...data }; return warehouses[idx]; },
+  delete: async (id: string | number) => { await delay(); warehouses = warehouses.filter(w => w.id_warehouse !== Number(id)); return { success: true }; },
 };
 
 export const requestsAPI = {
   getAll: async () => { await delay(); return [...requests]; },
-  getById: async (id: string) => { await delay(); const req = requests.find(r => r.id === id); if (!req) throw new Error('Request not found'); return req; },
-  create: async (data: RentRequest) => { await delay(); requests.push(data); return data; },
-  update: async (id: string, data: Partial<RentRequest>) => { await delay(); const idx = requests.findIndex(r => r.id === id); if (idx === -1) throw new Error('Request not found'); requests[idx] = { ...requests[idx], ...data }; return requests[idx]; },
-  delete: async (id: string) => { await delay(); requests = requests.filter(r => r.id !== id); return { success: true }; },
+  getById: async (id: string | number) => { await delay(); const req = requests.find(r => r.id_rentRequest === Number(id)); if (!req) throw new Error('Request not found'); return req; },
+  create: async (data: CompositeRentRequest) => { await delay(); requests.push(data); return data; },
+  update: async (id: string | number, data: Partial<CompositeRentRequest>) => { await delay(); const idx = requests.findIndex(r => r.id_rentRequest === Number(id)); if (idx === -1) throw new Error('Request not found'); requests[idx] = { ...requests[idx], ...data }; return requests[idx]; },
+  delete: async (id: string | number) => { await delay(); requests = requests.filter(r => r.id_rentRequest !== Number(id)); return { success: true }; },
 };
 
 export const contractsAPI = {
   getAll: async () => { await delay(); return [...contracts]; },
-  getById: async (id: string) => { await delay(); const contract = contracts.find(c => c.id === id); if (!contract) throw new Error('Contract not found'); return contract; },
-  create: async (data: RentalContract) => { await delay(); contracts.push(data); return data; },
-  update: async (id: string, data: Partial<RentalContract>) => { await delay(); const idx = contracts.findIndex(c => c.id === id); if (idx === -1) throw new Error('Contract not found'); contracts[idx] = { ...contracts[idx], ...data }; return contracts[idx]; },
-  delete: async (id: string) => { await delay(); contracts = contracts.filter(c => c.id !== id); return { success: true }; },
+  getById: async (id: string | number) => { await delay(); const contract = contracts.find(c => c.id_contract === Number(id)); if (!contract) throw new Error('Contract not found'); return contract; },
+  create: async (data: CompositeContract) => { await delay(); contracts.push(data); return data; },
+  update: async (id: string | number, data: Partial<CompositeContract>) => { await delay(); const idx = contracts.findIndex(c => c.id_contract === Number(id)); if (idx === -1) throw new Error('Contract not found'); contracts[idx] = { ...contracts[idx], ...data }; return contracts[idx]; },
+  delete: async (id: string | number) => { await delay(); contracts = contracts.filter(c => c.id_contract !== Number(id)); return { success: true }; },
 };
 
 export const ratingsAPI = {
   getAll: async () => { await delay(); return [...ratings]; },
-  getById: async (id: string) => { await delay(); const rating = ratings.find(r => r.id === id); if (!rating) throw new Error('Rating not found'); return rating; },
-  create: async (data: WarehouseRating) => { await delay(); ratings.push(data); return data; },
-  update: async (id: string, data: Partial<WarehouseRating>) => { await delay(); const idx = ratings.findIndex(r => r.id === id); if (idx === -1) throw new Error('Rating not found'); ratings[idx] = { ...ratings[idx], ...data }; return ratings[idx]; },
-  delete: async (id: string) => { await delay(); ratings = ratings.filter(r => r.id !== id); return { success: true }; },
+  getById: async (id: string | number) => { await delay(); const rating = ratings.find(r => r.id_rating === Number(id)); if (!rating) throw new Error('Rating not found'); return rating; },
+  create: async (data: Rating) => { await delay(); ratings.push(data); return data; },
+  update: async (id: string | number, data: Partial<Rating>) => { await delay(); const idx = ratings.findIndex(r => r.id_rating === Number(id)); if (idx === -1) throw new Error('Rating not found'); ratings[idx] = { ...ratings[idx], ...data }; return ratings[idx]; },
+  delete: async (id: string | number) => { await delay(); ratings = ratings.filter(r => r.id_rating !== Number(id)); return { success: true }; },
 };
 
 export const certTypesAPI = {
   getAll: async () => { await delay(); return [...certTypes]; },
-  getById: async (id: number) => { await delay(); const cert = certTypes.find(c => c.id === id); if (!cert) throw new Error('Cert type not found'); return cert; },
+  getById: async (id: string | number) => { await delay(); const cert = certTypes.find(c => c.id_certification === Number(id)); if (!cert) throw new Error('Cert type not found'); return cert; },
   create: async (data: CertificationType) => { await delay(); certTypes.push(data); return data; },
-  update: async (id: number, data: Partial<CertificationType>) => { await delay(); const idx = certTypes.findIndex(c => c.id === id); if (idx === -1) throw new Error('Cert type not found'); certTypes[idx] = { ...certTypes[idx], ...data }; return certTypes[idx]; },
-  delete: async (id: number) => { await delay(); certTypes = certTypes.filter(c => c.id !== id); return { success: true }; },
+  update: async (id: string | number, data: Partial<CertificationType>) => { await delay(); const idx = certTypes.findIndex(c => c.id_certification === Number(id)); if (idx === -1) throw new Error('Cert type not found'); certTypes[idx] = { ...certTypes[idx], ...data }; return certTypes[idx]; },
+  delete: async (id: string | number) => { await delay(); certTypes = certTypes.filter(c => c.id_certification !== Number(id)); return { success: true }; },
 };
 
 // ── Auth endpoints (mock implementation) ──────────────────────────────────────
@@ -103,7 +99,7 @@ export const authAPI = {
    * Create a new user in mock data.
    * Returns User (without password) on success, throws 409 on duplicate email.
    */
-  register: async (user: RegisteredUser): Promise<User> => {
+  register: async (user: User): Promise<User> => {
     await delay();
     if (users.find(u => u.email === user.email)) {
       throw new Error('Email already exists');
@@ -135,11 +131,11 @@ export interface SeedCheckResult {
 }
 
 export interface SeedPayload {
-  users: RegisteredUser[];
-  warehouses: ColdStorage[];
-  requests: RentRequest[];
-  contracts: RentalContract[];
-  ratings: WarehouseRating[];
+  users: User[];
+  warehouses: CompositeWarehouse[];
+  requests: CompositeRentRequest[];
+  contracts: CompositeContract[];
+  ratings: Rating[];
 }
 
 let seeded = false;
@@ -263,7 +259,7 @@ export interface AIStatusResult {
   error: string | null;
 }
 
-let conversations: AIConversationRecord[] = [];
+let conversations: CompositeAiConversations[] = [];
 
 export const aiAPI = {
   chat: async (payload: AIRequestPayload): Promise<AIResponsePayload> => {
@@ -287,43 +283,29 @@ export const aiAPI = {
     };
   },
 
-  saveConversation: async (conv: AIConversationRecord): Promise<AIConversationRecord> => {
+  saveConversation: async (conv: CompositeAiConversations): Promise<CompositeAiConversations> => {
     await delay();
     conversations.push(conv);
     return conv;
   },
 
-  getConversationsByUser: async (userId: number): Promise<AIConversationRecord[]> => {
+  getConversationsByUser: async (userId: number): Promise<CompositeAiConversations[]> => {
     await delay();
-    return conversations.filter(c => c.userId === userId);
+    return conversations.filter(c => c.id_user === userId);
   },
 
-  getAllConversations: async (): Promise<AIConversationRecord[]> => {
+  getAllConversations: async (): Promise<CompositeAiConversations[]> => {
     await delay();
     return [...conversations];
   },
 
-  deleteConversation: async (id: string) => {
+  deleteConversation: async (id: number) => {
     await delay();
-    conversations = conversations.filter(c => c.id !== id);
+    conversations = conversations.filter(c => c.id_ai_conversations !== Number(id));
     return { success: true };
   },
 };
 
-// ── AI Conversation record ────────────────────────────────────────────────────
-export interface AIConversationRecord {
-  id: string;
-  userId: number;
-  userName: string;
-  userEmail?: string;
-  criteria: Record<string, string[]>;
-  messages: { role: 'user' | 'ai'; content: string; timestamp: string }[];
-  warehouseCount: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 // ── Health / diagnostics (mock implementation) ────────────────────────────────
 export const healthAPI = {

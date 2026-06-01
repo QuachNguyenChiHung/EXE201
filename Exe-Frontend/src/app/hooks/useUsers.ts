@@ -6,11 +6,11 @@ export default function useUsers(tab: string, search: string) {
     const { users, warehouses: warehouseList, requests: requestList, adminUpdateUser } = useApp()
 
     const warehousesByOwner = useMemo(() =>
-        warehouseList.reduce((acc, w) => { acc[w.ownerId] = (acc[w.ownerId] ?? 0) + 1; return acc }, {} as Record<string, number>),
+        warehouseList.reduce((acc, w) => { acc[w.id_owner || 0] = (acc[w.id_owner || 0] ?? 0) + 1; return acc }, {} as Record<number, number>),
         [warehouseList])
 
     const requestsByRenter = useMemo(() =>
-        requestList.reduce((acc, r) => { acc[r.renterId] = (acc[r.renterId] ?? 0) + 1; return acc }, {} as Record<string, number>),
+        requestList.reduce((acc, r) => { acc[r.id_renter || 0] = (acc[r.id_renter || 0] ?? 0) + 1; return acc }, {} as Record<number, number>),
         [requestList])
 
     const filtered = useMemo(() => {

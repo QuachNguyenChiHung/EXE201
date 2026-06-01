@@ -1,101 +1,101 @@
-// ── Renter ──────────────────────────────────────────────────────────────────
-export type RentRequestStatus = 'sent' | 'viewed' | 'rejected' | 'inprogress' | 'contracted';
-
 export interface RentRequest {
-    id: string;
-    warehouseId: string;
-    renterId: string;
-    sectionId?: string;
-    sectionName?: string;
-    sectionIds?: string[];        // multiple sections selected
-    isWholeWarehouse?: boolean;   // renter wants entire warehouse (owner negotiates)
-    // Renter info (denormalized so owner view doesn't need a user lookup)
-    renterName: string;
-    renterPhone: string;
-    renterEmail: string;
-    renterCompany?: string;
-    // Request details
-    cargoType: string;
-    requestedCapacity: number;   // m³
-    durationLabel: string;       // e.g. "6 tháng"
-    startDate: string;
-    endDate?: string;
-    priceTierValue?: number;     // VND/m³/unit — the tier the renter selected
-    priceTierUnit?: string;
-    priceTierLabel?: string;
-    message?: string;
-    // Lifecycle
-    status: RentRequestStatus;
-    submittedAt: string;
-    updatedAt: string;
-    // Owner response (populated when owner acts)
-    rejectionReason?: string;
-    offeredPrice?: number;       // owner counter-price
-    ownerNote?: string;
+  id_rentRequest: number;
+  id_renter?: number; // FK User
+  id_warehouse?: number; // FK Warehouse
+  cargo_description: string;
+  other_detail: string;
+  duration: number;
+  duration_unit: string;
+  status: string;
+  renter_rejection_reason: string;
 }
 
-export type ContractStatus =
-    | 'draft'           // owner created, not yet sent
-    | 'pending_renter'  // sent to renter, awaiting signature
-    | 'active'
-    | 'expiring_soon'
-    | 'expired'
-    | 'cancelled';
-
-/** How the contract was composed */
-export type ContractInputMode = 'form' | 'pdf';
-
-export interface RentalContract {
-    id: string;
-    requestId?: string;          // link back to originating request
-    renterId: string;
-    ownerId?: string;
-    warehouseId: number;
-    sectionId?: string;
-    sectionIds?: string[];        // multiple sections (mirrors request.sectionIds)
-    isWholeWarehouse?: boolean;   // entire warehouse request
-    rentedCapacity: number;      // m³
-    startDate: string;
-    endDate: string;
-    monthlyRate: number;         // VND/m³
-    status: ContractStatus;
-    contractRef: string;
-    notes?: string;
-
-    // ── Input mode ─────────────────────────────────────────────────────────
-    inputMode?: ContractInputMode;
-
-    // ── Contract metadata ───────────────────────────────────────────────────
-    contractTitle?: string;
-
-    // ── Party A — Owner (Bên A) ─────────────────────────────────────────────
-    ownerLegalName?: string;
-    ownerTaxCode?: string;
-    ownerAddress?: string;
-    ownerName?: string;    // short display name (= ownerLegalName alias)
-    ownerPhone?: string;
-    ownerEmail?: string;
-
-    // ── Party B — Renter (Bên B) ────────────────────────────────────────────
-    renterLegalName?: string;
-    renterTaxCode?: string;
-    renterAddress?: string;
-    renterCompany?: string;
-    renterPhone?: string;
-    renterEmail?: string;
-
-    // ── Contract terms ──────────────────────────────────────────────────────
-    cargoDescription?: string;
-    paymentTerms?: string;
-    penaltyClause?: string;
-    specialTerms?: string;
-
-    // ── PDF attachment (simulated) ──────────────────────────────────────────
-    pdfFileName?: string;
-    pdfFileSize?: number;   // bytes
-
-    // ── Lifecycle timestamps ─────────────────────────────────────────────────
-    sentAt?: string;
-    acceptedAt?: string;
-    renterRejectionReason?: string;
+export interface RentRequestDetail {
+  id: number; // BIGINT
+  id_rentRequest: number; // FK RentRequest
+  id_section: number; // FK WarehouseSection
+  id_price_tier: number; // FK PriceTier
+  rented_area: number;
+  area_unit: string;
 }
+
+export interface Contract {
+  id_contract: number;
+  id_owner?: number; // FK User
+  id_renter?: number; // FK RentRequest (referring to id_renter based on ERD)
+  id_rent_request?: number; // FK RentRequest
+  cargo_description: string;
+  create_at: string;
+  status: string;
+  update_at: string;
+  start_at: string;
+  end_at: string;
+  cancel_reason: string;
+  payment_term: string;
+  penalty_clause: string;
+  special_term: string;
+  owner_legal_name: string;
+  owner_tax_code: string;
+  owner_email: string;
+  owner_phone: string;
+  owner_address: string;
+  renter_legal_name: string;
+  renter_tax_code: string;
+  renter_email: string;
+  renter_phone: string;
+  renter_address: string;
+}
+
+export interface Rating {
+  id_rating: number;
+  rate: number;
+  comment: string;
+  id_renter?: number; // FK User
+  warehouse_id?: number; // FK Warehouse
+}
+
+export interface CompositeRentRequest extends RentRequest {
+  renterName?: string;
+  renterPhone?: string;
+  renterEmail?: string;
+  renterCompany?: string;
+  cargoType?: string;
+  requestedCapacity?: number;
+  durationLabel?: string;
+  startDate?: string;
+  endDate?: string;
+  priceTierValue?: number;
+  priceTierUnit?: string;
+  priceTierLabel?: string;
+  message?: string;
+  submittedAt?: string;
+  updatedAt?: string;
+  rejectionReason?: string;
+  offeredPrice?: number;
+  ownerNote?: string;
+  sectionId?: string | number;
+  sectionName?: string;
+  sectionIds?: string[] | number[];
+  isWholeWarehouse?: boolean;
+}
+
+export interface CompositeContract extends Contract {
+  warehouseId?: number; // Added since the old type relied on it
+  sectionId?: string | number;
+  sectionIds?: string[] | number[];
+  isWholeWarehouse?: boolean;
+  rentedCapacity?: number;
+  monthlyRate?: number;
+  contractRef?: string;
+  notes?: string;
+  inputMode?: string;
+  contractTitle?: string;
+  ownerName?: string;
+  renterCompany?: string;
+  pdfFileName?: string;
+  pdfFileSize?: number;
+  sentAt?: string;
+  acceptedAt?: string;
+  renterRejectionReason?: string;
+}
+

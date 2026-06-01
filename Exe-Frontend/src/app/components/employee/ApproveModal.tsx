@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Modal from '../../components/Modal'
 import { Loader2, AlertCircle, Shield } from 'lucide-react'
-import type { ColdStorage, Certification, CertificationType } from '../../../types'
+import type { CompositeWarehouse, CertificationSubmit, CertificationType } from '../../../types'
 
 export default function ApproveModal({
     warehouse,
@@ -10,16 +10,16 @@ export default function ApproveModal({
     onConfirm,
     onCancel,
 }: {
-    warehouse: ColdStorage
+    warehouse: CompositeWarehouse
     certTypes: CertificationType[]
     certTypesLoading: boolean
-    onConfirm: (selectedCerts: Certification[]) => void
+    onConfirm: (selectedCerts: CertificationSubmit[]) => void
     onCancel: () => void
 }) {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
         const existing = new Set(warehouse.certifications.map(c => c.label))
         const ids = new Set<number>()
-        certTypes.forEach(ct => { if (existing.has(ct.label)) ids.add(ct.id) })
+        certTypes.forEach(ct => { if (existing.has(ct.label)) ids.add(ct.id_certification) })
         return ids
     })
 
@@ -32,14 +32,13 @@ export default function ApproveModal({
     }
 
     const handleConfirm = () => {
-        const certs: Certification[] = certTypes
-            .filter(ct => selectedIds.has(ct.id))
+        const certs: CertificationSubmit[] = certTypes
+            .filter(ct => selectedIds.has(ct.id_certification))
             .map(ct => ({
-                id: ct.id,
-                label: ct.label,
-                issuer: 'Verified by Logicha',
-                issueDate: new Date().toISOString().slice(0, 10),
-                expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                id_cerfSubmit: Date.now() + Math.floor(Math.random() * 1000),
+                link: '#',
+                isVerified: true,
+                id_type: ct.id_certification,
             }))
         onConfirm(certs)
     }
@@ -88,15 +87,15 @@ export default function ApproveModal({
                     ) : (
                         <div className="space-y-1.5">
                             {certTypes.map(ct => {
-                                const isSelected = selectedIds.has(ct.id)
+                                const isSelected = selectedIds.has(ct.id_certification)
                                 return (
-                                    <label key={ct.id}
+                                    <label key={ct.id_certification}
                                         className="flex items-start gap-3 p-3 border cursor-pointer transition-colors select-none"
                                         style={{
                                             borderColor: isSelected ? 'var(--color-success, #22c55e)' : 'var(--color-border)',
                                             background: isSelected ? 'rgba(34,197,94,0.05)' : 'transparent',
                                         }}>
-                                        <input type="checkbox" checked={isSelected} onChange={() => toggle(ct.id)}
+                                        <input type="checkbox" checked={isSelected} onChange={() => toggle(ct.id_certification)}
                                             className="w-4 h-4 mt-0.5 accent-green-600 shrink-0" />
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
