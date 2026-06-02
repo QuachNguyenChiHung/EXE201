@@ -5,11 +5,11 @@ import { Rating } from '../../types';
 import { toast } from 'sonner';
 
 interface Props {
-  warehouse_id: string;
+  warehouseId: string;
   warehouseName: string;
   contractId: string;
   contractRef: string;
-  existingRating?: WarehouseRating;
+  existingRating?: any;
   onClose: () => void;
 }
 
@@ -28,7 +28,7 @@ export function RateWarehouseModal({
 
   useEffect(() => { setAllRatings(ratings || []); }, [ratings]);
 
-  const [stars, setStars] = useState(existingRating?.stars ?? 0);
+  const [stars, setStars] = useState(existingRating?.rate ?? 0);
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState(existingRating?.comment ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -48,24 +48,18 @@ export function RateWarehouseModal({
     const now = new Date().toISOString();
 
     if (existingRating) {
-      await updateRating(existingRating.id, {
-        stars,
+      await updateRating(existingRating.id_rating, {
+        rate: stars,
         comment: comment.trim() || undefined,
-        updatedAt: now,
       });
       toast.success('Đã cập nhật đánh giá!');
     } else {
-      const newRating: WarehouseRating = {
-        id: `rating-${Date.now()}`,
-        warehouseId,
-        contractId,
+      const newRating: any = {
+        id_rating: Date.now(),
+        warehouse_id: parseInt(warehouseId),
         id_renter: user.id_user,
-        renterName: user.name,
-        renterCompany: user.company?.company_name,
-        stars,
+        rate: stars,
         comment: comment.trim() || undefined,
-        createdAt: now,
-        updatedAt: now,
       };
       await submitRating(newRating);
       toast.success('Cảm ơn bạn đã đánh giá kho lạnh!');
@@ -77,7 +71,7 @@ export function RateWarehouseModal({
 
   const handleDelete = async () => {
     if (!existingRating) return;
-    await deleteRating(existingRating.id);
+    await deleteRating(existingRating.id_rating);
     toast.success('Đã xóa đánh giá.');
     onClose();
   };
