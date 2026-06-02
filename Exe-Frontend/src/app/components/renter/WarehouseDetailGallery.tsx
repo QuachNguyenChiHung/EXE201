@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, ChevronLeft, ChevronRight, Eye, AlertTriangle, CheckCircle, Heart, Share2, MapPin } from 'lucide-react';
-import { CompositeWarehouse } from '../../../../types';
+import { CompositeWarehouse } from '../../../types';
 
 interface WarehouseDetailGalleryProps {
     warehouse: CompositeWarehouse;
@@ -50,7 +50,7 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                     style={{ height: "480px" }}
                 >
                     <img
-                        src={galleryImages[activeImage]}
+                        src={typeof galleryImages[activeImage] === 'string' ? galleryImages[activeImage] as string : (galleryImages[activeImage] as any).image_url}
                         alt={`${warehouse.name} - ảnh ${activeImage + 1}`}
                         className="w-full h-full object-cover transition-all duration-500"
                     />
@@ -100,7 +100,7 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                                     <div className="flex items-center gap-1.5">
                                         <MapPin className="h-4 w-4" />
                                         <span>
-                                            {warehouse.location_address}, {warehouse.location_commune}, {warehouse.location_province}
+                                            {warehouse.address}, {warehouse.location_commune}, {warehouse.location_province}
                                         </span>
                                     </div>
                                 </div>

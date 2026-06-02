@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Send, LayoutGrid, Check } from 'lucide-react';
-import { CompositeWarehouse, User } from '../../../../types';
+import { CompositeWarehouse, User } from '../../../types';
 import { toast } from 'sonner';
-import { useApp } from '../../../../context/AppContext';
+import { useApp } from '../../../context/AppContext';
 
 interface InquiryForm {
     name: string;
@@ -97,19 +97,24 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
         setSubmitting(true);
         try {
             await createRequest({
+                id_rentRequest: Date.now(),
+                other_detail: "",
+                duration: parseInt(form.durationValue) || 1,
+                duration_unit: form.durationUnit,
+                renter_rejection_reason: "",
                 id_warehouse: warehouse.id_warehouse,
                 id_renter: user.id_user,
                 isWholeWarehouse: form.isWholeWarehouse,
                 sectionIds: form.selectedSectionIds,
-                start_at: form.startDate,
-                end_at: form.endDate,
+                startDate: form.startDate,
+                endDate: form.endDate,
                 cargo_description: form.cargoType,
-                requested_capacity: form.capacity ? parseFloat(form.capacity) : 0,
-                notes: form.message,
+                requestedCapacity: form.capacity ? parseFloat(form.capacity) : 0,
+                message: form.message,
                 status: 'pending',
-                renter_name: form.name,
-                renter_phone: form.phone,
-                renter_email: form.email,
+                renterName: form.name,
+                renterPhone: form.phone,
+                renterEmail: form.email,
             });
             setShowSuccess(true);
         } catch (error) {
