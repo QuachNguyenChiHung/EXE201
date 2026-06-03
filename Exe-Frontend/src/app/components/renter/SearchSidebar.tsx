@@ -2,9 +2,9 @@ import { useState } from "react";
 import { FilterOptions } from "../../../types";
 import { Input } from "../ui/input";
 import { Search, X, MapPin, ChevronDown, ChevronUp, Filter as FilterIcon } from "lucide-react";
-import { vietnamProvinces, availableFeatures } from "../../../data/mockWarehouses";
+import { vietnamProvinces } from "../../../data/mockWarehouses";
 
-type CollapsibleSection = "availability" | "features";
+type CollapsibleSection = "availability";
 
 interface SearchSidebarProps {
   sidebarOpen: boolean;
@@ -27,7 +27,6 @@ export function SearchSidebar({
 }: SearchSidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<CollapsibleSection, boolean>>({
     availability: true,
-    features: true,
   });
 
   const toggleSection = (section: CollapsibleSection) => {
@@ -40,15 +39,6 @@ export function SearchSidebar({
       provinces: prev.provinces?.includes(province)
         ? prev.provinces.filter((p) => p !== province)
         : [...(prev.provinces || []), province],
-    }));
-  };
-
-  const toggleFeature = (feature: string) => {
-    setLocalFilters((prev) => ({
-      ...prev,
-      features: prev.features?.includes(feature)
-        ? prev.features.filter((f) => f !== feature)
-        : [...(prev.features || []), feature],
     }));
   };
 
@@ -226,38 +216,10 @@ export function SearchSidebar({
                   />
                   Còn một phần
                 </label>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* ── Tiện ích (collapsible) ── */}
-          <div className="border-b border-gray-100">
-            <button
-              onClick={() => toggleSection("features")}
-              className="w-full flex items-center justify-between px-4 py-3 text-left"
-            >
-              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Tiện ích</span>
-              {collapsed.features ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronUp size={14} className="text-gray-400" />}
-            </button>
-            {!collapsed.features && (
-              <div className="px-4 pb-3">
-                <div className="space-y-2">
-                  {availableFeatures.map((feature) => (
-                    <label key={feature} className="flex items-center gap-2.5 text-[13px] text-gray-600 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={filters.features?.includes(feature) ?? false}
-                        onChange={() => toggleFeature(feature)}
-                        className="w-3.5 h-3.5 rounded border-gray-300 accent-blue-600"
-                      />
-                      {feature}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
 
         {/* Footer — search button */}
         <div className="border-t border-gray-200 px-4 py-3">

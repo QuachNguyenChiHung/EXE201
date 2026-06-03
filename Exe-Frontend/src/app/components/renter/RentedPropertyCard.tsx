@@ -3,7 +3,7 @@ import {
     MapPin, Thermometer, Package, Calendar, AlertTriangle, Phone, ExternalLink, RotateCcw,
     FileText, XCircle, LayoutGrid, PenLine, Star
 } from 'lucide-react';
-import { CompositeContract, CompositeWarehouse } from '../../../../types';
+import { CompositeContract, CompositeWarehouse } from '../../../types';
 import { ContractStatus, STATUS_CONFIG, fmtCurrency, fmtDate, daysUntil } from './RentedPropertyUtils';
 
 interface RentedPropertyCardProps {
@@ -36,8 +36,8 @@ export function RentedPropertyCard({
         ? (wh?.sections?.find(s => s.id_section?.toString() === contract.sectionId?.toString()) ?? null)
         : null;
 
-    const tempMin = rentedSection ? rentedSection.temp_min : wh?.temp_min;
-    const tempMax = rentedSection ? rentedSection.temp_max : wh?.temp_max;
+    const tempMin = rentedSection ? rentedSection.temp_min : wh?.stats?.temperatureMin;
+    const tempMax = rentedSection ? rentedSection.temp_max : wh?.stats?.temperatureMax;
 
     const canRate = ['active', 'expiring_soon', 'expired'].includes(contract.status);
 
@@ -59,12 +59,12 @@ export function RentedPropertyCard({
                             </span>
                         </div>
 
-                        <h3 className="mb-1">{wh ? wh.name : `Kho #${contract.warehouseId}`}</h3>
+                        <h3 className="mb-1">{wh ? wh.name : `Kho #${contract.id_warehouse}`}</h3>
 
                         {wh && (
                             <div className="flex items-center gap-1.5 text-[var(--color-text-secondary)] text-sm mb-3">
                                 <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                                <span>{wh.location_address}, {wh.location_commune}, {wh.location_province}</span>
+                                <span>{wh.address}, {wh.location_commune}, {wh.location_province}</span>
                             </div>
                         )}
 

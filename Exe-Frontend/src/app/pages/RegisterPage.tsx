@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Warehouse, Building2, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { UserRole } from '../../types';
+import { UserRole, User } from '../../types';
 
 export default function RegisterPage() {
   const [searchParams] = useSearchParams();
@@ -15,7 +15,8 @@ export default function RegisterPage() {
 
   const [role, setRole] = useState<UserRole>(initialRole);
   const [formData, setFormData] = useState({
-    email: '', password: '', confirmPassword: '', name: '', companyName: '', phone: '',
+    email: '', password: '', confirmPassword: '', name: '', phone: '',
+    company_name: '', company_tax_code: '', img_link: '', hash_tax_code: ''
   });
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -45,11 +46,22 @@ export default function RegisterPage() {
 
     try {
       const { confirmPassword: _c, ...payload } = formData;
-      const newUser = {
-        ...payload,
-        role,
-        id: `user-${Date.now()}`,
-        createdAt: new Date().toISOString(),
+      const newUser: User = {
+        id_user: Date.now(),
+        name: payload.name,
+        email: payload.email,
+        hash_password: payload.password,
+        phone: payload.phone,
+        role: role,
+        status: 'active',
+        create_at: new Date().toISOString(),
+        img_link: payload.img_link || undefined,
+        hash_tax_code: payload.hash_tax_code || undefined,
+        company: (payload.company_name || payload.company_tax_code) ? {
+          id_company: Date.now() + 1,
+          company_name: payload.company_name,
+          company_tax_code: payload.company_tax_code,
+        } : undefined
       };
       const user = await authAPI.register(newUser);
       setUser(user);
@@ -240,7 +252,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Phone + Company */}
+            {/* Phone + User Tax Code */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="phone">Số điện thoại</Label>
@@ -255,12 +267,51 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="companyName">Tên công ty</Label>
+                <Label htmlFor="hash_tax_code">Mã số thuế cá nhân</Label>
                 <Input
-                  id="companyName"
+                  id="hash_tax_code"
+                  placeholder="Nhập mã số thuế cá nhân"
+                  value={formData.hash_tax_code}
+                  onChange={e => set('hash_tax_code', e.target.value)}
+                  disabled={loading}
+                  className="rounded-none"
+                />
+              </div>
+            </div>
+
+            {/* Avatar URL */}
+            <div className="space-y-1.5">
+              <Label htmlFor="img_link">Ảnh đại diện (URL)</Label>
+              <Input
+                id="img_link"
+                placeholder="https://example.com/avatar.jpg"
+                value={formData.img_link}
+                onChange={e => set('img_link', e.target.value)}
+                disabled={loading}
+                className="rounded-none"
+              />
+            </div>
+
+            {/* Company Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="company_name">Tên công ty</Label>
+                <Input
+                  id="company_name"
                   placeholder={role === 'renter' ? 'ABC Foods Vietnam' : 'Cold Storage Co.'}
-                  value={formData.companyName}
-                  onChange={e => set('companyName', e.target.value)}
+                  value={formData.company_name}
+                  onChange={e => set('company_name', e.target.value)}
+                  disabled={loading}
+                  className="rounded-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="company_tax_code">Mã số thuế công ty</Label>
+                <Input
+                  id="company_tax_code"
+                  placeholder="Mã số thuế công ty"
+                  value={formData.company_tax_code}
+                  onChange={e => set('company_tax_code', e.target.value)}
                   disabled={loading}
                   className="rounded-none"
                 />

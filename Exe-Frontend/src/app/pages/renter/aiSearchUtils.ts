@@ -94,10 +94,6 @@ export function applyLocalFilter(
         result = result.filter((w) => secLevels.includes(w.stats?.securityLevel));
     }
 
-    const features = selections["features"] ?? [];
-    if (features.length > 0) {
-        result = result.filter((w) => w.features && features.every((f) => w.features!.includes(f)));
-    }
 
     const availValues = (selections["availability"] ?? []).filter((a) => a !== "all");
     if (availValues.length > 0) {

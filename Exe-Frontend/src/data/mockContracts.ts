@@ -10,8 +10,8 @@ export const MockCompositeContracts: CompositeContract[] = [];
 export const getContractsByRenter = (id_renter: number) =>
   MockCompositeContracts.filter(c => c.id_renter === id_renter);
 
-export const getContractsByWarehouse = (warehouseId: string | number) =>
-  MockCompositeContracts.filter(c => c.warehouseId == warehouseId);
+export const getContractsByWarehouse = (id_warehouse: string | number) =>
+  MockCompositeContracts.filter(c => c.id_warehouse == id_warehouse);
 
 export const getContractsByOwnerWarehouses = (warehouseIds: (string | number)[]) =>
-  MockCompositeContracts.filter(c => c.warehouseId && warehouseIds.includes(c.warehouseId as any));
+  MockCompositeContracts.filter(c => c.id_warehouse && warehouseIds.includes(c.id_warehouse as any));

@@ -13,6 +13,8 @@ export interface Warehouse {
   isSponsor: boolean;
   sponsor_type?: number; // FK SponsorTier
   status: string;
+  create_at?: string;
+  update_at?: string;
 }
 
 export interface WarehouseImage {
@@ -26,6 +28,7 @@ export interface WarehouseImage {
 export interface WarehouseSection {
   id_section: number;
   id_warehouse?: number; // FK Warehouse
+  label?: string;
   sector: number;
   total_capacity: number;
   available_capacity: number;
@@ -86,7 +89,6 @@ export interface CompositeWarehouse extends Warehouse {
   sections?: CompositeWarehouseSection[];
   images?: string[] | WarehouseImage[];
   availability?: string;
-  features?: string[];
   createdAt?: string;
   updatedAt?: string;
   ratingScore?: number;

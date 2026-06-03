@@ -1,3 +1,5 @@
+export type RentRequestStatus = "sent" | "viewed" | "rejected" | "inprogress" | "contracted";
+
 export interface RentRequest {
   id_rentRequest: number;
   id_renter?: number; // FK User
@@ -6,8 +8,16 @@ export interface RentRequest {
   other_detail: string;
   duration: number;
   duration_unit: string;
-  status: string;
+  status: RentRequestStatus | string;
   renter_rejection_reason: string;
+  submit_at?: string;
+  updated_at?: string;
+  start_date?: string;
+  end_date?: string;
+  offered_price?: number;
+  unit?: string;
+  owner_note?: string;
+  rejection_reason?: string;
 }
 
 export interface RentRequestDetail {
@@ -62,17 +72,10 @@ export interface CompositeRentRequest extends RentRequest {
   cargoType?: string;
   requestedCapacity?: number;
   durationLabel?: string;
-  startDate?: string;
-  endDate?: string;
   priceTierValue?: number;
   priceTierUnit?: string;
   priceTierLabel?: string;
   message?: string;
-  submittedAt?: string;
-  updatedAt?: string;
-  rejectionReason?: string;
-  offeredPrice?: number;
-  ownerNote?: string;
   sectionId?: string | number;
   sectionName?: string;
   sectionIds?: string[] | number[];
@@ -80,7 +83,7 @@ export interface CompositeRentRequest extends RentRequest {
 }
 
 export interface CompositeContract extends Contract {
-  warehouseId?: number; // Added since the old type relied on it
+  id_warehouse?: number; // Replaces old warehouseId prop
   sectionId?: string | number;
   sectionIds?: string[] | number[];
   isWholeWarehouse?: boolean;

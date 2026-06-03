@@ -31,7 +31,7 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
         ? warehouse.sections?.find((s) => s.id_section?.toString() === request.sectionId?.toString())
         : undefined;
 
-    const ownerUser = users.find((u) => u.id === warehouse.ownerId);
+    const ownerUser = users.find((u) => u.id_user === warehouse.id_owner);
     const existingContract = contracts.find((c: CompositeContract) => c.id_rent_request === request.id_rentRequest);
 
     return (
@@ -63,7 +63,7 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                     <p className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
                         <MapPin className="inline h-2.5 w-2.5 mr-0.5" />
                         {warehouse.location_commune}, {warehouse.location_province}
-                        {" · "}{relativeTime(request.submittedAt || request.create_at)}
+                        {" · "}{relativeTime(request.submit_at || request.submit_at)}
                     </p>
                 </div>
 
@@ -115,14 +115,14 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                 )}
                                 <div>
                                     <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Từ ngày</p>
-                                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{fmtDate(request.startDate)}</p>
+                                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{fmtDate(request.start_date)}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>
-                                        {request.endDate ? "Đến ngày" : "Thời hạn"}
+                                        {request.end_date ? "Đến ngày" : "Thời hạn"}
                                     </p>
                                     <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                                        {request.endDate ? fmtDate(request.endDate) : (request.durationLabel ?? `${request.duration} ${UNIT_LABEL[request.duration_unit] ?? request.duration_unit}`)}
+                                        {request.end_date ? fmtDate(request.end_date) : (request.durationLabel ?? `${request.duration} ${UNIT_LABEL[request.duration_unit] ?? request.duration_unit}`)}
                                     </p>
                                 </div>
                                 {request.priceTierValue && (
@@ -220,12 +220,12 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                         <XCircle className="h-4 w-4 shrink-0" style={{ color: "#ef4444" }} />
                                         <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>Đã từ chối yêu cầu</p>
                                     </div>
-                                    {request.rejectionReason && (
+                                    {request.rejection_reason && (
                                         <div
                                             className="px-3 py-2 text-xs border-l-2"
                                             style={{ borderColor: "#ef4444", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
                                         >
-                                            {request.rejectionReason}
+                                            {request.rejection_reason}
                                         </div>
                                     )}
                                 </div>
@@ -241,22 +241,22 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                         <MessageSquare className="h-4 w-4 shrink-0" style={{ color: "#22c55e" }} />
                                         <p className="text-xs font-semibold" style={{ color: "#22c55e" }}>Chủ kho muốn thương lượng</p>
                                     </div>
-                                    {request.ownerNote && (
+                                    {request.owner_note && (
                                         <div
                                             className="px-3 py-2 text-xs border-l-2"
                                             style={{ borderColor: "#22c55e", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
                                         >
-                                            {request.ownerNote}
+                                            {request.owner_note}
                                         </div>
                                     )}
-                                    {request.offeredPrice && (
+                                    {request.offered_price && (
                                         <div
                                             className="flex items-center justify-between px-3 py-2 border border-[var(--color-border)]"
                                             style={{ background: "var(--color-bg-secondary)" }}
                                         >
                                             <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Giá đề xuất</span>
                                             <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
-                                                {fmtCurrency(request.offeredPrice)}
+                                                {fmtCurrency(request.offered_price)}
                                                 <span className="text-xs font-normal ml-1" style={{ color: "var(--color-text-muted)" }}>/m³/tháng</span>
                                             </span>
                                         </div>

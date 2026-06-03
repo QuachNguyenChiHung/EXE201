@@ -57,7 +57,6 @@ export const MockWarehouseData: CompositeWarehouse[] = [
     ],
     images: [IMG.coldInterior],
     availability: 'available',
-    features: ['Hệ thống giám sát 24/7', 'Dock loading'],
     createdAt: '2024-02-01T00:00:00Z',
     updatedAt: '2024-03-01T00:00:00Z',
     ratingScore: 4.7,
@@ -114,7 +113,6 @@ export const MockWarehouseData: CompositeWarehouse[] = [
     ],
     images: [IMG.frozenRacks],
     availability: 'partially',
-    features: ['Gần cảng', 'Bảo mật cao'],
     createdAt: '2024-02-15T00:00:00Z',
     updatedAt: '2024-03-01T00:00:00Z',
     ratingScore: 4.3,
@@ -122,6 +120,4 @@ export const MockWarehouseData: CompositeWarehouse[] = [
     subscriptionTier: 'silver',
   }
 ];
-
-export const availableFeatures = ['Hệ thống giám sát 24/7', 'Dock loading', 'Gần cảng', 'Bảo mật cao'];
 export const vietnamProvinces = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương'];

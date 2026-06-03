@@ -17,9 +17,9 @@ export default function ApproveModal({
     onCancel: () => void
 }) {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
-        const existing = new Set(warehouse.certifications.map(c => c.label))
+        const existing = new Set(warehouse.certifications.map(c => c.id_cerfSubmit))
         const ids = new Set<number>()
-        certTypes.forEach(ct => { if (existing.has(ct.label)) ids.add(ct.id_certification) })
+        certTypes.forEach(ct => { if (existing.has(ct.id_certification)) ids.add(ct.id_certification) })
         return ids
     })
 

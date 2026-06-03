@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, PenLine, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { CompositeContract } from '../../../../types';
+import { CompositeContract } from '../../../types';
 
 export type ContractStatus = CompositeContract['status'];
 

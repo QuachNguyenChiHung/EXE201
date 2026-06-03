@@ -110,22 +110,6 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
                 )}
             </div>
 
-            {/* ── Features ── */}
-            {warehouse.features && warehouse.features.length > 0 && (
-                <div id="section-services" className="bento-card p-6" style={{ order: 4, scrollMarginTop: '80px' }}>
-                    <h2 className="mb-4 text-lg font-semibold">Tiện ích & Dịch vụ</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {warehouse.features.map((feature, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 bg-[var(--color-bg-secondary)] rounded-lg">
-                                <div className="w-7 h-7 rounded-lg bg-[var(--color-primary-100)] flex items-center justify-center flex-shrink-0">
-                                    <Check className="h-4 w-4 text-[var(--color-primary)]" />
-                                </div>
-                                <span className="text-sm">{feature}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* ── Certifications ── */}
             <div id="section-certifications" className="bento-card p-6" style={{ order: 5, scrollMarginTop: '80px' }}>

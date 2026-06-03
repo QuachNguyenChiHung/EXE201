@@ -35,7 +35,7 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
                     <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{warehouse.name}</p>
                     <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                         <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{warehouse.location.address}, {warehouse.location_commune}, {warehouse.location_province}</span>
+                        <span className="truncate">{warehouse.address}, {warehouse.location_commune}, {warehouse.location_province}</span>
                     </div>
                 </div>
 
@@ -135,10 +135,10 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>Tài liệu chứng nhận (PDF)</p>
                         {warehouse.certifications.length > 0 ? (
                             <div className="space-y-1.5">
-                                {warehouse.certifications.map(cert => (
-                                    <div key={cert.id} className="flex items-center gap-2 px-3 py-2 border border-[var(--color-border)] bg-[var(--color-surface)]">
+                                {warehouse.certifications.map((cert: any) => (
+                                    <div key={cert.id_cerfSubmit || cert.id || Math.random()} className="flex items-center gap-2 px-3 py-2 border border-[var(--color-border)] bg-[var(--color-surface)]">
                                         <Shield className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-success, #22c55e)' }} />
-                                        <span className="text-xs flex-1 truncate" style={{ color: 'var(--color-text)' }}>{cert.label}</span>
+                                        <span className="text-xs flex-1 truncate" style={{ color: 'var(--color-text)' }}>{cert.label || `Chứng nhận #${cert.id_cerfSubmit || cert.id}`}</span>
                                     </div>
                                 ))}
                             </div>

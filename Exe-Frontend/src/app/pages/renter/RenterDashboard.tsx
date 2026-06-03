@@ -35,9 +35,9 @@ export default function RenterDashboard() {
       const stats = convs.reduce(
         (acc, c) => ({
           totalConversations: acc.totalConversations + 1,
-          totalInputTokens: acc.totalInputTokens + (c.totalInputTokens ?? 0),
-          totalOutputTokens: acc.totalOutputTokens + (c.totalOutputTokens ?? 0),
-          totalMessages: acc.totalMessages + c.messages.length,
+          totalInputTokens: acc.totalInputTokens + (c.total_input_tokens ?? 0),
+          totalOutputTokens: acc.totalOutputTokens + (c.total_output_tokens ?? 0),
+          totalMessages: acc.totalMessages + (Array.isArray(c.message) ? c.message.length : 0),
         }),
         { totalConversations: 0, totalInputTokens: 0, totalOutputTokens: 0, totalMessages: 0 },
       );

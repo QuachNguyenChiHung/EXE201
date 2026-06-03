@@ -1,5 +1,5 @@
 import { MapPin, Package, Thermometer, Zap, Shield, CheckCircle, LayoutGrid, Trash2, ExternalLink } from 'lucide-react';
-import { CompositeWarehouse } from '../../../../types';
+import { CompositeWarehouse } from '../../../types';
 import { CertificationList, PriceDisplay, SectionsDisplay } from './WarehouseDisplays';
 import { Link } from 'react-router';
 

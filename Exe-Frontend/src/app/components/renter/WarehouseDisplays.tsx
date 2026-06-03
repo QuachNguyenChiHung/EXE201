@@ -1,4 +1,4 @@
-import { CompositeWarehouse } from '../../../../types';
+import { CompositeWarehouse } from '../../../types';
 import { AlertTriangle, FileCheck, Tag } from 'lucide-react';
 
 const UNIT_SHORT: Record<string, string> = { month: 'tháng', day: 'ngày', year: 'năm' };

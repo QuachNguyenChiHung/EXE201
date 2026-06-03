@@ -3,8 +3,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix default marker icon paths broken by bundlers (Vite: use `?url` to get asset URL)
+// @ts-ignore
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png?url';
+// @ts-ignore
 import markerIcon from 'leaflet/dist/images/marker-icon.png?url';
+// @ts-ignore
 import markerShadow from 'leaflet/dist/images/marker-shadow.png?url';
 
 // Override the default icon once at module level

@@ -95,11 +95,6 @@ export function searchWarehouses(
     filtered = filtered.filter(w => w.certifications && (w.certifications as any[]).length > 0);
   }
 
-  if (filters.features && filters.features.length > 0) {
-    filtered = filtered.filter(w =>
-      filters.features!.some(f => (w.features || []).includes(f))
-    );
-  }
 
   if (filters.securityLevel && filters.securityLevel.length > 0) {
     filtered = filtered.filter(w => filters.securityLevel!.includes(w.stats?.securityLevel));

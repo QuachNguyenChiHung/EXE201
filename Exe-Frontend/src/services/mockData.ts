@@ -4,6 +4,6 @@
  * All seed data lives in /src/data/ and is ONLY used by DataLoader/DataMigration for initialization.
  */
 export {
-  availableFeatures,
+  
   vietnamProvinces,
 } from '../data/mockWarehouses';

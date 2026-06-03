@@ -34,7 +34,7 @@ export default function ManageCertTypes() {
       law_references: ct.law_references, 
       update: ct.update.split('T')[0] 
     }); 
-    setEditId(ct.id); 
+    setEditId(ct.id_certification); 
     setShowForm(true); 
   };
 
@@ -43,8 +43,8 @@ export default function ManageCertTypes() {
     if (editId !== null) {
       await updateType(editId, { ...form });
     } else {
-      const id = certTypes.length > 0 ? Math.max(...certTypes.map(c => c.id)) + 1 : 1;
-      await createType({ id, ...form } as CertificationType);
+      const id_certification = certTypes.length > 0 ? Math.max(...certTypes.map(c => c.id_certification)) + 1 : 1;
+      await createType({ id_certification, ...form } as CertificationType);
     }
     setShowForm(false); setEditId(null);
   };
@@ -104,7 +104,7 @@ export default function ManageCertTypes() {
         ) : (
           <div className="space-y-2">
             {filtered.map(ct => (
-              <div key={ct.id} className="border border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-3 px-4 py-3"
+              <div key={ct.id_certification} className="border border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-3 px-4 py-3"
                 style={{ borderLeft: `3px solid var(--color-primary)` }}>
                 {/* Badge */}
                 <span className="inline-flex items-center gap-1.5 text-white text-[11px] px-2.5 py-1 shrink-0 font-semibold"
@@ -127,7 +127,7 @@ export default function ManageCertTypes() {
                     title="Chỉnh sửa">
                     <Pencil className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
                   </button>
-                  <button onClick={() => setDeleteConfirm(ct.id)}
+                  <button onClick={() => setDeleteConfirm(ct.id_certification)}
                     className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-error)] transition-colors"
                     title="Xóa">
                     <Trash2 className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />

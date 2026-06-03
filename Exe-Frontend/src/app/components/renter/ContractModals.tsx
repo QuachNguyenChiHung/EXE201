@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, AlertCircle, FileText, PenLine, XCircle, CheckCircle, Upload } from 'lucide-react';
-import { CompositeContract } from '../../../../types';
+import { CompositeContract } from '../../../types';
 import { toast } from 'sonner';
 
 export function RejectContractModal({

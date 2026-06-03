@@ -2,7 +2,7 @@ import React from "react";
 import {
     Send, Eye, XCircle, MessageSquare, FileText, AlertCircle, CheckCircle,
 } from "lucide-react";
-import { RentRequestStatus } from "../../../../types";
+import { RentRequestStatus } from "../../../types";
 
 export type RequestStatus = RentRequestStatus;
 export type FilterTab = "all" | RequestStatus;

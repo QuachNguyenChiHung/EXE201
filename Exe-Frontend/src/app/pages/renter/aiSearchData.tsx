@@ -8,7 +8,7 @@ import {
   Zap,
   TrendingUp,
 } from "lucide-react";
-import { vietnamProvinces, availableFeatures } from "../../../data";
+import { vietnamProvinces } from "../../../data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type SelectMode = "single" | "multi";
@@ -118,15 +118,7 @@ export const ATTRIBUTES: Attribute[] = [
       { value: "any", label: "Không quan trọng", hint: "AI không lọc theo tiêu chí bảo mật" },
     ],
   },
-  {
-    id: "features",
-    icon: <Zap className="h-4 w-4" />,
-    label: "Tiện ích & Dịch vụ đặc biệt",
-    mode: "multi",
-    explanation:
-      "Tiện ích bổ sung giúp tối ưu logistics. Chọn những gì thực sự cần thiết cho hoạt động của bạn.",
-    options: availableFeatures.map((f) => ({ value: f, label: f, hint: "" })),
-  },
+
   {
     id: "availability",
     icon: <TrendingUp className="h-4 w-4" />,
