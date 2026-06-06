@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk,type PayloadAction } from '@reduxjs/toolkit';
 import { warehouseService, type WarehouseSearchParams } from '../../service';
 import type { Warehouse, PaginatedResponse } from '../../model/types';
 
