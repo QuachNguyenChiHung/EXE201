@@ -25,7 +25,7 @@ export interface AiSubscriptionTier {
   update_at: string;
 }
 
-export type UserRole = 'renter' | 'warehouse' | 'employee';
+export type UserRole = 'RENTER' | 'OWNER' | 'EMPLOYEE';
 
 export interface User {
   id_user: number;

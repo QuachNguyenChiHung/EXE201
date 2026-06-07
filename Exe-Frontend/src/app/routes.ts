@@ -67,9 +67,9 @@ export const router = createBrowserRouter([
     ErrorBoundary: ErrorPage,
   },
 
-  // ── Renter routes (role: renter) ───────────────────────────────────────────
+  // ── Renter routes (role: RENTER) ───────────────────────────────────────────
   {
-    element: createElement(ProtectedRoute, { allowedRoles: ['renter'] }),
+    element: createElement(ProtectedRoute, { allowedRoles: ['RENTER'] }),
     ErrorBoundary: ErrorPage,
     children: [
       { path: '/renter', Component: RenterDashboard },
@@ -82,9 +82,9 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Warehouse owner routes (role: warehouse) ──────────────────────────────
+  // ── Warehouse owner routes (role: OWNER) ──────────────────────────────
   {
-    element: createElement(ProtectedRoute, { allowedRoles: ['warehouse'] }),
+    element: createElement(ProtectedRoute, { allowedRoles: ['OWNER'] }),
     ErrorBoundary: ErrorPage,
     children: [
       { path: '/warehouse', Component: WarehouseDashboard },
@@ -98,9 +98,9 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Employee routes (role: employee) ──────────────────────────────────────
+  // ── Employee routes (role: EMPLOYEE) ──────────────────────────────────────
   {
-    element: createElement(ProtectedRoute, { allowedRoles: ['employee'] }),
+    element: createElement(ProtectedRoute, { allowedRoles: ['EMPLOYEE'] }),
     ErrorBoundary: ErrorPage,
     children: [
       { path: '/employee', Component: EmployeeDashboard },

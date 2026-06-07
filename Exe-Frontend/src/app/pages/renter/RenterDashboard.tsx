@@ -22,7 +22,7 @@ export default function RenterDashboard() {
   }>({ totalConversations: 0, totalInputTokens: 0, totalOutputTokens: 0, totalMessages: 0 });
 
   useEffect(() => {
-    if (!user || user.role !== "renter") {
+    if (!user || user.role !== "RENTER") {
       navigate("/login");
       return;
     }

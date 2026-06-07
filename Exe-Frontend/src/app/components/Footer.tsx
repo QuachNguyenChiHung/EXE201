@@ -71,9 +71,9 @@ export function Footer() {
               Liên hệ
             </div>
             <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-              <li>support@logicha.vn</li>
-              <li>+84 123 456 789</li>
-              <li>Hà Nội, Việt Nam</li>
+              <li>ailogisgroup@gmail.com</li>
+              <li>+84 915 280 028</li>
+              <li>Hồ Chí Minh, Việt Nam</li>
             </ul>
           </div>
         </div>

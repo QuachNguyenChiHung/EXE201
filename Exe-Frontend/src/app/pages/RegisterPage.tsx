@@ -11,7 +11,7 @@ import { UserRole, User } from '../../types';
 
 export default function RegisterPage() {
   const [searchParams] = useSearchParams();
-  const initialRole = (searchParams.get('role') as UserRole) || 'renter';
+  const initialRole = (searchParams.get('role') as UserRole) || 'RENTER';
 
   const [role, setRole] = useState<UserRole>(initialRole);
   const [formData, setFormData] = useState({
@@ -67,8 +67,8 @@ export default function RegisterPage() {
       setUser(user);
       setBookmarks([]);
       toast.success('Đăng ký thành công! Chào mừng đến với Logicha 🎉');
-      if (role === 'renter') navigate('/renter');
-      else if (role === 'warehouse') navigate('/warehouse');
+      if (role === 'RENTER') navigate('/renter');
+      else if (role === 'OWNER') navigate('/warehouse');
       else navigate('/');
     } catch (err: any) {
       setAuthError(err?.message ?? 'Đăng ký thất bại');
@@ -78,15 +78,26 @@ export default function RegisterPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string | null;
+      if (result) set('img_link', result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const roles: { value: UserRole; icon: React.ReactNode; label: string; desc: string }[] = [
     {
-      value: 'renter',
+      value: 'RENTER',
       icon: <Building2 className="h-5 w-5" />,
       label: 'Doanh nghiệp thuê kho',
       desc: 'Tìm và thuê kho lạnh để bảo quản hàng hóa',
     },
     {
-      value: 'warehouse',
+      value: 'OWNER',
       icon: <Warehouse className="h-5 w-5" />,
       label: 'Chủ kho lạnh',
       desc: 'Đăng ký kho và cho thuê diện tích',
@@ -279,16 +290,16 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Avatar URL */}
+            {/* Avatar upload */}
             <div className="space-y-1.5">
-              <Label htmlFor="img_link">Ảnh đại diện (URL)</Label>
-              <Input
+              <Label htmlFor="img_link">Ảnh đại diện</Label>
+              <input
                 id="img_link"
-                placeholder="https://example.com/avatar.jpg"
-                value={formData.img_link}
-                onChange={e => set('img_link', e.target.value)}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
                 disabled={loading}
-                className="rounded-none"
+                className="rounded-none p-2 block w-full text-sm border-2 border-black text-[var(--color-text-secondary)]"
               />
             </div>
 
@@ -298,7 +309,7 @@ export default function RegisterPage() {
                 <Label htmlFor="company_name">Tên công ty</Label>
                 <Input
                   id="company_name"
-                  placeholder={role === 'renter' ? 'ABC Foods Vietnam' : 'Cold Storage Co.'}
+                  placeholder={role === 'RENTER' ? 'ABC Foods Vietnam' : 'Cold Storage Co.'}
                   value={formData.company_name}
                   onChange={e => set('company_name', e.target.value)}
                   disabled={loading}

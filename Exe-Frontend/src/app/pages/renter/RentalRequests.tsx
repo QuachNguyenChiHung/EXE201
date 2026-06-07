@@ -28,7 +28,7 @@ export default function RentalRequests() {
     const [expandedId, setExpandedId] = useState<number | null>(null);
 
     useEffect(() => {
-        if (!isAuthenticated || user?.role !== "renter") navigate("/login");
+        if (!isAuthenticated || user?.role !== "RENTER") navigate("/login");
     }, [isAuthenticated, user, navigate]);
 
     // Auto-expand first inprogress

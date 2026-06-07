@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "/src/services/asus_api";
 
 const DEMO_ACCOUNTS = [
   { label: "Doanh nghiệp", email: "renter@example.com", role: "renter" },
@@ -29,26 +30,18 @@ export default function LoginPage() {
 
     setLoading(true);
     setAuthError(null);
-
     try {
-      const user = await authAPI.login(email.trim(), password);
+      const user = (await api.post("/auth/login", { email, password })).data;
       localStorage.setItem('user', JSON.stringify(user));
-      
-      // Load bookmarks
-      try {
-        const bookmarks = await bookmarksAPI.getByUser(user.id_user);
-        localStorage.setItem('bookmarks', JSON.stringify(bookmarks.warehouseIds || []));
-      } catch (err) {
-        console.warn('Failed to load bookmarks:', err);
-      }
 
       toast.success("Đăng nhập thành công!");
-      if (user.role === "renter") navigate("/renter");
-      else if (user.role === "warehouse") navigate("/warehouse");
-      else if (user.role === "employee") navigate("/employee");
+      if (user.role === "RENTER") navigate("/renter");
+      else if (user.role === "OWNER") navigate("/warehouse");
+      else if (user.role === "EMPLOYEE") navigate("/employee");
       else navigate("/");
     } catch (err: any) {
       setAuthError(err?.message ?? "Đăng nhập thất bại");
+      console.error("Login error:", err);
       toast.error(err?.message ?? "Đăng nhập thất bại");
     } finally {
       setLoading(false);

@@ -1,0 +1,101 @@
+
+# Employee API Routes
+
+All endpoints require JWT auth via `Authorization: Bearer <token>` unless noted.
+
+2) Employee Dashboard
+- GET /api/employee/dashboard/summary
+	- Auth: JWT
+	- Query: ?from=2026-01-01&to=2026-06-01&limit=50
+	- Response (200): { "usersCount": 123, "warehousesCount": 45, "recentActivities": [ {"type":"login","userId":1,"at":"2026-06-01T12:00:00Z"} ] }
+
+- GET /api/employee/dashboard/activity/:userId
+	- Auth: JWT
+	- Params: `userId` (path)
+	- Query: ?limit=20&offset=0
+	- Response (200): { "userId": 1, "activities": [ {"id": 987, "action": "approve", "target": "warehouse", "targetId": 12, "at": "2026-06-01T12:00:00Z"} ] }
+
+3) Certification Types (ManageCertTypes)
+- GET /api/employee/cert-types
+	- Auth: JWT
+	- Query: ?q=temperature&page=1&pageSize=20
+	- Response (200): { "items": [ { "id_certification": 1, "label": "Cold Storage", "update": "2025-01-01", "law_references": "..." } ], "total": 10 }
+
+- POST /api/employee/cert-types
+	- Auth: JWT
+	- Request JSON: { "label": string, "update": string|Date, "law_references": string }
+	- Response (201): { "id_certification": 11, "label": string }
+
+- PUT /api/employee/cert-types/:id
+	- Auth: JWT
+	- Params: `id` (path)
+	- Request JSON: { "label"?: string, "update"?: string|Date, "law_references"?: string }
+	- Response (200): { "id_certification": 11, "updated": true }
+
+- DELETE /api/employee/cert-types/:id
+	- Auth: JWT
+	- Params: `id`
+	- Response (204): {}
+
+4) Users Management (ManageUsers)
+- GET /api/employee/users
+	- Auth: JWT
+	- Query: ?q=email@example.com&role=owner&status=active&page=1&pageSize=50
+	- Response (200): { "items": [ { "id_user": 1, "name": "Alice", "email": "a@x.com", "role": "owner", "status": "active" } ], "total": 123 }
+
+- GET /api/employee/users/:id
+	- Auth: JWT
+	- Params: `id`
+	- Response (200): { "id_user":1, "name":"Alice", "email":"a@x.com", "phone":"012345" }
+
+- POST /api/employee/users
+	- Auth: JWT
+	- Request JSON: { "name": string, "email": string, "role": string, "status"?: string }
+	- Response (201): { "id_user": 456 }
+
+- PUT /api/employee/users/:id
+	- Auth: JWT
+	- Params: `id`
+	- Request JSON: { "name"?: string, "status"?: string, "role"?: string }
+	- Response (200): { "id_user": 456, "updated": true }
+
+- POST /api/employee/users/:id/verify
+	- Auth: JWT
+	- Params: `id`
+	- Request JSON: { "verified": boolean, "note"?: string }
+	- Response (200): { "id_user": 123, "verified": true }
+
+5) Warehouses Management (ManageWarehouses)
+- GET /api/employee/warehouses
+	- Auth: JWT
+	- Query: ?q=Hanoi&status=active&sponsored=true&page=1&pageSize=25
+	- Response (200): { "items": [ { "id_warehouse": 1, "name": "WH A", "address": "...", "status": "active" } ], "total": 45 }
+
+- GET /api/employee/warehouses/:id
+	- Auth: JWT
+	- Params: `id`
+	- Response (200): { "id_warehouse":1, "name":"WH A", "sections": [], "images": [] }
+
+- PUT /api/employee/warehouses/:id
+	- Auth: JWT
+	- Params: `id`
+	- Request JSON: Partial warehouse object, e.g. { "status": "suspended", "isSponsor": false }
+	- Response (200): { "id_warehouse": 1, "updated": true }
+
+- POST /api/employee/warehouses/:id/certifications
+	- Auth: JWT
+	- Params: `id` (warehouse)
+	- Request JSON: { "id_cerfSubmit": number }
+	- Response (200): { "id_warehouse":1, "id_cerfSubmit": 22, "linked": true }
+
+- DELETE /api/employee/warehouses/:id
+	- Auth: JWT
+	- Params: `id`
+	- Response (204): {}
+
+6) Common error response
+- Response (4xx/5xx): { "error": "description", "code": "ERROR_CODE", "details"?: any }
+
+Notes:
+- Use `application/json` for request and response bodies.
+- JWT middleware should validate token, extract `employee` role or permissions.

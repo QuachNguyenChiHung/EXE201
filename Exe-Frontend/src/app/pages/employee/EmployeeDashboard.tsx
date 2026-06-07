@@ -138,8 +138,7 @@ export default function EmployeeDashboard() {
           ))}
         </div>
 
-        {/* AI Service Status */}
-        <AIStatusPanel />
+
 
         {/* Pending warehouses alert */}
         {pendingWarehouses.length > 0 && (
@@ -217,7 +216,7 @@ export default function EmployeeDashboard() {
           </div>
           <div className="divide-y divide-[var(--color-border)]">
             {activeContracts.slice(0, 4).map(c => {
-              const wh = MockWarehouses.find(w => w.id_warehouse === c.warehouseId);
+              const wh = MockWarehouses.find(w => w.id_warehouse === c.id_warehouse);
               return (
                 <div key={c.id_contract} className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">
@@ -225,7 +224,7 @@ export default function EmployeeDashboard() {
                       {c.contractRef}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                      {wh?.name ?? c.warehouseId} · {c.rentedCapacity.toLocaleString()} m³
+                      {wh?.name ?? c.id_warehouse} · {c.rentedCapacity.toLocaleString()} m³
                     </p>
                   </div>
                   <span

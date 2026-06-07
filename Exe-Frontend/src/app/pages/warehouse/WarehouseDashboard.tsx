@@ -17,7 +17,7 @@ export default function WarehouseDashboard() {
   const [allWarehouses, setAllWarehouses] = useState<CompositeWarehouse[]>([]);
 
   useEffect(() => {
-    if (!user || user.role !== "warehouse") {
+    if (!user || user.role !== "OWNER") {
       navigate("/login");
       return;
     }
@@ -40,9 +40,9 @@ export default function WarehouseDashboard() {
   const occupancyRate =
     totalCapacity > 0
       ? (
-          ((totalCapacity - totalAvailable) / totalCapacity) *
-          100
-        ).toFixed(1)
+        ((totalCapacity - totalAvailable) / totalCapacity) *
+        100
+      ).toFixed(1)
       : "0";
 
   return (
