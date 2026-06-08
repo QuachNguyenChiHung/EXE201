@@ -3,9 +3,9 @@ import { Warehouse, CheckCircle, Sparkles, Edit2, ChevronDown, ChevronUp, Buildi
 import { User, UserRole } from '../../../types';
 
 const ROLE_CFG: Record<UserRole, { label: string; color: string; icon: React.ReactNode }> = {
-    renter: { label: 'Doanh nghiệp', color: 'var(--color-primary)', icon: <Building className="h-3.5 w-3.5" /> },
-    warehouse: { label: 'Chủ kho', color: 'var(--color-secondary, #7c3aed)', icon: <Warehouse className="h-3.5 w-3.5" /> },
-    employee: { label: 'Nhân viên', color: 'var(--color-success, #22c55e)', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+    RENTER: { label: 'Doanh nghiệp', color: 'var(--color-primary)', icon: <Building className="h-3.5 w-3.5" /> },
+    OWNER: { label: 'Chủ kho', color: 'var(--color-secondary, #7c3aed)', icon: <Warehouse className="h-3.5 w-3.5" /> },
+    EMPLOYEE: { label: 'Nhân viên', color: 'var(--color-success, #22c55e)', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
 };
 
 export default function UserRow({ user, onEdit, onViewConversations, warehouseCount, requestCount }: {
@@ -16,7 +16,9 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
     requestCount: number;
 }) {
     const [expanded, setExpanded] = useState(false);
-    const cfg = ROLE_CFG[user.role];
+    const roleKey = (user.role || '').toString().toUpperCase() as UserRole;
+    const DEFAULT_CFG = { label: 'Người dùng', color: 'var(--color-border)', icon: null as React.ReactNode };
+    const cfg = ROLE_CFG[roleKey] ?? DEFAULT_CFG;
 
     const fmtDate = (iso: string) =>
         new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -40,16 +42,16 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                 </div>
 
                 <div className="hidden sm:flex items-center gap-4 text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                    {user.role === 'warehouse' && (
+                    {user.role === 'OWNER' && (
                         <span className="flex items-center gap-1"><Warehouse className="h-3 w-3" /> {warehouseCount} kho</span>
                     )}
-                    {user.role === 'renter' && (
+                    {user.role === 'RENTER' && (
                         <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {requestCount} yêu cầu</span>
                     )}
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {user.role === 'renter' && (
+                    {user.role === 'RENTER' && (
                         <button onClick={() => onViewConversations(user)}
                             className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
                             style={{ color: 'var(--color-primary)' }}>
@@ -102,13 +104,13 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                             <Calendar className="h-3 w-3 shrink-0" /> {fmtDate(user.create_at)}
                         </p>
                     </div>
-                    {user.role === 'warehouse' && (
+                    {user.role === 'OWNER' && (
                         <div>
                             <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Số kho đã đăng</p>
                             <p className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>{warehouseCount} kho</p>
                         </div>
                     )}
-                    {user.role === 'renter' && (
+                    {user.role === 'RENTER' && (
                         <div>
                             <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Số yêu cầu đã gửi</p>
                             <p className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>{requestCount} yêu cầu</p>

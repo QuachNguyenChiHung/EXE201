@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
-import useCertTypes from '../../hooks/useCertTypes';
+import { api } from '../../../services/asus_api';
 import { CertificationType } from '../../../types';
 import {
   ArrowLeft, Plus, Pencil, Trash2, Shield,
@@ -10,14 +10,17 @@ import {
 import Modal from '../../components/Modal';
 import SearchInput from '../../components/SearchInput';
 import { toast } from 'sonner';
+import { getUser } from '/src/utils/auth';
 
 const EMPTY_FORM = {
   label: '',
   law_references: '',
+  pdfLink: '',
   update: new Date().toISOString().split('T')[0],
 };
 
 export default function ManageCertTypes() {
+
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -25,31 +28,137 @@ export default function ManageCertTypes() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  const { certTypes, loading, saving, createType, updateType, deleteType, filtered } = useCertTypes(search);
+  const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const filtered = certTypes.filter(ct => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return ct.label.toLowerCase().includes(q) || (ct.labelDesc && ct.labelDesc.toLowerCase().includes(q)) || (ct.law_references && ct.law_references.toLowerCase().includes(q));
+  });
+
+  const fetchCerts = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/certs');
+      const items = (res.data || []).map((d: any, idx: number) => ({
+        id_certification: d.id_certification ?? (d.certID ? Number(d.certID) : idx + 1),
+        certID: d.certID ?? String(d.id_certification ?? (d.certID ? Number(d.certID) : idx + 1)),
+        label: d.label,
+        law_references: d.labelDesc ?? d.law_references ?? '',
+        update: d.update ?? new Date().toISOString(),
+        pdfLink: d.pdfLink ?? null,
+      }));
+      setCertTypes(items.sort((a, b) => a.label.localeCompare(b.label)));
+    } catch (err: any) {
+      console.error('Failed to fetch certs', err);
+      toast.error('Không tải được danh sách loại chứng nhận');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchCerts() }, []);
 
   const openCreate = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true); };
-  const openEdit = (ct: CertificationType) => { 
-    setForm({ 
-      label: ct.label, 
-      law_references: ct.law_references, 
-      update: ct.update.split('T')[0] 
-    }); 
-    setEditId(ct.id_certification); 
-    setShowForm(true); 
+  const user = getUser();
+  useEffect(() => {
+    if (!user || user.role !== 'EMPLOYEE') {
+      navigate('/login');
+      return;
+    }
+
+  }, [user, navigate]);
+  const openEdit = (ct: CertificationType) => {
+    setForm({
+      label: ct.label,
+      law_references: ct.law_references,
+      pdfLink: (ct as any).pdfLink || '',
+      update: ct.update.split && typeof ct.update === 'string' && ct.update.split('T').length ? ct.update.split('T')[0] : (
+        // if update already in dd/mm/yyyy, convert to yyyy-mm-dd for input value
+        (typeof ct.update === 'string' && /\d{2}\/\d{2}\/\d{4}/.test(ct.update))
+          ? ct.update.split('/').reverse().join('-')
+          : (new Date(ct.update).toISOString().split('T')[0])
+      )
+    });
+    setEditId(ct.id_certification);
+    setShowForm(true);
   };
+
+  const toDDMMYYYY = (value: string) => {
+    if (!value) return '';
+    // if yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [y, m, d] = value.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    // if ISO datetime
+    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      return new Date(value).toLocaleDateString('vi-VN');
+    }
+    // if already dd/mm/yyyy
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+    // fallback
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('vi-VN');
+  }
+
+  const displayDate = (value: string) => {
+    // ensure display uses dd/mm/yyyy
+    return toDDMMYYYY(value);
+  }
 
   const handleSave = async () => {
     if (!form.label.trim()) { toast.error('Tên chứng nhận là bắt buộc'); return; }
-    if (editId !== null) {
-      await updateType(editId, { ...form });
-    } else {
-      const id_certification = certTypes.length > 0 ? Math.max(...certTypes.map(c => c.id_certification)) + 1 : 1;
-      await createType({ id_certification, ...form } as CertificationType);
-    }
-    setShowForm(false); setEditId(null);
+    setSaving(true);
+    try {
+      if (editId !== null) {
+        // update
+        const existing = certTypes.find(c => c.id_certification === editId);
+        const certID = existing?.certID ?? String(editId);
+        const payload = {
+          certID: String(certID),
+          label: form.label,
+          labelDesc: form.law_references,
+          update: toDDMMYYYY(form.update),
+          pdfLink: (form as any).pdfLink || existing?.pdfLink || null,
+        };
+        console.log(`Updating cert ${certID} with payload: ${JSON.stringify(payload)}`);
+        await api.patch(`/certs/${certID}`, payload);
+        toast.success('Đã cập nhật loại chứng nhận');
+      } else {
+        // create
+        const id_certification = certTypes.length > 0 ? Math.max(...certTypes.map(c => c.id_certification)) + 1 : 1;
+        const certID = String(id_certification);
+        const payload = {
+          certID,
+          label: form.label,
+          labelDesc: form.law_references,
+          update: toDDMMYYYY(form.update),
+          pdfLink: (form as any).pdfLink || null,
+        };
+        await api.post('/certs', payload);
+        toast.success('Đã thêm loại chứng nhận mới');
+      }
+      await fetchCerts();
+      setShowForm(false); setEditId(null);
+    } catch (err: any) {
+      console.error('Save failed', err);
+      toast.error(`Lỗi: ${err?.message || err}`);
+    } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => { await deleteType(id); setDeleteConfirm(null); };
+  const handleDelete = async (id: number) => {
+    try {
+      const existing = certTypes.find(c => c.id_certification === id);
+      const certID = existing?.certID ?? String(id);
+      await api.delete(`/certs/${certID}`);
+      toast.success('Đã xóa loại chứng nhận');
+      await fetchCerts();
+    } catch (err: any) {
+      console.error('Delete failed', err);
+      toast.error(`Lỗi xóa: ${err?.message || err}`);
+    } finally { setDeleteConfirm(null); }
+  };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
@@ -117,7 +226,12 @@ export default function ManageCertTypes() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{ct.label}</p>
                   <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>{ct.law_references}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Cập nhật: {new Date(ct.update).toLocaleDateString('vi-VN')}</p>
+                  {(ct as any).pdfLink && (
+                    <p className="text-xs truncate mt-1">
+                      <a href={(ct as any).pdfLink} target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--color-primary)' }}>Xem PDF</a>
+                    </p>
+                  )}
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Cập nhật: {displayDate(ct.update)}</p>
                 </div>
 
                 {/* Actions */}
@@ -184,6 +298,19 @@ export default function ManageCertTypes() {
                   onChange={e => setForm(p => ({ ...p, law_references: e.target.value }))}
                   rows={3}
                   className="w-full px-3 py-2 text-sm border focus:outline-none focus:border-[var(--color-primary)] resize-none"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                  Link PDF (tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://.../doc.pdf"
+                  value={(form as any).pdfLink}
+                  onChange={e => setForm(p => ({ ...p, pdfLink: e.target.value }))}
+                  className="w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-primary)]"
                   style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
                 />
               </div>

@@ -5,6 +5,7 @@ import { getUser } from '../../../utils/auth';
 import { MockUsers } from '../../../data/mockUsers';
 import { MockWarehouseData as MockWarehouses } from '../../../data/mockWarehouses';
 import { MockCompositeRentRequests as MockRentRequests } from '../../../data/mockRequests';
+import { api } from '../../../services/asus_api';
 import { contractsAPI } from '../../../services/apiClient';
 import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Database, Shield } from 'lucide-react';
 import { AIStatusPanel } from '../../components/AIStatusPanel';
@@ -14,9 +15,10 @@ export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const user = getUser();
   const [contractList, setContractList] = useState<CompositeContract[]>([]);
+  const [statsData, setStatsData] = useState<any | null>(null);
 
   useEffect(() => {
-    if (!user || user.role !== 'employee') {
+    if (!user || user.role !== 'EMPLOYEE') {
       navigate('/login');
       return;
     }
@@ -24,40 +26,49 @@ export default function EmployeeDashboard() {
     contractsAPI.getAll()
       .then(c => setContractList(c))
       .catch(err => console.error('Failed to load contracts:', err));
+
+    // fetch employee statistics
+    api.get('/employees/statistic')
+      .then(r => { setStatsData(r.data); console.log('Employee stats data:', r.data); })
+      .catch(err => console.error('Failed to load statistics:', err));
   }, [user, navigate]);
 
   // ── Stats from mock data ──────────────────────────────────────────────────
   const stats = useMemo(() => [
     {
       label: 'Tổng người dùng',
-      value: MockUsers.length,
-      sub: `${MockUsers.filter(u => u.role === 'renter').length} DN · ${MockUsers.filter(u => u.role === 'warehouse').length} Chủ kho`,
+      value: statsData?.usersCount ?? MockUsers.length,
+      sub: statsData
+        ? `${(statsData.usersByRole?.renter ?? 0)} Người thuê · ${(statsData.usersByRole?.warehouse ?? 0)} Chủ kho · ${(statsData.usersByRole?.employee ?? 0)} Nhân viên`
+        : `${MockUsers.filter(u => u.role === 'RENTER').length} Người thuê · ${MockUsers.filter(u => u.role === 'OWNER').length} Chủ kho · ${MockUsers.filter(u => u.role === 'EMPLOYEE').length} Nhân viên`,
       icon: <Users className="h-5 w-5" />,
       color: 'var(--color-primary)',
     },
     {
       label: 'Tổng kho lạnh',
-      value: MockWarehouses.length,
-      sub: `${MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động`,
+      value: (statsData?.warehousesByStatus?.active ?? MockWarehouses.length),
+      sub: `${statsData ? statsData.warehousesByStatus?.active ?? 0 : MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động`,
       icon: <Warehouse className="h-5 w-5" />,
       color: 'var(--color-secondary, #7c3aed)',
     },
     {
       label: 'Kho chờ duyệt',
-      value: MockWarehouses.filter(w => w.status === 'pending').length,
+      value: statsData ? statsData.warehousesByStatus?.pending ?? 0 : MockWarehouses.filter(w => w.status === 'pending').length,
       sub: 'Cần kiểm duyệt',
       icon: <Clock className="h-5 w-5" />,
       color: 'var(--color-warning, #f59e0b)',
-      urgent: MockWarehouses.some(w => w.status === 'pending'),
+      urgent: (statsData ? (statsData.warehousesByStatus?.pending ?? 0) > 0 : MockWarehouses.some(w => w.status === 'pending')),
     },
     {
       label: 'Yêu cầu thuê',
-      value: MockRentRequests.length,
-      sub: `${MockRentRequests.filter(r => r.status === 'inprogress').length} đang thương lượng`,
+      value: statsData ? (Object.values(statsData.rentRequestsByStatus || {}).reduce((a: number, b: number) => a + b, 0)) : MockRentRequests.length,
+      sub: statsData
+        ? `${statsData.rentRequestsByStatus?.completed ?? 0} đã hoàn thành · ${statsData.rentRequestsByStatus?.pending ?? 0} chờ duyệt · ${statsData.rentRequestsByStatus?.cancelled ?? 0} đã từ chối`
+        : `${MockRentRequests.filter(r => r.status === 'inprogress').length} đang thương lượng`,
       icon: <ClipboardList className="h-5 w-5" />,
       color: 'var(--color-success, #22c55e)',
     },
-  ], []);
+  ], [statsData]);
 
   // ── Recent pending warehouses ──────────────────────────────────────────────
   const pendingWarehouses = useMemo(
@@ -84,15 +95,15 @@ export default function EmployeeDashboard() {
       icon: <Warehouse className="h-8 w-8" />,
       color: 'var(--color-secondary, #7c3aed)',
       title: 'Quản lý kho lạnh',
-      desc: `${MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động · ${MockWarehouses.filter(w => w.status === 'pending').length} chờ duyệt`,
-      badge: MockWarehouses.filter(w => w.status === 'pending').length || null,
+      desc: `${statsData ? statsData.warehousesByStatus?.active ?? 0 : MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động · ${statsData ? statsData.warehousesByStatus?.pending ?? 0 : MockWarehouses.filter(w => w.status === 'pending').length} chờ duyệt`,
+      badge: statsData ? (statsData.warehousesByStatus?.pending ?? 0) || null : MockWarehouses.filter(w => w.status === 'pending').length || null,
       path: '/employee/warehouses',
     },
     {
       icon: <Database className="h-8 w-8" />,
       color: '#0891b2',
       title: 'Data Migration',
-      desc: 'Migrate & quản lý dữ liệu mock',
+      desc: `Dữ liệu: ${statsData ? (statsData.usersCount ?? MockUsers.length) : MockUsers.length} users`,
       badge: null,
       path: '/employee/data-migration',
     },
@@ -141,14 +152,14 @@ export default function EmployeeDashboard() {
 
 
         {/* Pending warehouses alert */}
-        {pendingWarehouses.length > 0 && (
+        {(statsData ? (statsData.warehousesByStatus?.pending ?? 0) > 0 : pendingWarehouses.length > 0) && (
           <div className="mb-6 border border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]"
               style={{ background: 'var(--color-bg-secondary)' }}>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" style={{ color: 'var(--color-warning, #f59e0b)' }} />
                 <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                  Kho đang chờ duyệt ({MockWarehouses.filter(w => w.status === 'pending').length})
+                  Kho đang chờ duyệt ({statsData ? (statsData.warehousesByStatus?.pending ?? 0) : MockWarehouses.filter(w => w.status === 'pending').length})
                 </span>
               </div>
               <button onClick={() => navigate('/employee/warehouses')}

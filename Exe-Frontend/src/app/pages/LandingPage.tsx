@@ -10,9 +10,26 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-
+import { useEffect } from "react";
 export default function LandingPage() {
   const navigate = useNavigate();
+
+  // If a user is already logged in, redirect them to their dashboard
+  // (roles stored as uppercase in localStorage via `getUser()` elsewhere)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const user = JSON.parse(stored);
+        const role = user?.role ? (user.role as string).toLowerCase() : null;
+        if (role === 'renter') navigate('/renter');
+        else if (role === 'owner' || role === 'warehouse') navigate('/warehouse');
+        else if (role === 'employee') navigate('/employee');
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">

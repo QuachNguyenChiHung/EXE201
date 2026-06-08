@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
@@ -11,6 +11,7 @@ import WarehouseRowComp from '../../components/employee/WarehouseRow';
 import ApproveModal from '../../components/employee/ApproveModal';
 import ConfirmModal from '../../components/employee/ConfirmModal';
 import useWarehouses from '../../hooks/useWarehouses';
+import { getUser } from '/src/utils/auth';
 
 // ── Types & constants ───────────────────────────────────────────────────────
 type StatusFilter = 'all' | CompositeWarehouse['status'];
@@ -23,14 +24,20 @@ const TABS: { key: StatusFilter; label: string }[] = [
 
 export default function ManageWarehouses() {
   const navigate = useNavigate();
-  const { users } = useApp();
 
   const [tab, setTab] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [confirmModal, setConfirmModal] = useState<{
     title: string; message: string; confirmLabel: string; confirmColor: string; onConfirm: () => void;
   } | null>(null);
+  const user = getUser();
+  useEffect(() => {
+    if (!user || user.role !== 'EMPLOYEE') {
+      navigate('/login');
+      return;
+    }
 
+  }, [user, navigate]);
   const {
     certTypes, certTypesLoading, approveTarget, setApproveTarget,
     ownerEmailMap, filtered, handleApprove, handleDeactivate, handleDeleteImmediate, handleApproveConfirm,

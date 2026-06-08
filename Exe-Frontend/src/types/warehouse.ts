@@ -52,6 +52,10 @@ export interface CertificationType {
   label: string;
   update: string;
   law_references: string;
+  // Optional fields matching backend DTO
+  certID?: string;
+  labelDesc?: string;
+  pdfLink?: string | null;
 }
 
 export interface CertificationSubmit {

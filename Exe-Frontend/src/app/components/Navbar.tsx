@@ -99,6 +99,9 @@ export function Navbar() {
   const [user, setUserState] = useState(getUser());
   const [bookmarkCount, setBookmarkCount] = useState(getBookmarks().length);
 
+  // Normalize role to lowercase for consistent comparisons (stored roles are uppercase)
+  const role = user?.role ? (user.role as string).toLowerCase() : null;
+
   useEffect(() => {
     const handleStorageChange = () => {
       setUserState(getUser());
@@ -120,11 +123,16 @@ export function Navbar() {
 
   const getDashboardLink = () => {
     if (!user) return "/";
-    switch (user.role) {
-      case "renter": return "/renter";
-      case "warehouse": return "/warehouse";
-      case "employee": return "/employee";
-      default: return "/";
+    switch (role) {
+      case "renter":
+        return "/renter";
+      case "owner":
+      case "warehouse":
+        return "/warehouse";
+      case "employee":
+        return "/employee";
+      default:
+        return "/";
     }
   };
 
@@ -169,7 +177,7 @@ export function Navbar() {
               </NavBtn>
 
               {/* ── Renter nav ── */}
-              {user.role === "renter" && (
+              {role === "renter" && (
                 <>
                   <NavBtn
                     onClick={() => navigate("/renter/search")}
@@ -245,7 +253,7 @@ export function Navbar() {
               )}
 
               {/* ── Warehouse owner nav ── */}
-              {user.role === "warehouse" && (
+              {(role === "warehouse" || role === "owner") && (
                 <>
                   <NavBtn
                     onClick={() => navigate("/warehouse/my-warehouses")}
@@ -322,7 +330,7 @@ export function Navbar() {
                       Dashboard
                     </DropdownMenuItem>
 
-                    {user.role === "renter" && (
+                    {role === "renter" && (
                       <>
                         <DropdownMenuItem
                           onClick={() => navigate("/renter/search")}
@@ -373,7 +381,7 @@ export function Navbar() {
                       </>
                     )}
 
-                    {user.role === "warehouse" && (
+                    {(role === "warehouse" || role === "owner") && (
                       <>
                         <DropdownMenuItem
                           onClick={() => navigate("/warehouse/my-warehouses")}

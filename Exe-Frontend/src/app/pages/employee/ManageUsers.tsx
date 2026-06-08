@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
-import useUsers from '../../hooks/useUsers';
+import { useMemo } from 'react';
 import { User, UserRole } from '../../../types';
 import {
   Users, ArrowLeft, Building, Phone, Mail,
@@ -14,21 +14,23 @@ import SearchInput from '../../components/SearchInput';
 import { toast } from 'sonner';
 import { UserConversationsModal } from '../../components/AIConversationViewer';
 import UserRow from '../../components/employee/UserRow';
+import { getUser } from '/src/utils/auth';
+import { api } from '/src/services/asus_api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type RoleFilter = 'all' | UserRole;
 
 const ROLE_CFG: Record<UserRole, { label: string; color: string; icon: React.ReactNode }> = {
-  renter: { label: 'Doanh nghiệp', color: 'var(--color-primary)', icon: <Building className="h-3.5 w-3.5" /> },
-  warehouse: { label: 'Chủ kho', color: 'var(--color-secondary, #7c3aed)', icon: <Warehouse className="h-3.5 w-3.5" /> },
-  employee: { label: 'Nhân viên', color: 'var(--color-success, #22c55e)', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+  RENTER: { label: 'Doanh nghiệp', color: 'var(--color-primary)', icon: <Building className="h-3.5 w-3.5" /> },
+  OWNER: { label: 'Chủ kho', color: 'var(--color-secondary, #7c3aed)', icon: <Warehouse className="h-3.5 w-3.5" /> },
+  EMPLOYEE: { label: 'Nhân viên', color: 'var(--color-success, #22c55e)', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
 };
 
 const TABS: { key: RoleFilter; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
-  { key: 'renter', label: 'Doanh nghiệp' },
-  { key: 'warehouse', label: 'Chủ kho' },
-  { key: 'employee', label: 'Nhân viên' },
+  { key: 'RENTER', label: 'Doanh nghiệp' },
+  { key: 'OWNER', label: 'Chủ kho' },
+  { key: 'EMPLOYEE', label: 'Nhân viên' },
 ];
 
 const fmtDate = (iso: string) =>
@@ -87,25 +89,81 @@ function EditNameModal({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ManageUsers() {
   const navigate = useNavigate();
+  const user = getUser();
+  useEffect(() => {
+    if (!user || user.role !== 'EMPLOYEE') {
+      navigate('/login');
+      return;
+    }
 
+  }, [user, navigate]);
   const [tab, setTab] = useState<RoleFilter>('all');
   const [search, setSearch] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewConvUser, setViewConvUser] = useState<User | null>(null);
+  const [listUsers, setListUsers] = useState<any[]>([]);
+  const { warehouses: warehouseList, requests: requestList, adminUpdateUser } = useApp();
 
-  const { warehousesByOwner, requestsByRenter, filtered, counts, handleSaveEdit } = useUsers(tab, search);
+  const warehousesByOwner = useMemo(() =>
+    (warehouseList || []).reduce((acc: Record<number, number>, w: any) => { acc[w.id_owner || 0] = (acc[w.id_owner || 0] ?? 0) + 1; return acc }, {}),
+    [warehouseList]);
+
+  const requestsByRenter = useMemo(() =>
+    (requestList || []).reduce((acc: Record<number, number>, r: any) => { acc[r.id_renter || 0] = (acc[r.id_renter || 0] ?? 0) + 1; return acc }, {}),
+    [requestList]);
+
+  const filtered = useMemo(() => {
+    let list = listUsers as any[];
+    if (tab !== 'all') list = list.filter(u => u.role === tab);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || ((u.company?.company_name ?? '').toLowerCase().includes(q)));
+    }
+    return list;
+  }, [listUsers, tab, search]);
+
+  const counts = useMemo(() => ({
+    all: listUsers.length,
+    RENTER: listUsers.filter(u => u.role === 'RENTER').length,
+    OWNER: listUsers.filter(u => u.role === 'OWNER').length,
+    EMPLOYEE: listUsers.filter(u => u.role === 'EMPLOYEE').length,
+  }), [listUsers]);
 
   const handleSave = async (id: number, name: string, companyName: string) => {
-    // Note: Assuming handleSaveEdit accepts a partial user object that can include company info.
-    // If the backend expects a specific 'company' structure, the hook may need adjustment.
-    await handleSaveEdit(id, { 
-        name, 
-        company: companyName ? { ...editingUser?.company, company_name: companyName, id_company: editingUser?.company?.id_company ?? 0, user_id: id, company_tax_code: editingUser?.company?.company_tax_code ?? '' } as any : undefined 
-    });
-    toast.success('Đã cập nhật thông tin người dùng.');
-    setEditingUser(null);
+    try {
+      await adminUpdateUser(id, {
+        name,
+        company: companyName ? { ...editingUser?.company, company_name: companyName, id_company: editingUser?.company?.id_company ?? 0, user_id: id, company_tax_code: editingUser?.company?.company_tax_code ?? '' } as any : undefined
+      });
+      toast.success('Đã cập nhật thông tin người dùng.');
+      setEditingUser(null);
+      // update local list optimistically
+      setListUsers(prev => prev.map(u => u.id_user === id ? { ...u, name, company: companyName ? { company_name: companyName } : u.company } : u));
+    } catch (err) {
+      console.error(err);
+      toast.error('Cập nhật thất bại');
+    }
   }
-
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/employees/users');
+        console.log('Fetched users:', res.data);
+        // Map API shape to app User shape
+        const mapped = (res.data || []).map((u: any) => ({
+          id_user: u.id,
+          email: u.email,
+          name: u.fullName ?? u.name ?? '',
+          role: u.role,
+          status: u.status,
+          company: u.companyName ? { company_name: u.companyName, id_company: 0, user_id: u.id, company_tax_code: '' } : undefined,
+        }));
+        setListUsers(mapped);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    })();
+  }, []);
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Navbar />
