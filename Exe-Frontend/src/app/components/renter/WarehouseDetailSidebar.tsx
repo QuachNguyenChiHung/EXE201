@@ -89,7 +89,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
             navigate("/login");
             return;
         }
-        if (user.role !== 'renter') {
+        if (user.role !== 'RENTER') {
             toast.error("Chỉ tài khoản doanh nghiệp mới có thể gửi yêu cầu thuê kho");
             return;
         }

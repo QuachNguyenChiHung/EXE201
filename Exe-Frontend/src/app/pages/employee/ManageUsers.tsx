@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { UserConversationsModal } from '../../components/AIConversationViewer';
 import UserRow from '../../components/employee/UserRow';
 import { getUser } from '/src/utils/auth';
-import { api } from '/src/services/asus_api';
+import { employeeService } from '../../../services/employeeService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type RoleFilter = 'all' | UserRole;
@@ -147,10 +147,10 @@ export default function ManageUsers() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get('/employees/users');
-        console.log('Fetched users:', res.data);
+        const res = await employeeService.getUsers();
+        console.log('Fetched users:', res);
         // Map API shape to app User shape
-        const mapped = (res.data || []).map((u: any) => ({
+        const mapped = (res || []).map((u: any) => ({
           id_user: u.id,
           email: u.email,
           name: u.fullName ?? u.name ?? '',

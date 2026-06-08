@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import { Warehouse } from "lucide-react";
-import { SystemStatus } from "./SystemStatus";
 
 export function Footer() {
   return (
@@ -104,8 +103,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* System status */}
-        <SystemStatus />
       </div>
     </footer>
   );

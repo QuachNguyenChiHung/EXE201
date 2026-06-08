@@ -33,7 +33,6 @@ import SubscriptionManagement from './pages/warehouse/SubscriptionManagement';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import ManageWarehouses from './pages/employee/ManageWarehouses';
 import ManageUsers from './pages/employee/ManageUsers';
-import DataMigration from './pages/employee/DataMigration';
 import ManageCertTypes from './pages/employee/ManageCertTypes';
 
 // Shared
@@ -106,7 +105,6 @@ export const router = createBrowserRouter([
       { path: '/employee', Component: EmployeeDashboard },
       { path: '/employee/warehouses', Component: ManageWarehouses },
       { path: '/employee/users', Component: ManageUsers },
-      { path: '/employee/data-migration', Component: DataMigration },
       { path: '/employee/cert-types', Component: ManageCertTypes },
     ],
   },

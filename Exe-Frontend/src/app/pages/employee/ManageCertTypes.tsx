@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
-import { api } from '../../../services/asus_api';
+import { employeeService } from '../../../services/employeeService';
 import { CertificationType } from '../../../types';
 import {
-  ArrowLeft, Plus, Pencil, Trash2, Shield,
-  X, Save, Loader2, AlertCircle,
+  ArrowLeft, Plus, Pencil, Shield,
+  Save, Loader2,
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import SearchInput from '../../components/SearchInput';
@@ -26,7 +26,6 @@ export default function ManageCertTypes() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +40,8 @@ export default function ManageCertTypes() {
   const fetchCerts = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/certs');
-      const items = (res.data || []).map((d: any, idx: number) => ({
+      const res = await employeeService.getCertTypes();
+      const items = (res || []).map((d: any, idx: number) => ({
         id_certification: d.id_certification ?? (d.certID ? Number(d.certID) : idx + 1),
         certID: d.certID ?? String(d.id_certification ?? (d.certID ? Number(d.certID) : idx + 1)),
         label: d.label,
@@ -69,16 +68,22 @@ export default function ManageCertTypes() {
 
   }, [user, navigate]);
   const openEdit = (ct: CertificationType) => {
+    let updateValue = new Date().toISOString().split('T')[0];
+    if (ct.update) {
+      if (typeof ct.update === 'string' && /\d{2}\/\d{2}\/\d{4}/.test(ct.update)) {
+        updateValue = ct.update.split('/').reverse().join('-');
+      } else {
+        try {
+          updateValue = new Date(ct.update).toISOString().split('T')[0];
+        } catch (e) { }
+      }
+    }
+
     setForm({
       label: ct.label,
       law_references: ct.law_references,
       pdfLink: (ct as any).pdfLink || '',
-      update: ct.update.split && typeof ct.update === 'string' && ct.update.split('T').length ? ct.update.split('T')[0] : (
-        // if update already in dd/mm/yyyy, convert to yyyy-mm-dd for input value
-        (typeof ct.update === 'string' && /\d{2}\/\d{2}\/\d{4}/.test(ct.update))
-          ? ct.update.split('/').reverse().join('-')
-          : (new Date(ct.update).toISOString().split('T')[0])
-      )
+      update: updateValue,
     });
     setEditId(ct.id_certification);
     setShowForm(true);
@@ -86,21 +91,12 @@ export default function ManageCertTypes() {
 
   const toDDMMYYYY = (value: string) => {
     if (!value) return '';
-    // if yyyy-mm-dd
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       const [y, m, d] = value.split('-');
       return `${d}/${m}/${y}`;
     }
-    // if ISO datetime
-    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
-      return new Date(value).toLocaleDateString('vi-VN');
-    }
-    // if already dd/mm/yyyy
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
-    // fallback
-    const parsed = new Date(value);
-    return isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('vi-VN');
-  }
+    return value;
+  };
 
   const displayDate = (value: string) => {
     // ensure display uses dd/mm/yyyy
@@ -123,20 +119,17 @@ export default function ManageCertTypes() {
           pdfLink: (form as any).pdfLink || existing?.pdfLink || null,
         };
         console.log(`Updating cert ${certID} with payload: ${JSON.stringify(payload)}`);
-        await api.patch(`/certs/${certID}`, payload);
+        await employeeService.updateCertType(certID, payload);
         toast.success('Đã cập nhật loại chứng nhận');
       } else {
         // create
-        const id_certification = certTypes.length > 0 ? Math.max(...certTypes.map(c => c.id_certification)) + 1 : 1;
-        const certID = String(id_certification);
         const payload = {
-          certID,
           label: form.label,
           labelDesc: form.law_references,
           update: toDDMMYYYY(form.update),
           pdfLink: (form as any).pdfLink || null,
         };
-        await api.post('/certs', payload);
+        await employeeService.createCertType(payload);
         toast.success('Đã thêm loại chứng nhận mới');
       }
       await fetchCerts();
@@ -147,18 +140,7 @@ export default function ManageCertTypes() {
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      const existing = certTypes.find(c => c.id_certification === id);
-      const certID = existing?.certID ?? String(id);
-      await api.delete(`/certs/${certID}`);
-      toast.success('Đã xóa loại chứng nhận');
-      await fetchCerts();
-    } catch (err: any) {
-      console.error('Delete failed', err);
-      toast.error(`Lỗi xóa: ${err?.message || err}`);
-    } finally { setDeleteConfirm(null); }
-  };
+
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
@@ -241,11 +223,7 @@ export default function ManageCertTypes() {
                     title="Chỉnh sửa">
                     <Pencil className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
                   </button>
-                  <button onClick={() => setDeleteConfirm(ct.id_certification)}
-                    className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-error)] transition-colors"
-                    title="Xóa">
-                    <Trash2 className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
-                  </button>
+
                 </div>
               </div>
             ))}
@@ -331,28 +309,7 @@ export default function ManageCertTypes() {
         </Modal>
       )}
 
-      {/* ── Delete confirm ──────────────────────────────────────────────────── */}
-      {deleteConfirm !== null && (
-        <Modal title="Xóa loại chứng nhận" onClose={() => setDeleteConfirm(null)} className="max-w-sm" footer={(
-          <div className="px-0 pb-0 flex gap-3">
-            <button onClick={() => setDeleteConfirm(null)}
-              className="flex-1 py-2 text-sm border border-[var(--color-border)]"
-              style={{ color: 'var(--color-text-secondary)' }}>Huỷ</button>
-            <button onClick={() => handleDelete(deleteConfirm)}
-              className="flex-1 py-2 text-sm text-white"
-              style={{ background: 'var(--color-error, #ef4444)' }}>Xóa vĩnh viễn</button>
-          </div>
-        )}>
-          <div className="px-0 py-3">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'var(--color-error, #ef4444)' }} />
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                Loại chứng nhận này sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.
-              </p>
-            </div>
-          </div>
-        </Modal>
-      )}
+
     </div>
   );
 }

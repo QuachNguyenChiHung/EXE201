@@ -46,7 +46,7 @@ export default function RentedProperties() {
   );
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'renter') navigate('/login');
+    if (!isAuthenticated || user?.role !== 'RENTER') navigate('/login');
   }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
@@ -119,12 +119,12 @@ export default function RentedProperties() {
       )}
 
       {ratingContract && (() => {
-        const wh = warehouses[ratingContract.warehouseId?.toString() || ''];
-        const existingRating = allRatings.find((r: any) => r.warehouse_id?.toString() === ratingContract.warehouseId?.toString() && r.id_renter === user?.id_user);
+        const wh = warehouses[ratingContract.id_warehouse?.toString() || ''];
+        const existingRating = allRatings.find((r: any) => r.warehouse_id?.toString() === ratingContract.id_warehouse?.toString() && r.id_renter === user?.id_user);
         return (
           <RateWarehouseModal
-            warehouseId={ratingContract.warehouseId?.toString() || ''}
-            warehouseName={wh?.name ?? `Kho #${ratingContract.warehouseId}`}
+            warehouseId={ratingContract.id_warehouse?.toString() || ''}
+            warehouseName={wh?.name ?? `Kho #${ratingContract.id_warehouse}`}
             contractId={ratingContract.id_contract.toString()}
             contractRef={ratingContract.contractRef || ''}
             existingRating={existingRating}
@@ -199,8 +199,8 @@ export default function RentedProperties() {
               <RentedPropertyCard
                 key={contract.id_contract}
                 contract={contract}
-                warehouse={warehouses[contract.warehouseId?.toString() || '']}
-                rating={allRatings.find((r: any) => r.warehouse_id?.toString() === contract.warehouseId?.toString() && r.id_renter === user?.id_user)}
+                warehouse={warehouses[contract.id_warehouse?.toString() || '']}
+                rating={allRatings.find((r: any) => r.warehouse_id?.toString() === contract.id_warehouse?.toString() && r.id_renter === user?.id_user)}
                 onViewContract={() => setViewingContract(contract)}
                 onRejectContract={() => setRejectingContract(contract)}
                 onCancelContract={() => handleCancel(contract.id_contract)}

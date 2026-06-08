@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Clock, CheckCircle, XCircle, Trash2, MapPin, Package, Thermometer, DollarSign, Shield, LayoutGrid, ChevronDown, ChevronUp, AlertCircle, Building } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types';
 
-const STATUS_CFG: Record<CompositeWarehouse['status'], { label: string; color: string }> = {
-    pending: { label: 'Chờ duyệt', color: 'var(--color-warning, #f59e0b)' },
-    active: { label: 'Đang hoạt động', color: 'var(--color-success, #22c55e)' },
-    inactive: { label: 'Đã ẩn / vô hiệu', color: 'var(--color-text-muted)' },
+const STATUS_CFG: Record<string, { label: string; color: string }> = {
+    PENDING: { label: 'Chờ duyệt', color: 'var(--color-warning, #f59e0b)' },
+    APPROVED: { label: 'Đang hoạt động', color: 'var(--color-success, #22c55e)' },
+    HIDDEN: { label: 'Đã ẩn / vô hiệu', color: 'var(--color-text-muted)' },
+    REJECTED: { label: 'Đã từ chối', color: 'var(--color-error, #ef4444)' },
 };
 
 const fmtCurrency = (n: number) =>
@@ -18,16 +19,25 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
     onDeactivate: (w: CompositeWarehouse) => void;
     onDelete: (w: CompositeWarehouse) => void;
 }) {
-    const [expanded, setExpanded] = useState(warehouse.status === 'pending');
-    const cfg = STATUS_CFG[warehouse.status];
+    const rawStatus = String(warehouse.status || '').toUpperCase();
+    const isPending = rawStatus === 'PENDING';
+    const isApproved = rawStatus === 'APPROVED' || rawStatus === 'ACTIVE';
+    const isHidden = rawStatus === 'HIDDEN' || rawStatus === 'INACTIVE';
+
+    let lookupKey = rawStatus;
+    if (rawStatus === 'ACTIVE') lookupKey = 'APPROVED';
+    if (rawStatus === 'INACTIVE') lookupKey = 'HIDDEN';
+
+    const [expanded, setExpanded] = useState(isPending);
+    const cfg = STATUS_CFG[lookupKey] || { label: warehouse.status || 'Unknown', color: 'var(--color-text-muted)' };
 
     return (
         <div className="border border-[var(--color-border)] bg-[var(--color-surface)]" style={{ borderLeft: `3px solid ${cfg.color}` }}>
             <div className="flex items-center gap-3 px-4 py-3">
-                <span className="inline-flex items-center gap-1 text-white text-[11px] px-2 py-0.5 shrink-0" style={{ background: cfg.color }}>
-                    {warehouse.status === 'pending' && <Clock className="h-3 w-3" />}
-                    {warehouse.status === 'active' && <CheckCircle className="h-3 w-3" />}
-                    {warehouse.status === 'inactive' && <XCircle className="h-3 w-3" />}
+                <span className="inline-flex items-center gap-1 text-white text-[11px] px-2 py-0.5 shrink-0 capitalize" style={{ background: cfg.color }}>
+                    {isPending && <Clock className="h-3 w-3" />}
+                    {isApproved && <CheckCircle className="h-3 w-3" />}
+                    {isHidden && <XCircle className="h-3 w-3" />}
                     {cfg.label}
                 </span>
 
@@ -40,17 +50,17 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {warehouse.status === 'pending' && (
+                    {isPending && (
                         <button onClick={() => onApprove(warehouse)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 text-white transition-colors" style={{ background: 'var(--color-success, #22c55e)' }}>
                             <CheckCircle className="h-3.5 w-3.5" /> Duyệt
                         </button>
                     )}
-                    {warehouse.status === 'active' && (
+                    {isApproved && (
                         <button onClick={() => onDeactivate(warehouse)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-[var(--color-border)] hover:border-[var(--color-warning)] transition-colors" style={{ color: 'var(--color-text-secondary)' }}>
                             <XCircle className="h-3.5 w-3.5" /> Tạm ẩn
                         </button>
                     )}
-                    {warehouse.status === 'inactive' && (
+                    {isHidden && (
                         <button onClick={() => onApprove(warehouse)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-[var(--color-border)] hover:border-[var(--color-success)] transition-colors" style={{ color: 'var(--color-text-secondary)' }}>
                             <CheckCircle className="h-3.5 w-3.5" /> Kích hoạt lại
                         </button>
@@ -66,7 +76,7 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onDeact
 
             {expanded && (
                 <div className="border-t border-[var(--color-border)] px-4 py-4 space-y-4" style={{ background: 'var(--color-bg-secondary)' }}>
-                    {warehouse.status === 'pending' && (
+                    {isPending && (
                         <div className="flex items-start gap-2 px-3 py-2 border text-sm" style={{ background: 'rgba(245,158,11,0.07)', borderColor: 'rgba(245,158,11,0.3)', color: 'var(--color-text)' }}>
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: 'var(--color-warning, #f59e0b)' }} />
                             <span>Kho lạnh này đang chờ bạn xem xét và duyệt. Hãy kiểm tra thông tin kỹ trước khi kích hoạt.</span>

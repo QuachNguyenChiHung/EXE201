@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
-import { CompositeWarehouse } from '../../../types';
-import {
-  ArrowLeft,
-} from 'lucide-react';
+import { CompositeWarehouse, CertificationType, CertificationSubmit } from '../../../types';
+import { ArrowLeft } from 'lucide-react';
 import SearchInput from '../../components/SearchInput';
 import WarehouseRowComp from '../../components/employee/WarehouseRow';
 import ApproveModal from '../../components/employee/ApproveModal';
 import ConfirmModal from '../../components/employee/ConfirmModal';
-import useWarehouses from '../../hooks/useWarehouses';
 import { getUser } from '/src/utils/auth';
+import { employeeService } from '../../../services/employeeService';
+import { certTypesAPI } from '../../../services/apiClient';
+import { toast } from 'sonner';
 
 // ── Types & constants ───────────────────────────────────────────────────────
 type StatusFilter = 'all' | CompositeWarehouse['status'];
@@ -24,24 +24,119 @@ const TABS: { key: StatusFilter; label: string }[] = [
 
 export default function ManageWarehouses() {
   const navigate = useNavigate();
+  const { users } = useApp();
 
   const [tab, setTab] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [warehouses, setWarehouses] = useState<CompositeWarehouse[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
+  const [certTypesLoading, setCertTypesLoading] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<CompositeWarehouse | null>(null);
+
   const [confirmModal, setConfirmModal] = useState<{
     title: string; message: string; confirmLabel: string; confirmColor: string; onConfirm: () => void;
   } | null>(null);
+
   const user = getUser();
   useEffect(() => {
     if (!user || user.role !== 'EMPLOYEE') {
       navigate('/login');
       return;
     }
-
   }, [user, navigate]);
-  const {
-    certTypes, certTypesLoading, approveTarget, setApproveTarget,
-    ownerEmailMap, filtered, handleApprove, handleDeactivate, handleDeleteImmediate, handleApproveConfirm,
-  } = useWarehouses(tab, search);
+
+  useEffect(() => {
+    let mounted = true;
+    setCertTypesLoading(true);
+    certTypesAPI.getAll().then(res => { if (mounted) setCertTypes(res || []); }).catch(() => { }).finally(() => { if (mounted) setCertTypesLoading(false); });
+    return () => { mounted = false; };
+  }, []);
+
+  const fetchWarehouses = async () => {
+    setLoading(true);
+    try {
+      let data: any[] = [];
+      if (tab === 'all') {
+        data = await employeeService.getAllWarehouses();
+      } else if (tab === 'pending') {
+        data = await employeeService.getPendingWarehouses();
+      } else if (tab === 'active') {
+        data = await employeeService.getAcceptedWarehouses();
+      } else if (tab === 'inactive') {
+        data = await employeeService.getHiddenWarehouses();
+      }
+
+      const mappedData = (data || []).map((w: any) => {
+        let st = w.status;
+        if (st === 'PENDING') st = 'pending';
+        if (st === 'APPROVED') st = 'active';
+        if (st === 'HIDDEN') st = 'inactive';
+        if (st === 'REJECTED') st = 'rejected';
+        return { ...w, status: st };
+      });
+
+      setWarehouses(mappedData);
+    } catch (err: any) {
+      console.error('Failed to fetch warehouses', err);
+      toast.error('Không tải được danh sách kho');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWarehouses();
+  }, [tab]);
+
+  const ownerEmailMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    users.forEach(u => { if (u.id_user) m[u.id_user] = u.email || ''; });
+    return m;
+  }, [users]);
+
+  const filtered = useMemo(() => {
+    if (!search) return warehouses;
+    const q = search.toLowerCase();
+    return warehouses.filter(w =>
+      w.name.toLowerCase().includes(q) || (w.location_province || '').toLowerCase().includes(q)
+    );
+  }, [warehouses, search]);
+
+  const handleApprove = (w: CompositeWarehouse) => setApproveTarget(w);
+
+  const handleDeactivate = async (w: CompositeWarehouse) => {
+    try {
+      await employeeService.hideWarehouse(w.id_warehouse);
+      toast.success('Đã ẩn kho');
+      fetchWarehouses();
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi ẩn kho');
+    }
+  };
+
+  const handleDeleteImmediate = async (w: CompositeWarehouse) => {
+    try {
+      await employeeService.rejectWarehouse(w.id_warehouse);
+      toast.success('Đã xoá / từ chối kho');
+      fetchWarehouses();
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi xoá kho');
+    }
+  };
+
+  const handleApproveConfirm = async (selectedCerts: CertificationSubmit[]) => {
+    if (!approveTarget) return;
+    try {
+      await employeeService.acceptWarehouse(approveTarget.id_warehouse);
+      toast.success('Kho đã được duyệt');
+      setApproveTarget(null);
+      fetchWarehouses();
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi duyệt kho');
+    }
+  };
 
   return (
     <div>

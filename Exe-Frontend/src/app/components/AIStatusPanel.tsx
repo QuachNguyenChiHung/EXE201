@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { aiAPI } from "../../services/apiClient";
-import type { AIStatusResult } from "../../services/apiClient";
+import type { AIStatusResult } from "../../types/api";
 import {
   Bot,
   CheckCircle,

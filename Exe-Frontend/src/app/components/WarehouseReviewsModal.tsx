@@ -17,12 +17,12 @@ const STAR_LABELS: Record<number, string> = {
 };
 
 export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: Props) {
-  const { ratings: allRatings } = useApp();
+  const { ratings: allRatings, users } = useApp();
 
   const ratings = allRatings
     .filter(r => r.warehouse_id === warehouseId)
     .slice() // avoid mutating
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => (b.id_rating || 0) - (a.id_rating || 0));
 
   const count = ratings.length;
   const avg = count > 0 ? ratings.reduce((s, r) => s + r.rate, 0) / count : 0;
@@ -126,8 +126,12 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
 
               {/* Review list */}
               <div className="divide-y divide-[var(--color-border)]">
-                {ratings.map(rating => (
-                  <div key={rating.id} className="px-6 py-4">
+                {ratings.map(rating => {
+                  const reviewer = users.find(u => u.id_user === rating.id_renter);
+                  const renterName = reviewer?.name || 'Khách thuê';
+                  const renterCompany = reviewer?.company?.company_name || '';
+                  return (
+                  <div key={rating.id_rating} className="px-6 py-4">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       {/* Reviewer info */}
                       <div className="flex items-start gap-2.5 min-w-0">
@@ -139,17 +143,17 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
                             fontWeight: 700,
                           }}
                         >
-                          {rating.renterName.charAt(0).toUpperCase()}
+                          {renterName.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                            {rating.renterName}
+                            {renterName}
                           </p>
-                          {rating.renterCompany && (
+                          {renterCompany && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <Building className="h-3 w-3 shrink-0" style={{ color: 'var(--color-text-muted)' }} />
                               <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>
-                                {rating.renterCompany}
+                                {renterCompany}
                               </p>
                             </div>
                           )}
@@ -164,8 +168,8 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
                               key={n}
                               className="h-3.5 w-3.5"
                               style={{
-                                color: n <= rating.stars ? '#f59e0b' : 'var(--color-border)',
-                                fill: n <= rating.stars ? '#f59e0b' : 'transparent',
+                                color: n <= rating.rate ? '#f59e0b' : 'var(--color-border)',
+                                fill: n <= rating.rate ? '#f59e0b' : 'transparent',
                               }}
                             />
                           ))}
@@ -173,13 +177,13 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
                         <span
                           className="text-xs px-1.5 py-0.5"
                           style={{
-                            background: rating.stars >= 4 ? 'rgba(34,197,94,0.1)' : rating.stars === 3 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                            color: rating.stars >= 4 ? 'var(--color-success)' : rating.stars === 3 ? '#d97706' : 'var(--color-error)',
+                            background: rating.rate >= 4 ? 'rgba(34,197,94,0.1)' : rating.rate === 3 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                            color: rating.rate >= 4 ? 'var(--color-success)' : rating.rate === 3 ? '#d97706' : 'var(--color-error)',
                             fontWeight: 600,
                             fontSize: '0.65rem',
                           }}
                         >
-                          {STAR_LABELS[rating.stars]}
+                          {STAR_LABELS[rating.rate]}
                         </span>
                       </div>
                     </div>
@@ -198,19 +202,12 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
                       </p>
                     )}
 
-                    {/* Timestamp */}
+                    {/* Timestamp (Mocked as no date in Rating yet) */}
                     <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
-                      {new Date(rating.createdAt).toLocaleDateString('vi-VN', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                      {rating.updatedAt !== rating.createdAt && (
-                        <span> · <em>Đã chỉnh sửa</em></span>
-                      )}
+                      Gần đây
                     </p>
                   </div>
-                ))}
+                )})}
               </div>
             </>
           )}

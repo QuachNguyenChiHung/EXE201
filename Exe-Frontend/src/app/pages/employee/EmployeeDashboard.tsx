@@ -5,9 +5,9 @@ import { getUser } from '../../../utils/auth';
 import { MockUsers } from '../../../data/mockUsers';
 import { MockWarehouseData as MockWarehouses } from '../../../data/mockWarehouses';
 import { MockCompositeRentRequests as MockRentRequests } from '../../../data/mockRequests';
-import { api } from '../../../services/asus_api';
 import { contractsAPI } from '../../../services/apiClient';
-import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Database, Shield } from 'lucide-react';
+import { employeeService } from '../../../services/employeeService';
+import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Shield } from 'lucide-react';
 import { AIStatusPanel } from '../../components/AIStatusPanel';
 import type { CompositeContract } from '../../../types';
 
@@ -28,10 +28,10 @@ export default function EmployeeDashboard() {
       .catch(err => console.error('Failed to load contracts:', err));
 
     // fetch employee statistics
-    api.get('/employees/statistic')
-      .then(r => { setStatsData(r.data); console.log('Employee stats data:', r.data); })
+    employeeService.getStatistics()
+      .then(r => setStatsData(r))
       .catch(err => console.error('Failed to load statistics:', err));
-  }, [user, navigate]);
+  }, [user?.role, navigate]);
 
   // ── Stats from mock data ──────────────────────────────────────────────────
   const stats = useMemo(() => [
@@ -98,14 +98,6 @@ export default function EmployeeDashboard() {
       desc: `${statsData ? statsData.warehousesByStatus?.active ?? 0 : MockWarehouses.filter(w => w.status === 'active').length} đang hoạt động · ${statsData ? statsData.warehousesByStatus?.pending ?? 0 : MockWarehouses.filter(w => w.status === 'pending').length} chờ duyệt`,
       badge: statsData ? (statsData.warehousesByStatus?.pending ?? 0) || null : MockWarehouses.filter(w => w.status === 'pending').length || null,
       path: '/employee/warehouses',
-    },
-    {
-      icon: <Database className="h-8 w-8" />,
-      color: '#0891b2',
-      title: 'Data Migration',
-      desc: `Dữ liệu: ${statsData ? (statsData.usersCount ?? MockUsers.length) : MockUsers.length} users`,
-      badge: null,
-      path: '/employee/data-migration',
     },
     {
       icon: <Shield className="h-8 w-8" />,

@@ -125,18 +125,7 @@ export const bookmarksAPI = {
 };
 
 // ── Seed endpoints (mock implementation) ──────────────────────────────────────
-export interface SeedCheckResult {
-  seeded: boolean;
-  meta: { ts: string; counts: Record<string, number>; dataVersion?: string } | null;
-}
-
-export interface SeedPayload {
-  users: User[];
-  warehouses: CompositeWarehouse[];
-  requests: CompositeRentRequest[];
-  contracts: CompositeContract[];
-  ratings: Rating[];
-}
+import { SeedCheckResult, SeedPayload } from '../types';
 
 let seeded = false;
 let seedMeta: { ts: string; counts: Record<string, number>; dataVersion?: string } | null = null;
@@ -236,28 +225,7 @@ export const storageAPI = {
 };
 
 // ── AI Chat endpoint (mock implementation) ────────────────────────────────────
-export interface AIRequestPayload {
-  prompt: string;
-  criteria: Record<string, string[]>;
-  matchingWarehouses: any[];
-  conversationHistory: { role: "user" | "ai"; content: string }[];
-  isInitialHandshake: boolean;
-  hasCriteria: boolean;
-}
-
-export interface AIResponsePayload {
-  text: string;
-  refinedWarehouseIds?: string[];
-  usage?: { input_tokens: number; output_tokens: number };
-}
-
-export interface AIStatusResult {
-  model: string;
-  keyConfigured: boolean;
-  apiReachable: boolean;
-  latencyMs: number | null;
-  error: string | null;
-}
+import { AIRequestPayload, AIResponsePayload, AIStatusResult } from '../types';
 
 let conversations: CompositeAiConversations[] = [];
 

@@ -9,15 +9,15 @@ interface Props {
 export function ProtectedRoute({ allowedRoles }: Props) {
   const user = getUser();
 
-  if (!user) {
-    return <Navigate to="/" replace />;
+  if (!user || !(user as any).token) {
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     const homePaths: Record<UserRole, string> = {
-      renter: '/renter',
-      warehouse: '/warehouse',
-      employee: '/employee',
+      RENTER: '/renter',
+      OWNER: '/warehouse',
+      EMPLOYEE: '/employee',
     };
     return <Navigate to={homePaths[user.role] ?? '/'} replace />;
   }
