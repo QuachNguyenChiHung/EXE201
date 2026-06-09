@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router';
-import { authAPI } from '../../services/apiClient';
-import { setUser, setBookmarks } from '../../utils/auth';
+import { authService, RegisterRequestDTO } from '../../services/authService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -45,31 +44,19 @@ export default function RegisterPage() {
     setAuthError(null);
 
     try {
-      const { confirmPassword: _c, ...payload } = formData;
-      const newUser: User = {
-        id_user: Date.now(),
-        name: payload.name,
-        email: payload.email,
-        hash_password: payload.password,
-        phone: payload.phone,
+      const payload: RegisterRequestDTO = {
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.name,
+        phone: formData.phone,
         role: role,
-        status: 'active',
-        create_at: new Date().toISOString(),
-        img_link: payload.img_link || undefined,
-        hash_tax_code: payload.hash_tax_code || undefined,
-        company: (payload.company_name || payload.company_tax_code) ? {
-          id_company: Date.now() + 1,
-          company_name: payload.company_name,
-          company_tax_code: payload.company_tax_code,
-        } : undefined
+        companyName: formData.company_name || undefined,
+        companyTaxCode: formData.company_tax_code || undefined,
       };
-      const user = await authAPI.register(newUser);
-      setUser(user);
-      setBookmarks([]);
-      toast.success('Đăng ký thành công! Chào mừng đến với Logicha 🎉');
-      if (role === 'RENTER') navigate('/renter');
-      else if (role === 'OWNER') navigate('/warehouse');
-      else navigate('/');
+      
+      const responseMessage = await authService.register(payload);
+      toast.success(responseMessage || 'Đăng ký thành công! Vui lòng đăng nhập.');
+      navigate('/login');
     } catch (err: any) {
       setAuthError(err?.message ?? 'Đăng ký thất bại');
       toast.error(err?.message ?? 'Đăng ký thất bại');

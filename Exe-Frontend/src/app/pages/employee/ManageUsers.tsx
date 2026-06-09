@@ -7,8 +7,12 @@ import { User, UserRole } from '../../../types';
 import {
   Users, ArrowLeft, Building, Phone, Mail,
   Warehouse, ShieldCheck, User as UserIcon, ChevronDown, ChevronUp,
-  CheckCircle, Edit2, Calendar, Sparkles,
+  CheckCircle, Edit2, Calendar, Sparkles, Activity, Loader2
 } from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import { format, subDays } from 'date-fns';
 import Modal from '../../components/Modal';
 import SearchInput from '../../components/SearchInput';
 import { toast } from 'sonner';
@@ -16,6 +20,7 @@ import { UserConversationsModal } from '../../components/AIConversationViewer';
 import UserRow from '../../components/employee/UserRow';
 import { getUser } from '/src/utils/auth';
 import { employeeService } from '../../../services/employeeService';
+import { UserDTO } from '../../../types/employee';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type RoleFilter = 'all' | UserRole;
@@ -98,10 +103,28 @@ export default function ManageUsers() {
 
   }, [user, navigate]);
   const [tab, setTab] = useState<RoleFilter>('all');
+
+  const [viewMode, setViewMode] = useState<'list' | 'activity'>('list');
   const [search, setSearch] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewConvUser, setViewConvUser] = useState<User | null>(null);
   const [listUsers, setListUsers] = useState<any[]>([]);
+  
+  // Stats state
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsByDate, setStatsByDate] = useState<any[]>([]);
+  const [statsByHour, setStatsByHour] = useState<any[]>([]);
+  
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const defaultStartStr = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+  
+  const [startDate, setStartDate] = useState(defaultStartStr);
+  const [endDate, setEndDate] = useState(todayStr);
+  const [hourlyDate, setHourlyDate] = useState(todayStr);
+
+  const [inputStartDate, setInputStartDate] = useState(defaultStartStr);
+  const [inputEndDate, setInputEndDate] = useState(todayStr);
+  const [inputHourlyDate, setInputHourlyDate] = useState(todayStr);
   const { warehouses: warehouseList, requests: requestList, adminUpdateUser } = useApp();
 
   const warehousesByOwner = useMemo(() =>
@@ -150,10 +173,10 @@ export default function ManageUsers() {
         const res = await employeeService.getUsers();
         console.log('Fetched users:', res);
         // Map API shape to app User shape
-        const mapped = (res || []).map((u: any) => ({
+        const mapped = (res || []).map((u: UserDTO) => ({
           id_user: u.id,
           email: u.email,
-          name: u.fullName ?? u.name ?? '',
+          name: u.fullName ?? '',
           role: u.role,
           status: u.status,
           company: u.companyName ? { company_name: u.companyName, id_company: 0, user_id: u.id, company_tax_code: '' } : undefined,
@@ -164,6 +187,59 @@ export default function ManageUsers() {
       }
     })();
   }, []);
+
+  // Fetch stats when viewMode or dates change
+  useEffect(() => {
+    if (viewMode === 'activity') {
+      (async () => {
+        try {
+          setStatsLoading(true);
+          
+          const [dateRes, hourRes] = await Promise.all([
+            employeeService.getActiveUsersByDate(startDate, endDate),
+            employeeService.getActiveUsersByHour(hourlyDate)
+          ]);
+
+          // Format data for Recharts
+          // The backend returns: { dates: string[], series: { role: string, data: number[] }[] }
+          // We need an array of objects: { name: '2023-10-01', OWNER: 5, RENTER: 10, total: 15 }
+          
+          const formatResponse = (res: any, isDaily: boolean) => {
+             const labels: string[] = isDaily ? (res.dates || []) : (res.hours || []);
+             const series: { role: string; data: number[] }[] = res.series || [];
+             
+             return labels.map((label: string, index: number) => {
+                 const item: any = { name: isDaily ? label : `${label}:00` };
+                 let total = 0;
+                 series.forEach(s => {
+                     const val = s.data[index] || 0;
+                     item[s.role] = val;
+                     total += val;
+                 });
+                 item.total = total;
+                 return item;
+             });
+          };
+
+          const formattedDateStats = formatResponse(dateRes, true);
+          const formattedHourStats = formatResponse(hourRes, false);
+
+          formattedDateStats.sort((a: any, b: any) => a.name.localeCompare(b.name));
+          
+          // For hours, parse as integer to sort
+          formattedHourStats.sort((a: any, b: any) => parseInt(a.name) - parseInt(b.name));
+
+          setStatsByDate(formattedDateStats);
+          setStatsByHour(formattedHourStats);
+        } catch (error) {
+          console.error('Error fetching stats:', error);
+          toast.error('Lỗi khi tải thống kê');
+        } finally {
+          setStatsLoading(false);
+        }
+      })();
+    }
+  }, [viewMode, startDate, endDate, hourlyDate]);
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Navbar />
@@ -206,33 +282,51 @@ export default function ManageUsers() {
           </div>
         </div>
 
-        {/* Role summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[var(--color-border)] mb-6">
-          {TABS.map(t => {
-            const cfg = t.key === 'all' ? null : ROLE_CFG[t.key as UserRole];
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className="bg-[var(--color-surface)] p-5 text-left hover:bg-[var(--color-bg-secondary)] transition-colors"
-                style={{ borderBottom: tab === t.key ? `2px solid var(--color-primary)` : '2px solid transparent' }}>
-                <div className="flex items-center gap-2 mb-1">
-                  {cfg && <span className="inline-flex text-white p-0.5" style={{ background: cfg.color }}>{cfg.icon}</span>}
-                  <p className="text-2xl font-extrabold" style={{ color: cfg?.color ?? 'var(--color-primary)' }}>
-                    {counts[t.key]}
-                  </p>
-                </div>
-                <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{t.label}</p>
-              </button>
-            );
-          })}
+        {/* Main Tabs */}
+        <div className="flex gap-4 border-b border-[var(--color-border)] mb-6">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors ${viewMode === 'list' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}
+          >
+            <div className="flex items-center gap-2"><Users className="h-4 w-4" /> Danh sách người dùng</div>
+          </button>
+          <button
+            onClick={() => setViewMode('activity')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors ${viewMode === 'activity' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}
+          >
+            <div className="flex items-center gap-2"><Activity className="h-4 w-4" /> Thống kê hoạt động</div>
+          </button>
         </div>
 
-        {/* Search */}
-        <div className="mb-4">
-          <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo tên, email, công ty…" />
-        </div>
+        {viewMode === 'list' ? (
+          <>
+            {/* Role summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[var(--color-border)] mb-6">
+              {TABS.map(t => {
+                const cfg = t.key === 'all' ? null : ROLE_CFG[t.key as UserRole];
+                return (
+                  <button key={t.key} onClick={() => setTab(t.key)}
+                    className="bg-[var(--color-surface)] p-5 text-left hover:bg-[var(--color-bg-secondary)] transition-colors"
+                    style={{ borderBottom: tab === t.key ? `2px solid var(--color-primary)` : '2px solid transparent' }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {cfg && <span className="inline-flex text-white p-0.5" style={{ background: cfg.color }}>{cfg.icon}</span>}
+                      <p className="text-2xl font-extrabold" style={{ color: cfg?.color ?? 'var(--color-primary)' }}>
+                        {counts[t.key]}
+                      </p>
+                    </div>
+                    <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{t.label}</p>
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-[var(--color-border)] mb-6 overflow-x-auto">
+            {/* Search */}
+            <div className="mb-4">
+              <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo tên, email, công ty…" />
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-[var(--color-border)] mb-6 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors"
@@ -274,6 +368,129 @@ export default function ManageUsers() {
                 requestCount={requestsByRenter[u.id_user] ?? 0}
               />
             ))}
+          </div>
+        )}
+          </>
+        ) : (
+          /* Activity View */
+          <div className="space-y-6">
+            {statsLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-[var(--color-text-muted)]">
+                <Loader2 className="h-8 w-8 animate-spin mb-4 text-[var(--color-primary)]" />
+                <p>Đang tải dữ liệu thống kê...</p>
+              </div>
+            ) : (
+              <>
+                {/* Active users by date */}
+                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                      <Calendar className="h-4 w-4" style={{ color: 'var(--color-primary)' }} /> Thống kê lượt truy cập theo ngày
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm">
+                      <input 
+                        type="date" 
+                        value={inputStartDate} 
+                        onChange={e => setInputStartDate(e.target.value)}
+                        max={inputEndDate}
+                        className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg)] outline-none focus:border-[var(--color-primary)] transition-colors"
+                        style={{ color: 'var(--color-text)' }}
+                      />
+                      <span className="text-[var(--color-text-muted)]">-</span>
+                      <input 
+                        type="date" 
+                        value={inputEndDate} 
+                        onChange={e => setInputEndDate(e.target.value)}
+                        max={todayStr}
+                        className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg)] outline-none focus:border-[var(--color-primary)] transition-colors"
+                        style={{ color: 'var(--color-text)' }}
+                      />
+                      <button 
+                        onClick={() => { setStartDate(inputStartDate); setEndDate(inputEndDate); }}
+                        className="px-3 py-1 rounded text-white bg-[var(--color-primary)] hover:opacity-90 transition-opacity"
+                      >
+                        Lọc
+                      </button>
+                    </div>
+                  </div>
+                  {statsByDate.length === 0 ? (
+                    <p className="text-sm text-center py-10 text-[var(--color-text-muted)]">Không có dữ liệu</p>
+                  ) : (
+                    <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={statsByDate} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                          <XAxis dataKey="name" stroke="var(--color-text-muted)" fontSize={12} tickMargin={10} minTickGap={30} />
+                          <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '4px', fontSize: '13px' }}
+                            itemStyle={{ color: 'var(--color-text)' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
+                          {Object.keys(statsByDate[0] || {}).filter(k => k !== 'name' && k !== 'total').map((key) => {
+                             const roleColorMap: any = { OWNER: 'var(--color-secondary, #7c3aed)', RENTER: 'var(--color-primary, #3b82f6)', EMPLOYEE: 'var(--color-success, #22c55e)' };
+                             const nameMap: any = { OWNER: 'Chủ kho', RENTER: 'Doanh nghiệp', EMPLOYEE: 'Nhân viên' };
+                             return (
+                               <Line key={key} type="monotone" dataKey={key} name={nameMap[key] || key} stroke={roleColorMap[key] || '#9ca3af'} strokeWidth={2} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} />
+                             );
+                          })}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+
+                {/* Active users by hour */}
+                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                      <Activity className="h-4 w-4" style={{ color: 'var(--color-primary)' }} /> Lượt truy cập theo giờ
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm">
+                      <input 
+                        type="date" 
+                        value={inputHourlyDate} 
+                        onChange={e => setInputHourlyDate(e.target.value)}
+                        max={todayStr}
+                        className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg)] outline-none focus:border-[var(--color-primary)] transition-colors"
+                        style={{ color: 'var(--color-text)' }}
+                      />
+                      <button 
+                        onClick={() => setHourlyDate(inputHourlyDate)}
+                        className="px-3 py-1 rounded text-white bg-[var(--color-primary)] hover:opacity-90 transition-opacity"
+                      >
+                        Lọc
+                      </button>
+                    </div>
+                  </div>
+                  {statsByHour.length === 0 ? (
+                    <p className="text-sm text-center py-10 text-[var(--color-text-muted)]">Không có dữ liệu</p>
+                  ) : (
+                    <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={statsByHour} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                          <XAxis dataKey="name" stroke="var(--color-text-muted)" fontSize={12} tickMargin={10} />
+                          <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '4px', fontSize: '13px' }}
+                            itemStyle={{ color: 'var(--color-text)' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
+                          {Object.keys(statsByHour[0] || {}).filter(k => k !== 'name' && k !== 'total').map((key) => {
+                             const roleColorMap: any = { OWNER: 'var(--color-secondary, #7c3aed)', RENTER: 'var(--color-primary, #3b82f6)', EMPLOYEE: 'var(--color-success, #22c55e)' };
+                             const nameMap: any = { OWNER: 'Chủ kho', RENTER: 'Doanh nghiệp', EMPLOYEE: 'Nhân viên' };
+                             return (
+                               <Line key={key} type="monotone" dataKey={key} name={nameMap[key] || key} stroke={roleColorMap[key] || '#9ca3af'} strokeWidth={2} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} />
+                             );
+                          })}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

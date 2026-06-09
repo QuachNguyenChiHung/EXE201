@@ -2,6 +2,8 @@ import { Link, useNavigate, useLocation } from "react-router";
 import { Button } from "./ui/button";
 import { useState, useEffect } from "react";
 import { getUser, setUser, getBookmarks } from "../../utils/auth";
+import { authService } from "../../services/authService";
+import { toast } from "sonner";
 import {
   Warehouse,
   User,
@@ -115,10 +117,16 @@ export function Navbar() {
     };
   }, []);
 
-  const handleLogout = () => {
-    setUser(null);
-    setUserState(null);
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setUser(null);
+      setUserState(null);
+      navigate("/");
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.error('Đăng xuất thất bại do lỗi kết nối!');
+    }
   };
 
   const getDashboardLink = () => {

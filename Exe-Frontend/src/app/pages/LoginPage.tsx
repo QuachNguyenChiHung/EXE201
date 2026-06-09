@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { authAPI, bookmarksAPI } from "../../services/apiClient";
+import { bookmarksAPI } from "../../services/apiClient";
+import { authService } from "../../services/authService";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "/src/services/asus_api";
+
 
 const DEMO_ACCOUNTS = [
   { label: "Doanh nghiệp", email: "renter@example.com", role: "renter" },
@@ -31,7 +32,7 @@ export default function LoginPage() {
     setLoading(true);
     setAuthError(null);
     try {
-      const user = (await api.post("/auth/login", { email, password })).data;
+      const user = await authService.login({ email, password });
       localStorage.setItem('user', JSON.stringify(user));
 
       toast.success("Đăng nhập thành công!");

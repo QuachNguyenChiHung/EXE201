@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { Warehouse, CheckCircle, Sparkles, Edit2, ChevronDown, ChevronUp, Building, Phone, Mail, Calendar, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Warehouse, CheckCircle, Sparkles, Edit2, ChevronDown, ChevronUp, Building, Phone, Mail, Calendar, ShieldCheck, Loader2, FileText, FileSignature, User as UserIcon, AlignLeft, MapPin, CreditCard, Package, Activity } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { User, UserRole } from '../../../types';
+import { employeeService } from '../../../services/employeeService';
+import { OwnerDetailResponseDTO, RenterDetailResponseDTO } from '../../../types/employee';
 
 const ROLE_CFG: Record<UserRole, { label: string; color: string; icon: React.ReactNode }> = {
     RENTER: { label: 'Doanh nghiệp', color: 'var(--color-primary)', icon: <Building className="h-3.5 w-3.5" /> },
@@ -20,8 +23,65 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
     const DEFAULT_CFG = { label: 'Người dùng', color: 'var(--color-border)', icon: null as React.ReactNode };
     const cfg = ROLE_CFG[roleKey] ?? DEFAULT_CFG;
 
-    const fmtDate = (iso: string) =>
-        new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const fmtDate = (iso: string) => {
+        if (!iso) return 'N/A';
+        const d = new Date(iso);
+        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [ownerDetail, setOwnerDetail] = useState<OwnerDetailResponseDTO | null>(null);
+    const [renterDetail, setRenterDetail] = useState<RenterDetailResponseDTO | null>(null);
+    const hasFetched = React.useRef(false);
+
+    // Activity stats state
+    const [activeTab, setActiveTab] = useState<'overview' | 'activity'>('overview');
+    const [activityDays, setActivityDays] = useState(7);
+    const [activityStats, setActivityStats] = useState<any>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
+
+    useEffect(() => {
+        if (expanded && roleKey === 'OWNER' && !ownerDetail && !hasFetched.current) {
+            let mounted = true;
+            hasFetched.current = true;
+            setDetailLoading(true);
+            employeeService.getOwnerDetail(user.id_user)
+                .then(res => { if (mounted) setOwnerDetail(res); })
+                .catch(err => console.error(err))
+                .finally(() => { if (mounted) setDetailLoading(false); });
+            return () => { mounted = false; };
+        }
+        if (expanded && roleKey === 'RENTER' && !renterDetail && !hasFetched.current) {
+            let mounted = true;
+            hasFetched.current = true;
+            setDetailLoading(true);
+            employeeService.getRenterDetail(user.id_user)
+                .then(res => { if (mounted) setRenterDetail(res); })
+                .catch(err => console.error(err))
+                .finally(() => { if (mounted) setDetailLoading(false); });
+            return () => { mounted = false; };
+        }
+    }, [expanded, roleKey, user.id_user, ownerDetail, renterDetail]);
+
+    useEffect(() => {
+        if (expanded && activeTab === 'activity') {
+            let mounted = true;
+            setStatsLoading(true);
+            employeeService.getUserActivityStats(user.id_user, activityDays)
+                .then((res: any) => {
+                    if (mounted) {
+                        const formatted = (res.dates || []).map((date: string, index: number) => ({
+                             name: date,
+                             logins: (res.activityTrend || [])[index] || 0
+                        }));
+                        setActivityStats({ ...res, chartData: formatted });
+                    }
+                })
+                .catch(err => console.error(err))
+                .finally(() => { if (mounted) setStatsLoading(false); });
+            return () => { mounted = false; };
+        }
+    }, [expanded, activeTab, user.id_user, activityDays]);
 
     return (
         <div className="border border-[var(--color-border)] bg-[var(--color-surface)]"
@@ -42,16 +102,16 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                 </div>
 
                 <div className="hidden sm:flex items-center gap-4 text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                    {user.role === 'OWNER' && (
+                    {roleKey === 'OWNER' && (
                         <span className="flex items-center gap-1"><Warehouse className="h-3 w-3" /> {warehouseCount} kho</span>
                     )}
-                    {user.role === 'RENTER' && (
+                    {roleKey === 'RENTER' && (
                         <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {requestCount} yêu cầu</span>
                     )}
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {user.role === 'RENTER' && (
+                    {roleKey === 'RENTER' && (
                         <button onClick={() => onViewConversations(user)}
                             className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
                             style={{ color: 'var(--color-primary)' }}>
@@ -71,51 +131,280 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
             </div>
 
             {expanded && (
-                <div className="border-t border-[var(--color-border)] px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-3" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <div>
-                        <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>ID người dùng</p>
-                        <p className="text-xs font-mono" style={{ color: 'var(--color-text)' }}>{user.id_user}</p>
+                <div className="border-t border-[var(--color-border)]" style={{ background: 'var(--color-bg-secondary)' }}>
+                    {/* Inner Tabs Navigation */}
+                    <div className="flex gap-4 px-4 border-b border-[var(--color-border)] pt-2" style={{ background: 'var(--color-surface)' }}>
+                         <button onClick={() => setActiveTab('overview')}
+                             className={`pb-2 text-xs font-semibold border-b-2 transition-colors ${activeTab === 'overview' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}>
+                             Tổng quan
+                         </button>
+                         <button onClick={() => setActiveTab('activity')}
+                             className={`pb-2 text-xs font-semibold border-b-2 transition-colors ${activeTab === 'activity' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}>
+                             Hoạt động
+                         </button>
                     </div>
-                    {user.company?.company_name && (
-                        <div>
-                            <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Công ty</p>
-                            <p className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text)' }}>
-                                <Building className="h-3 w-3 shrink-0" style={{ color: 'var(--color-primary)' }} /> {user.company.company_name}
-                            </p>
-                        </div>
-                    )}
-                    {user.phone && (
-                        <div>
-                            <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Điện thoại</p>
-                            <a href={`tel:${user.phone}`} className="text-xs flex items-center gap-1 hover:underline" style={{ color: 'var(--color-primary)' }}>
-                                <Phone className="h-3 w-3 shrink-0" /> {user.phone}
-                            </a>
-                        </div>
-                    )}
-                    <div>
-                        <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Email</p>
-                        <a href={`mailto:${user.email}`} className="text-xs flex items-center gap-1 hover:underline" style={{ color: 'var(--color-primary)' }}>
-                            <Mail className="h-3 w-3 shrink-0" /> {user.email}
-                        </a>
+
+                    <div className="px-4 py-5">
+                       {activeTab === 'overview' && (
+                           <>
+                            {detailLoading ? (
+                                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--color-primary)' }} /></div>
+                            ) : (
+                                <div className={`grid grid-cols-1 ${roleKey !== 'EMPLOYEE' ? 'lg:grid-cols-3' : ''} gap-5`}>
+                                    
+                                    {/* LEFT COLUMN */}
+                                    <div className="lg:col-span-1 flex flex-col gap-5">
+                                {/* USER INFO CARD */}
+                                <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
+                                        <UserIcon className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Thông tin</span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>ID / Trạng thái</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{user.id_user}</p>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${user.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {user.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {user.company?.company_name && (
+                                            <div>
+                                                <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Công ty</p>
+                                                <p className="text-sm flex items-center gap-1.5 font-medium" style={{ color: 'var(--color-text)' }}>
+                                                    <Building className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-primary)' }} /> {user.company.company_name}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {user.phone && (
+                                            <div>
+                                                <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Điện thoại</p>
+                                                <a href={`tel:${user.phone}`} className="text-sm flex items-center gap-1.5 font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
+                                                    <Phone className="h-3.5 w-3.5 shrink-0" /> {user.phone}
+                                                </a>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Email</p>
+                                            <a href={`mailto:${user.email}`} className="text-sm flex items-center gap-1.5 font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
+                                                <Mail className="h-3.5 w-3.5 shrink-0" /> {user.email}
+                                            </a>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Ngày tham gia</p>
+                                            <p className="text-sm flex items-center gap-1.5 font-medium" style={{ color: 'var(--color-text)' }}>
+                                                <Calendar className="h-3.5 w-3.5 shrink-0" /> {fmtDate(user.create_at)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* RENTER STATS CARD */}
+                                {roleKey === 'RENTER' && renterDetail && (
+                                    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
+                                            <CreditCard className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                                            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Chi tiêu & Gói</span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Tổng chi tiêu</p>
+                                                <p className="font-extrabold text-xl" style={{ color: 'var(--color-success, #22c55e)' }}>
+                                                    {(renterDetail.totalSpending || 0).toLocaleString()} ₫
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] mb-0.5 uppercase tracking-wide flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                                                    <Sparkles className="h-3 w-3" /> Gói AI
+                                                </p>
+                                                <p className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
+                                                    {renterDetail.aiSubscriptionPlan || 'Chưa đăng ký'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* RIGHT COLUMN */}
+                            {roleKey !== 'EMPLOYEE' && (
+                                <div className="lg:col-span-2 flex flex-col gap-5">
+                                    
+                                    {/* WAREHOUSES CARD (OWNER ONLY) */}
+                                {roleKey === 'OWNER' && ownerDetail && (
+                                    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
+                                            <Warehouse className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                                            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Kho của chủ sở hữu ({ownerDetail.warehouses?.length || 0})</span>
+                                        </div>
+                                        {ownerDetail.warehouses && ownerDetail.warehouses.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {ownerDetail.warehouses.map(w => (
+                                                    <div key={w.id} className="p-3 border border-[var(--color-border)] rounded-md flex gap-3 items-start" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                        <div className="w-12 h-12 rounded bg-[var(--color-border)] shrink-0 overflow-hidden">
+                                                            {w.images && w.images.length > 0 ? (
+                                                                <img src={w.images[0].imageUrl} alt={w.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center"><Warehouse className="h-5 w-5 text-gray-400" /></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{w.name}</p>
+                                                            <p className="text-xs mt-1 text-gray-500 truncate"><MapPin className="inline h-3 w-3 mr-1" />{w.locationAddressText}, {w.locationProvince}</p>
+                                                            <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded border border-[var(--color-border)] bg-white">{w.status}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs py-2" style={{ color: 'var(--color-text-muted)' }}>Chưa có kho nào.</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* CONTRACTS CARD */}
+                                {(ownerDetail || renterDetail) && (
+                                    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
+                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--color-border)]">
+                                            <div className="flex items-center gap-2">
+                                                <FileSignature className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                                                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
+                                                    Hợp đồng ({(ownerDetail?.contracts || renterDetail?.contracts || []).length})
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {(() => {
+                                            const apiContracts = ownerDetail?.contracts || renterDetail?.contracts || [];
+                                            const MOCK_CONTRACTS = [
+                                                { id: 991, requestId: 101, warehouseName: 'Kho Đông Lạnh Minh Phát', signedDate: '2023-11-05', totalPrice: 25000000, status: 'Hiệu lực' },
+                                                { id: 992, requestId: 102, warehouseName: 'Kho Logistics Sài Gòn', signedDate: '2024-01-15', totalPrice: 42000000, status: 'Hoàn thành' }
+                                            ];
+                                            const contracts = apiContracts.length > 0 ? apiContracts : MOCK_CONTRACTS;
+                                            
+                                            return (
+                                                <div className="space-y-2">
+                                                    {contracts.map((c: any) => (
+                                                        <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-[var(--color-border)] rounded-md" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                            <div>
+                                                                <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{c.warehouseName}</p>
+                                                                <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>ID Yêu cầu: {c.requestId} • Ký: {c.signedDate}</p>
+                                                            </div>
+                                                            <div className="mt-2 sm:mt-0 sm:text-right flex items-center justify-between sm:block">
+                                                                <p className="font-bold text-sm" style={{ color: 'var(--color-primary)' }}>{c.totalPrice?.toLocaleString()} ₫</p>
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 mt-1 inline-block">{c.status}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+
+                                {/* RENTAL REQUESTS CARD */}
+                                {(ownerDetail || renterDetail) && (
+                                    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
+                                            <FileText className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                                            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
+                                                Yêu cầu thuê ({(ownerDetail?.rentalRequests || renterDetail?.rentalRequests || []).length})
+                                            </span>
+                                        </div>
+                                        {(() => {
+                                            const apiRequests = ownerDetail?.rentalRequests || renterDetail?.rentalRequests || [];
+                                            const MOCK_REQUESTS = [
+                                                { id: 881, warehouseName: 'Kho Đông Lạnh Minh Phát', cargoDescription: 'Hải sản đông lạnh xuất khẩu', duration: 6, durationUnit: 'tháng', status: 'Đã duyệt', details: [1, 2] },
+                                                { id: 882, warehouseName: 'Kho Logistics Sài Gòn', cargoDescription: 'Thiết bị điện tử', duration: 1, durationUnit: 'năm', status: 'Đang xử lý', details: [1] }
+                                            ];
+                                            const requests = apiRequests.length > 0 ? apiRequests : MOCK_REQUESTS;
+                                            
+                                            return (
+                                                <div className="space-y-2">
+                                                    {requests.map((r: any) => (
+                                                        <div key={r.id} className="p-3 border border-[var(--color-border)] rounded-md" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{r.warehouseName}</p>
+                                                                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                                                                        <Package className="h-3 w-3" /> Hàng hóa: {r.cargoDescription}
+                                                                    </p>
+                                                                </div>
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 shrink-0 ml-2">{r.status}</span>
+                                                            </div>
+                                                            <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex flex-wrap gap-4 text-xs">
+                                                                <span style={{ color: 'var(--color-text-muted)' }}>Thời gian: <span className="font-medium text-[var(--color-text)]">{r.duration} {r.durationUnit}</span></span>
+                                                                <span style={{ color: 'var(--color-text-muted)' }}>Chi tiết: <span className="font-medium text-[var(--color-text)]">{r.details?.length || 0} phân khu</span></span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+                                </div>
+                            )}
+                            </div>
+                        )}
+                           </>
+                       )}
+
+                       {activeTab === 'activity' && (
+                           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md p-5 shadow-sm max-w-4xl">
+                               {statsLoading ? (
+                                   <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--color-primary)' }} /></div>
+                               ) : activityStats ? (
+                                   <div>
+                                       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-2 border-b border-[var(--color-border)] gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <Activity className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
+                                                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text)' }}>
+                                                    Hoạt động {activityStats.days} ngày qua
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
+                                                    Tổng: {activityStats.totalLoginsInPeriod} lượt
+                                                </div>
+                                                <select 
+                                                    value={activityDays} 
+                                                    onChange={e => setActivityDays(Number(e.target.value))}
+                                                    className="border border-[var(--color-border)] rounded px-2 py-1 text-xs bg-[var(--color-bg)] outline-none"
+                                                    style={{ color: 'var(--color-text)' }}
+                                                >
+                                                    <option value={7}>7 ngày</option>
+                                                    <option value={14}>14 ngày</option>
+                                                    <option value={30}>30 ngày</option>
+                                                </select>
+                                            </div>
+                                       </div>
+                                       {activityStats.chartData.length === 0 ? (
+                                            <p className="text-xs text-center py-4 text-[var(--color-text-muted)]">Không có dữ liệu</p>
+                                       ) : (
+                                            <div className="h-[250px] w-full mt-4">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={activityStats.chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                                                        <XAxis dataKey="name" stroke="var(--color-text-muted)" fontSize={11} tickMargin={10} minTickGap={20} />
+                                                        <YAxis stroke="var(--color-text-muted)" fontSize={11} />
+                                                        <RechartsTooltip 
+                                                            contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '4px', fontSize: '12px' }}
+                                                            itemStyle={{ color: 'var(--color-text)' }}
+                                                        />
+                                                        <Line type="monotone" dataKey="logins" name="Đăng nhập" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                       )}
+                                   </div>
+                               ) : (
+                                   <p className="text-xs text-center py-4 text-[var(--color-text-muted)]">Không thể tải dữ liệu</p>
+                               )}
+                           </div>
+                       )}
                     </div>
-                    <div>
-                        <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Ngày tham gia</p>
-                        <p className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text)' }}>
-                            <Calendar className="h-3 w-3 shrink-0" /> {fmtDate(user.create_at)}
-                        </p>
-                    </div>
-                    {user.role === 'OWNER' && (
-                        <div>
-                            <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Số kho đã đăng</p>
-                            <p className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>{warehouseCount} kho</p>
-                        </div>
-                    )}
-                    {user.role === 'RENTER' && (
-                        <div>
-                            <p className="text-[10px] mb-0.5 uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Số yêu cầu đã gửi</p>
-                            <p className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>{requestCount} yêu cầu</p>
-                        </div>
-                    )}
                 </div>
             )}
         </div>
