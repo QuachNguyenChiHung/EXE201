@@ -107,6 +107,14 @@ export default function EmployeeDashboard() {
       badge: null,
       path: '/employee/cert-types',
     },
+    {
+      icon: <FileText className="h-8 w-8" />,
+      color: '#0ea5e9',
+      title: 'Quản lý Hợp đồng',
+      desc: 'Quản lý tất cả các hợp đồng thuê trên hệ thống',
+      badge: null,
+      path: '/employee/contracts',
+    },
   ];
 
   return (

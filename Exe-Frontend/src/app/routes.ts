@@ -34,6 +34,9 @@ import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import ManageWarehouses from './pages/employee/ManageWarehouses';
 import ManageUsers from './pages/employee/ManageUsers';
 import ManageCertTypes from './pages/employee/ManageCertTypes';
+import ManageContracts from './pages/employee/ManageContracts';
+import ManageRequestDetail from './pages/employee/ManageRequestDetail';
+import ManageContractDetail from './pages/employee/ManageContractDetail';
 
 // Shared
 import NotFound from './pages/NotFound';
@@ -106,6 +109,9 @@ export const router = createBrowserRouter([
       { path: '/employee/warehouses', Component: ManageWarehouses },
       { path: '/employee/users', Component: ManageUsers },
       { path: '/employee/cert-types', Component: ManageCertTypes },
+      { path: '/employee/contracts', Component: ManageContracts },
+      { path: '/employee/requests/:id', Component: ManageRequestDetail },
+      { path: '/employee/contracts/:id', Component: ManageContractDetail },
     ],
   },
 

@@ -9,12 +9,6 @@ import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
 
 
-const DEMO_ACCOUNTS = [
-  { label: "Doanh nghiệp", email: "renter@example.com", role: "renter" },
-  { label: "Chủ kho", email: "warehouse@example.com", role: "warehouse" },
-  { label: "Nhân viên", email: "employee@example.com", role: "employee" },
-];
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,10 +43,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword("password");
-  };
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex">
@@ -149,33 +139,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* Demo accounts */}
-          <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
-            <p className="text-xs text-[var(--color-text-muted)] mb-3 uppercase tracking-wide">
-              Tài khoản demo (mật khẩu: <strong>password</strong>)
-            </p>
-            <div className="space-y-2 text-xs">
-              {DEMO_ACCOUNTS.map(a => (
-                <button
-                  key={a.email}
-                  type="button"
-                  onClick={() => fillDemo(a.email)}
-                  className="w-full text-left bg-[var(--color-bg-secondary)] px-3 py-2 hover:bg-[var(--color-bg-tertiary)] transition-colors flex items-center justify-between"
-                >
-                  <span>
-                    <span className="text-[var(--color-text-muted)]">{a.label}: </span>
-                    <span className="text-[var(--color-text)]">{a.email}</span>
-                  </span>
-                  <span
-                    className="text-[10px] px-1.5 py-0.5 text-white"
-                    style={{ background: "var(--color-primary)" }}
-                  >
-                    {a.role}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

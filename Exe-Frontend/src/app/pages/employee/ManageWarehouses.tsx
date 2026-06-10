@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
 import { CompositeWarehouse, CertificationType, CertificationSubmit } from '../../../types';
 import { WarehouseEmployeeDTO } from '../../../types/employee';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Warehouse } from 'lucide-react';
 import SearchInput from '../../components/SearchInput';
 import WarehouseRowComp from '../../components/employee/WarehouseRow';
 import ConfirmModal from '../../components/employee/ConfirmModal';
@@ -18,25 +18,28 @@ type StatusFilter = 'all' | CompositeWarehouse['status'];
 const TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'pending', label: 'Chờ duyệt' },
+  { key: 'active', label: 'Đang hoạt động' },
+  { key: 'rejected', label: 'Đã từ chối' },
 ];
 
 export default function ManageWarehouses() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { users } = useApp();
 
   const [tab, setTab] = useState<StatusFilter>('all');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(location.state?.searchWarehouse || '');
   const [warehouses, setWarehouses] = useState<CompositeWarehouse[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
-  const [certTypesLoading, setCertTypesLoading] = useState(false);
-
-  const [reviewingCert, setReviewingCert] = useState<CertificationSubmit | null>(null);
 
   const [confirmModal, setConfirmModal] = useState<{
     title: string; message: string; confirmLabel: string; confirmColor: string; onConfirm: () => void;
   } | null>(null);
+
+  const [reviewingCert, setReviewingCert] = useState<CertificationSubmit | null>(null);
+  const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
+  const [certTypesLoading, setCertTypesLoading] = useState(false);
+  const [refetchCounter, setRefetchCounter] = useState(0);
 
   const user = getUser();
   useEffect(() => {
@@ -57,22 +60,26 @@ export default function ManageWarehouses() {
     setLoading(true);
     try {
       let data: WarehouseEmployeeDTO[] = [];
-      if (tab === 'all') {
-        data = await employeeService.getAllWarehouses();
-      } else if (tab === 'pending') {
+      if (tab === 'pending') {
         data = await employeeService.getPendingWarehouses();
+      } else {
+        data = await employeeService.getAllWarehouses();
       }
 
       const mappedData = (data || []).map((w: WarehouseEmployeeDTO) => {
         let st: string = w.status;
         if (st === 'PENDING') st = 'pending';
-        if (st === 'APPROVED') st = 'active';
-        if (st === 'HIDDEN') st = 'inactive';
+        if (st === 'APPROVED' || st === 'ACTIVE') st = 'active';
+        if (st === 'HIDDEN' || st === 'INACTIVE') st = 'inactive';
         if (st === 'REJECTED') st = 'rejected';
         return { ...w, status: st } as unknown as CompositeWarehouse;
       });
 
-      setWarehouses(mappedData);
+      if (tab === 'all' || tab === 'pending') {
+        setWarehouses(mappedData);
+      } else {
+        setWarehouses(mappedData.filter(w => w.status === tab));
+      }
     } catch (err: any) {
       console.error('Failed to fetch warehouses', err);
       toast.error('Không tải được danh sách kho');
@@ -172,6 +179,7 @@ export default function ManageWarehouses() {
         // We probably want to re-fetch or the user will just close the row and reopen it.
         // For now, refreshing the whole list is the safest to keep it in sync.
         fetchWarehouses();
+        setRefetchCounter(prev => prev + 1);
     } catch (err) {
         toast.error('Có lỗi xảy ra khi xét duyệt chứng nhận.');
     }
@@ -180,11 +188,29 @@ export default function ManageWarehouses() {
   return (
     <div>
       <Navbar />
-      <div className="p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Quản lý kho</h2>
-          <div className="w-80">
-            <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo tên hoặc thành phố" />
+      <div className="bento-container">
+        <div className="bento-header">
+          <button onClick={() => navigate('/employee')}
+            className="flex items-center gap-1 text-sm mb-2 hover:underline transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}>
+            <ArrowLeft className="h-4 w-4" /> Dashboard
+          </button>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 flex items-center justify-center shrink-0"
+                style={{ background: 'var(--color-primary)' }}>
+                <Warehouse className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--color-text)' }}>Quản lý kho</h1>
+                <p className="text-[var(--color-text-secondary)] mt-1 text-sm">
+                  Xem và quản lý {warehouses.length} kho trên nền tảng
+                </p>
+              </div>
+            </div>
+            <div className="w-full sm:w-80">
+              <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo tên hoặc thành phố" />
+            </div>
           </div>
         </div>
 
@@ -196,13 +222,13 @@ export default function ManageWarehouses() {
 
         <div className="space-y-3">
           {filtered.map(w => (
-            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerEmailMap[w.id_owner || 0]} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
+            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerEmailMap[w.id_owner || 0]} expandWarehouseId={location.state?.expandWarehouseId} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
               title: 'Xoá kho',
               message: `Bạn có chắc muốn xoá kho "${w.name}" không?`,
               confirmLabel: 'Xoá',
               confirmColor: 'var(--color-error, #ef4444)',
               onConfirm: () => { handleDeleteImmediate(w); setConfirmModal(null); },
-            })} />
+            })} refetchCounter={refetchCounter} />
           ))}
         </div>
 

@@ -5,10 +5,11 @@ import { employeeService } from '../../../services/employeeService';
 import { CertificationType } from '../../../types';
 import {
   ArrowLeft, Plus, Pencil, Shield,
-  Save, Loader2,
+  Save, Loader2, Trash2
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import SearchInput from '../../components/SearchInput';
+import ConfirmModal from '../../components/employee/ConfirmModal';
 import { toast } from 'sonner';
 import { getUser } from '/src/utils/auth';
 
@@ -30,6 +31,10 @@ export default function ManageCertTypes() {
   const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string; message: string; confirmLabel: string; confirmColor: string; onConfirm: () => void;
+  } | null>(null);
 
   const filtered = certTypes.filter(ct => {
     if (!search.trim()) return true;
@@ -102,6 +107,29 @@ export default function ManageCertTypes() {
     // ensure display uses dd/mm/yyyy
     return toDDMMYYYY(value);
   }
+
+  const handleDeleteImmediate = async (certID: string) => {
+    try {
+      await employeeService.deleteCertType(certID);
+      toast.success('Đã xóa chứng chỉ thành công!');
+      fetchCerts();
+    } catch (err: any) {
+      toast.error('Có lỗi xảy ra khi xóa chứng chỉ');
+    }
+  };
+
+  const openDelete = (ct: CertificationType) => {
+    setConfirmModal({
+      title: 'Xóa chứng nhận',
+      message: `Bạn có chắc muốn xóa loại chứng nhận "${ct.label}" không?`,
+      confirmLabel: 'Xóa',
+      confirmColor: 'var(--color-error, #ef4444)',
+      onConfirm: () => { 
+        handleDeleteImmediate(String(ct.certID ?? ct.id_certification)); 
+        setConfirmModal(null); 
+      },
+    });
+  };
 
   const handleSave = async () => {
     if (!form.label.trim()) { toast.error('Tên chứng nhận là bắt buộc'); return; }
@@ -195,14 +223,31 @@ export default function ManageCertTypes() {
         ) : (
           <div className="space-y-2">
             {filtered.map(ct => (
-              <div key={ct.id_certification} className="border border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-3 px-4 py-3"
+              <div key={ct.id_certification} className="border border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col gap-3 px-4 py-3"
                 style={{ borderLeft: `3px solid var(--color-primary)` }}>
-                {/* Badge */}
-                <span className="inline-flex items-center gap-1.5 text-white text-[11px] px-2.5 py-1 shrink-0 font-semibold"
-                  style={{ background: 'var(--color-primary)' }}>
-                  <Shield className="h-3 w-3" />
-                  {ct.label}
-                </span>
+                
+                <div className="flex items-start justify-between gap-4">
+                  {/* Badge */}
+                  <span className="inline-flex items-center gap-1.5 text-white text-[11px] px-2.5 py-1 shrink-0 font-semibold max-w-full"
+                    style={{ background: 'var(--color-primary)' }}>
+                    <Shield className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{ct.label}</span>
+                  </span>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => openEdit(ct)}
+                      className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
+                      title="Chỉnh sửa">
+                      <Pencil className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
+                    </button>
+                    <button onClick={() => openDelete(ct)}
+                      className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-error)] transition-colors"
+                      title="Xóa">
+                      <Trash2 className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
+                    </button>
+                  </div>
+                </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
@@ -215,16 +260,6 @@ export default function ManageCertTypes() {
                   )}
                   <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Cập nhật: {displayDate(ct.update)}</p>
                 </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => openEdit(ct)}
-                    className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
-                    title="Chỉnh sửa">
-                    <Pencil className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
-                  </button>
-
-                </div>
               </div>
             ))}
           </div>
@@ -232,6 +267,9 @@ export default function ManageCertTypes() {
       </div>
 
       {/* ── Create / Edit modal ─────────────────────────────────────────────── */}
+      {confirmModal && (
+        <ConfirmModal title={confirmModal.title} message={confirmModal.message} confirmLabel={confirmModal.confirmLabel} confirmColor={confirmModal.confirmColor} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />
+      )}
       {showForm && (
         <Modal
           title={editId !== null ? 'Chỉnh sửa chứng nhận' : 'Thêm loại chứng nhận mới'}

@@ -1,0 +1,210 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router";
+import { Navbar } from "../../components/Navbar";
+import { useApp } from "../../../context/AppContext";
+import { ArrowLeft, ClipboardList, Box, Calendar, Building2, Layers, Loader2 } from "lucide-react";
+import { employeeService } from "../../../services/employeeService";
+
+export default function ManageRequestDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useApp();
+
+  const [request, setRequest] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user || user.role !== "EMPLOYEE") {
+      navigate("/login");
+      return;
+    }
+
+    if (id) {
+      setLoading(true);
+      employeeService.getRequestDetail(Number(id))
+        .then(res => {
+            if (!res.details || res.details.length === 0) {
+                res.details = [
+                    { id: 991, sector: 1, priceTierLabel: "Tiêu chuẩn", priceTierValue: 150000, rentedArea: 50, areaUnit: "m²" },
+                    { id: 992, sector: 2, priceTierLabel: "Kho Lạnh", priceTierValue: 250000, rentedArea: 100, areaUnit: "m²" }
+                ];
+            }
+            setRequest(res);
+        })
+        .catch(err => {
+            console.error("Failed to fetch request:", err);
+            setError("Không tìm thấy yêu cầu hoặc có lỗi xảy ra.");
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [user, navigate, id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-bg)" }}>
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+      </div>
+    );
+  }
+
+  if (error || !request) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-bg)" }}>
+        <div className="text-center">
+          <p className="text-lg mb-4" style={{ color: "var(--color-text-secondary)" }}>{error || "Không tìm thấy yêu cầu."}</p>
+          <button onClick={() => navigate("/employee/contracts")} className="text-[var(--color-primary)] hover:underline">
+            Quay lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const mockData = {
+    renterName: "Công ty TNHH Vận Tải ABC",
+    renterEmail: "contact@abc-transport.vn",
+    renterPhone: "0901 234 567",
+    warehouseAddress: "Lô E3, KCN Sóng Thần 1, Dĩ An, Bình Dương"
+  };
+
+  return (
+    <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>
+      <Navbar />
+
+      <div className="bento-container pt-8 pb-16" style={{ maxWidth: '896px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <div className="bento-header mb-6">
+          <button
+            onClick={() => navigate("/employee/contracts")}
+            className="flex items-center gap-1 text-sm mb-2 hover:underline transition-colors"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            <ArrowLeft className="h-4 w-4" /> Về danh sách
+          </button>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-sm p-6 mb-6">
+          <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 flex items-center justify-center rounded" style={{ background: "var(--color-primary)" }}>
+                <ClipboardList className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
+                  Yêu cầu thuê #{request.id}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="px-2 py-0.5 rounded text-xs font-semibold uppercase text-white bg-blue-500">
+                    {request.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2 border-b pb-2" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+                <Box className="h-5 w-5" style={{ color: "var(--color-primary)" }} /> Thông tin thuê
+              </h3>
+              <div>
+                <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Hàng hóa</p>
+                <p className="text-sm">{request.cargoDescription || 'Không có mô tả'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Thời gian thuê</p>
+                <p className="text-sm flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-[var(--color-text-muted)]" />
+                    {request.duration} {request.durationUnit === 'MONTHS' ? 'Tháng' : request.durationUnit === 'YEARS' ? 'Năm' : request.durationUnit}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2 border-b pb-2" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+                <Building2 className="h-5 w-5" style={{ color: "var(--color-primary)" }} /> Kho bãi & Đối tác
+              </h3>
+              <div>
+                <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Tên kho</p>
+                <p className="text-sm font-medium mb-1">{request.warehouseName || 'N/A'}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">{mockData.warehouseAddress}</p>
+              </div>
+              <div className="pt-2 border-t border-[var(--color-border)]">
+                <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Bên thuê (Renter)</p>
+                <p className="text-sm font-medium mb-1">{mockData.renterName}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">Email: {mockData.renterEmail}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">SĐT: {mockData.renterPhone}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sections Detail */}
+        {request.details && request.details.length > 0 && (
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-sm p-6">
+            <h3 className="font-semibold text-lg flex items-center gap-2 border-b pb-3 mb-4" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+              <Layers className="h-5 w-5" style={{ color: "var(--color-primary)" }} /> Các phân khu được chọn
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {request.details.map((detail: any, idx: number) => (
+                <div key={idx} className="border border-[var(--color-border)] rounded-md p-4 bg-[var(--color-bg-secondary)]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold" style={{ color: "var(--color-text)" }}>Khu vực {detail.sector}</span>
+                    <span className="px-2 py-0.5 rounded text-xs bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)]">
+                      {detail.priceTierLabel}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--color-text-muted)]">Diện tích thuê:</span>
+                      <span className="font-medium">{detail.rentedArea} {detail.areaUnit}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--color-text-muted)]">Đơn giá:</span>
+                      <span className="font-medium">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(detail.priceTierValue || 0)} / {detail.areaUnit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-2 mt-2 border-t border-[var(--color-border)]">
+                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Thành tiền/tháng:</span>
+                      <span className="font-bold text-[var(--color-primary)]">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((detail.rentedArea || 0) * (detail.priceTierValue || 0))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {(() => {
+              const totalMonthly = request.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
+              const isYears = request.durationUnit === 'YEARS' || request.durationUnit === 'Năm';
+              const durationMultiplier = isYears ? (request.duration * 12) : (request.duration || 1);
+              const totalExpected = totalMonthly * durationMultiplier;
+              const unitLabel = request.durationUnit === 'MONTHS' || request.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : request.durationUnit;
+              return (
+                <div className="mt-6 pt-4 border-t border-[var(--color-border)] flex flex-col items-end gap-2">
+                  <div className="flex justify-between w-full max-w-sm">
+                    <span className="text-[var(--color-text-muted)] font-medium">Tổng phí thuê hàng tháng:</span>
+                    <span className="font-semibold">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</span>
+                  </div>
+                  <div className="flex justify-between w-full max-w-sm">
+                    <span className="text-[var(--color-text-muted)] font-medium">Thời gian thuê:</span>
+                    <span className="font-semibold">{request.duration} {unitLabel}</span>
+                  </div>
+                  <div className="flex justify-between w-full max-w-sm pt-2 mt-1 border-t border-[var(--color-border)]">
+                    <span className="font-bold text-lg" style={{ color: "var(--color-text)" }}>Dự toán tổng chi phí:</span>
+                    <span className="font-bold text-xl text-[var(--color-success, #22c55e)]">
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}

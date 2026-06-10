@@ -80,11 +80,14 @@ export default function ApproveModal({
                             style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
                         >
                             <option value="">-- Chọn loại chứng nhận --</option>
-                            {certTypes.map(ct => (
-                                <option key={ct.id_certification} value={ct.id_certification}>
-                                    {ct.label}
-                                </option>
-                            ))}
+                            {certTypes.map((ct: any) => {
+                                const idValue = ct.id_certification || ct.certID || ct.id;
+                                return (
+                                    <option key={idValue} value={idValue}>
+                                        {ct.label}
+                                    </option>
+                                );
+                            })}
                         </select>
                     )}
                 </div>

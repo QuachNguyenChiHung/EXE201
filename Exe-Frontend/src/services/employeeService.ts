@@ -56,6 +56,12 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
+    createUser: async (payload: any) => {
+        console.log('[API CALL] POST /users', payload);
+        const response = await api.post('/users', payload);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
     getCertTypes: async () => {
         console.log('[API CALL] GET /certs');
         const response = await api.get('/certs');
@@ -74,10 +80,12 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    // deleteCertType: async (certID: string) => {
-    //     const response = await api.delete(`/certs/${certID}`);
-    //     return response.data;
-    // },
+    deleteCertType: async (certID: string) => {
+        console.log(`[API CALL] DELETE /certs/${certID}`);
+        const response = await api.delete(`/certs/${certID}`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
     reviewWarehouseCertification: async (submitId: number, dto: { isVerified: boolean, typeId?: number | null }) => {
         console.log(`[API CALL] PATCH /employees/certifications/${submitId}/review`, dto);
         const response = await api.patch(`/employees/certifications/${submitId}/review`, dto);
@@ -108,9 +116,33 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
+    getContracts: async (status?: string) => {
+        console.log(`[API CALL] GET /contracts${status ? `?status=${status}` : ''}`);
+        const response = await api.get(`/contracts`, { params: status && status !== 'ALL' ? { status } : undefined });
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
     getUserActivityStats: async (userId: number, days: number = 7) => {
         console.log(`[API CALL] GET /employees/users/${userId}/activity-stats?days=${days}`);
         const response = await api.get(`/employees/users/${userId}/activity-stats`, { params: { days } });
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    getWarehouseViewStats: async (id: number, days: number = 7) => {
+        console.log(`[API CALL] GET /warehouses/${id}/view-stats?days=${days}`);
+        const response = await api.get(`/warehouses/${id}/view-stats`, { params: { days } });
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    getRequestDetail: async (id: number) => {
+        console.log(`[API CALL] GET /requests/${id}`);
+        const response = await api.get(`/requests/${id}`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    getContractDetail: async (id: number) => {
+        console.log(`[API CALL] GET /contracts/${id}`);
+        const response = await api.get(`/contracts/${id}`);
         console.log('[API RESPONSE]', response.data);
         return response.data;
     }

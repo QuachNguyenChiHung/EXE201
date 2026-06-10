@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, Trash2, MapPin, Shield, LayoutGrid, ChevronDown, ChevronUp, AlertCircle, Building, Loader2, AlignLeft, Image as ImageIcon, Droplets, BadgeCheck, Thermometer, ShieldCheck, Cctv } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Clock, CheckCircle, XCircle, Trash2, MapPin, Shield, LayoutGrid, ChevronDown, ChevronUp, AlertCircle, Building, Loader2, AlignLeft, Image as ImageIcon, Droplets, BadgeCheck, Thermometer, ShieldCheck, Cctv, Warehouse, Activity } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { CompositeWarehouse } from '../../../types';
 import { WarehouseResponseDTO } from '../../../types/employee';
 import { employeeService } from '../../../services/employeeService';
@@ -16,11 +17,11 @@ const FallbackImage = ({ src, alt, className }: { src: string, alt: string, clas
         );
     }
     return (
-        <img 
-            src={src} 
-            alt={alt} 
+        <img
+            src={src}
+            alt={alt}
             onError={() => setError(true)}
-            className={classes} 
+            className={classes}
         />
     );
 };
@@ -35,7 +36,7 @@ const STATUS_CFG: Record<string, { label: string; color: string }> = {
 const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
-export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onReject, onDeactivate, onReviewCert, onDelete, }: {
+interface WarehouseRowProps {
     warehouse: CompositeWarehouse;
     ownerEmail?: string;
     onApprove: (w: CompositeWarehouse) => void;
@@ -43,7 +44,21 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
     onDeactivate: (w: CompositeWarehouse) => void;
     onReviewCert?: (cert: any) => void;
     onDelete: (w: CompositeWarehouse) => void;
-}) {
+    expandWarehouseId?: number;
+    refetchCounter?: number;
+}
+
+export default function WarehouseRow({
+    warehouse,
+    ownerEmail,
+    onApprove,
+    onReject,
+    onDeactivate,
+    onReviewCert,
+    onDelete,
+    expandWarehouseId,
+    refetchCounter
+}: WarehouseRowProps) {
     const rawStatus = String(warehouse.status || '').toUpperCase();
     const isPending = rawStatus === 'PENDING';
     const isApproved = rawStatus === 'APPROVED' || rawStatus === 'ACTIVE';
@@ -54,12 +69,28 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
     if (rawStatus === 'ACTIVE') lookupKey = 'APPROVED';
     if (rawStatus === 'INACTIVE') lookupKey = 'HIDDEN';
 
-    const [expanded, setExpanded] = useState(isPending);
+    const [expanded, setExpanded] = useState(isPending || (expandWarehouseId ? warehouse.id_warehouse === expandWarehouseId : false));
     const [detailData, setDetailData] = useState<WarehouseResponseDTO | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [viewStats, setViewStats] = useState<any[] | null>(null);
+    const [loadingStats, setLoadingStats] = useState(false);
+    const [viewStatsDays, setViewStatsDays] = useState<number | 'ALL'>(7);
 
     useEffect(() => {
-        if (expanded && !detailData && !loadingDetail) {
+        if (expandWarehouseId && warehouse.id_warehouse === expandWarehouseId) {
+            setExpanded(true);
+        }
+    }, [expandWarehouseId, warehouse.id_warehouse]);
+
+    const prevRefetchCounterRef = useRef<number | undefined>(refetchCounter);
+
+    useEffect(() => {
+        const needsRefetch = prevRefetchCounterRef.current !== refetchCounter;
+        
+        if (expanded && (!detailData || needsRefetch)) {
+            if (needsRefetch) {
+                prevRefetchCounterRef.current = refetchCounter;
+            }
             let mounted = true;
             setLoadingDetail(true);
             employeeService.getWarehouseDetail(warehouse.id_warehouse)
@@ -72,7 +103,54 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
                 });
             return () => { mounted = false; };
         }
-    }, [expanded, warehouse.id_warehouse]);
+    }, [expanded, warehouse.id_warehouse, refetchCounter]);
+
+    useEffect(() => {
+        if (expanded && !viewStats && !loadingStats) {
+            let mounted = true;
+            setLoadingStats(true);
+            
+            let daysToFetch = 7;
+            if (viewStatsDays === 'ALL') {
+                const createdDate = warehouse.create_at || (warehouse as any).createdAt;
+                if (createdDate) {
+                    const diffTime = Math.abs(new Date().getTime() - new Date(createdDate).getTime());
+                    daysToFetch = Math.max(7, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                } else {
+                    daysToFetch = 365; // fallback
+                }
+            } else {
+                daysToFetch = viewStatsDays;
+            }
+
+            employeeService.getWarehouseViewStats(warehouse.id_warehouse, daysToFetch)
+                .then(res => {
+                    if (mounted) {
+                        let formatted: any[] = [];
+                        if (res.dates && res.viewTrend) {
+                            formatted = res.dates.map((d: string, i: number) => ({ name: d, views: res.viewTrend[i] || 0 }));
+                        } else if (res.dates && res.views) {
+                            formatted = res.dates.map((d: string, i: number) => ({ name: d, views: res.views[i] || 0 }));
+                        } else if (res.dates && res.data) {
+                            formatted = res.dates.map((d: string, i: number) => ({ name: d, views: res.data[i] || 0 }));
+                        } else if (res.dates && res.series) {
+                            formatted = res.dates.map((d: string, i: number) => ({ name: d, views: res.series[0]?.data[i] || 0 }));
+                        } else if (Array.isArray(res)) {
+                            formatted = res;
+                        }
+                        if (formatted.length > 0 && typeof formatted[0] === 'object' && 'name' in formatted[0]) {
+                            formatted.sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
+                        }
+                        setViewStats(formatted);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch view stats", err))
+                .finally(() => {
+                    if (mounted) setLoadingStats(false);
+                });
+            return () => { mounted = false; };
+        }
+    }, [expanded, warehouse.id_warehouse, viewStatsDays]);
 
     const cfg = STATUS_CFG[lookupKey] || { label: warehouse.status || 'Unknown', color: 'var(--color-text-muted)' };
 
@@ -87,36 +165,40 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
     }
 
     return (
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm rounded-md overflow-hidden" style={{ borderLeft: `4px solid ${cfg.color}` }}>
-            <div 
-                className="flex items-center gap-3 px-4 py-4 cursor-pointer hover:bg-[var(--color-bg-secondary)] transition-colors"
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)]" style={{ borderLeft: `3px solid ${cfg.color}` }}>
+            <div
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--color-bg-secondary)] transition-colors"
                 onClick={() => setExpanded(p => !p)}
             >
+                <div className="w-9 h-9 shrink-0 flex items-center justify-center text-white" style={{ background: cfg.color }}>
+                    <Warehouse className="h-4 w-4" />
+                </div>
+
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1.5">
-                        <p className="font-bold text-base truncate" style={{ color: 'var(--color-text)' }}>{warehouse.name}</p>
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize border" style={{ color: cfg.color, borderColor: `${cfg.color}50`, background: `${cfg.color}10` }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{warehouse.name}</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-white px-1.5 py-0.5" style={{ background: cfg.color }}>
                             {isPending && <Clock className="h-3 w-3" />}
                             {isApproved && <CheckCircle className="h-3 w-3" />}
                             {(isHidden || isRejected) && <XCircle className="h-3 w-3" />}
                             {cfg.label}
                         </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                        <MapPin className="h-3 w-3 shrink-0" />
                         <span className="truncate">{warehouse.address}, {warehouse.location_commune}, {warehouse.location_province}</span>
                     </div>
                 </div>
 
                 {thumbUrl && (
                     <div className="hidden sm:block shrink-0 ml-4">
-                        <FallbackImage src={thumbUrl} alt="Thumbnail" className="w-20 h-14 object-cover rounded border border-[var(--color-border)]" />
+                        <FallbackImage src={thumbUrl} alt="Thumbnail" className="w-12 h-8 object-cover rounded border border-[var(--color-border)]" />
                     </div>
                 )}
 
                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <div className="p-1.5 transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
-                        {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    <div className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">
+                        {expanded ? <ChevronUp className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />}
                     </div>
                 </div>
             </div>
@@ -136,10 +218,10 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
                         </div>
                     ) : detailData ? (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                            
+
                             {/* LEFT COLUMN */}
                             <div className="lg:col-span-2 flex flex-col gap-5">
-                                
+
                                 {/* DESCRIPTION CARD */}
                                 <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
                                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
@@ -194,7 +276,7 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
 
                             {/* RIGHT COLUMN */}
                             <div className="flex flex-col gap-5">
-                                
+
                                 {/* SECTIONS CARD */}
                                 <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
                                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
@@ -273,7 +355,7 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
                                                         </div>
                                                     </div>
                                                     {onReviewCert && !cert.isVerified && (
-                                                        <button 
+                                                        <button
                                                             onClick={(e) => { e.stopPropagation(); onReviewCert(cert); }}
                                                             className="px-3 py-1.5 text-xs font-medium border border-[var(--color-primary)] rounded transition-colors bg-[var(--color-surface)] hover:bg-[var(--color-primary)] hover:text-white"
                                                             style={{ color: 'var(--color-primary)' }}
@@ -300,6 +382,54 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
                         </div>
                     )}
 
+                    {/* CHART SECTION */}
+                    {!loadingDetail && detailData && (
+                        <div className="mt-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                                    <Activity className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
+                                    Lượt truy cập kho
+                                </h4>
+                                <select 
+                                    value={viewStatsDays} 
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setViewStatsDays(val === 'ALL' ? 'ALL' : Number(val));
+                                        setViewStats(null);
+                                    }}
+                                    className="text-xs border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-surface)] outline-none focus:border-[var(--color-primary)]"
+                                    style={{ color: 'var(--color-text)' }}
+                                >
+                                    <option value={7}>7 ngày qua</option>
+                                    <option value={30}>30 ngày qua</option>
+                                    <option value="ALL">Từ khi tạo</option>
+                                </select>
+                            </div>
+                            {loadingStats ? (
+                                <div className="flex items-center justify-center py-6 text-[var(--color-text-muted)]">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                </div>
+                            ) : (!viewStats || viewStats.length === 0) ? (
+                                <p className="text-xs text-[var(--color-text-muted)] text-center py-4">Chưa có dữ liệu thống kê.</p>
+                            ) : (
+                                <div className="h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={viewStats} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                                            <XAxis dataKey="name" stroke="var(--color-text-muted)" fontSize={12} tickMargin={10} minTickGap={30} />
+                                            <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                                            <RechartsTooltip
+                                                contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '4px', fontSize: '13px' }}
+                                                itemStyle={{ color: 'var(--color-text)' }}
+                                            />
+                                            <Line type="monotone" dataKey="views" name="Lượt xem" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* ACTION BAR */}
                     {!loadingDetail && detailData && (
                         <div className="mt-4 pt-5 border-t border-[var(--color-border)] flex flex-wrap items-center justify-end gap-3">
@@ -315,11 +445,7 @@ export default function WarehouseRow({ warehouse, ownerEmail, onApprove, onRejec
                                     </button>
                                 </>
                             )}
-                            {isApproved && (
-                                <button onClick={(e) => { e.stopPropagation(); onDeactivate(warehouse); }} className="flex items-center gap-2 text-sm px-5 py-2.5 font-bold border border-[var(--color-border)] hover:border-[var(--color-warning)] transition-colors rounded-md shadow-sm bg-[var(--color-surface)]" style={{ color: 'var(--color-text-secondary)' }}>
-                                    <XCircle className="h-4 w-4" /> Tạm ẩn
-                                </button>
-                            )}
+
                             {isHidden && (
                                 <button onClick={(e) => { e.stopPropagation(); onApprove(warehouse); }} className="flex items-center gap-2 text-sm px-5 py-2.5 font-bold border border-[var(--color-border)] hover:border-[var(--color-success)] transition-colors rounded-md shadow-sm bg-[var(--color-surface)]" style={{ color: 'var(--color-text-secondary)' }}>
                                     <CheckCircle className="h-4 w-4" /> Kích hoạt lại

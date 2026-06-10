@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { Warehouse, CheckCircle, Sparkles, Edit2, ChevronDown, ChevronUp, Building, Phone, Mail, Calendar, ShieldCheck, Loader2, FileText, FileSignature, User as UserIcon, AlignLeft, MapPin, CreditCard, Package, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { User, UserRole } from '../../../types';
@@ -18,6 +19,7 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
     warehouseCount: number;
     requestCount: number;
 }) {
+    const navigate = useNavigate();
     const [expanded, setExpanded] = useState(false);
     const roleKey = (user.role || '').toString().toUpperCase() as UserRole;
     const DEFAULT_CFG = { label: 'Người dùng', color: 'var(--color-border)', icon: null as React.ReactNode };
@@ -240,20 +242,20 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                                             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Kho của chủ sở hữu ({ownerDetail.warehouses?.length || 0})</span>
                                         </div>
                                         {ownerDetail.warehouses && ownerDetail.warehouses.length > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2">
                                                 {ownerDetail.warehouses.map(w => (
-                                                    <div key={w.id} className="p-3 border border-[var(--color-border)] rounded-md flex gap-3 items-start" style={{ background: 'var(--color-bg-secondary)' }}>
-                                                        <div className="w-12 h-12 rounded bg-[var(--color-border)] shrink-0 overflow-hidden">
+                                                    <div key={w.id} onClick={() => navigate('/employee/warehouses', { state: { searchWarehouse: w.name, expandWarehouseId: w.id } })} className="p-3 border border-[var(--color-border)] rounded-md flex gap-4 items-start cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                        <div className="w-24 h-24 rounded bg-[var(--color-border)] shrink-0 overflow-hidden shadow-sm">
                                                             {w.images && w.images.length > 0 ? (
                                                                 <img src={w.images[0].imageUrl} alt={w.name} className="w-full h-full object-cover" />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center"><Warehouse className="h-5 w-5 text-gray-400" /></div>
+                                                                <div className="w-full h-full flex items-center justify-center"><Warehouse className="h-8 w-8 text-gray-400" /></div>
                                                             )}
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{w.name}</p>
-                                                            <p className="text-xs mt-1 text-gray-500 truncate"><MapPin className="inline h-3 w-3 mr-1" />{w.locationAddressText}, {w.locationProvince}</p>
-                                                            <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded border border-[var(--color-border)] bg-white">{w.status}</span>
+                                                        <div className="flex-1 min-w-0 py-1">
+                                                            <p className="font-semibold text-base truncate" style={{ color: 'var(--color-text)' }}>{w.name}</p>
+                                                            <p className="text-sm mt-1.5 text-gray-500 truncate"><MapPin className="inline h-3.5 w-3.5 mr-1" />{w.locationAddressText}, {w.locationProvince}</p>
+                                                            <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded border border-[var(--color-border)] bg-white font-medium">{w.status}</span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -276,17 +278,13 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                                             </div>
                                         </div>
                                         {(() => {
-                                            const apiContracts = ownerDetail?.contracts || renterDetail?.contracts || [];
-                                            const MOCK_CONTRACTS = [
-                                                { id: 991, requestId: 101, warehouseName: 'Kho Đông Lạnh Minh Phát', signedDate: '2023-11-05', totalPrice: 25000000, status: 'Hiệu lực' },
-                                                { id: 992, requestId: 102, warehouseName: 'Kho Logistics Sài Gòn', signedDate: '2024-01-15', totalPrice: 42000000, status: 'Hoàn thành' }
-                                            ];
-                                            const contracts = apiContracts.length > 0 ? apiContracts : MOCK_CONTRACTS;
+                                            const contracts = ownerDetail?.contracts || renterDetail?.contracts || [];
+                                            if (contracts.length === 0) return <p className="text-xs py-2" style={{ color: 'var(--color-text-muted)' }}>Chưa có hợp đồng nào.</p>;
                                             
                                             return (
                                                 <div className="space-y-2">
                                                     {contracts.map((c: any) => (
-                                                        <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-[var(--color-border)] rounded-md" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                        <div key={c.id} onClick={() => navigate(`/employee/contracts/${c.id}`)} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-[var(--color-border)] rounded-md cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
                                                             <div>
                                                                 <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{c.warehouseName}</p>
                                                                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>ID Yêu cầu: {c.requestId} • Ký: {c.signedDate}</p>
@@ -313,17 +311,13 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                                             </span>
                                         </div>
                                         {(() => {
-                                            const apiRequests = ownerDetail?.rentalRequests || renterDetail?.rentalRequests || [];
-                                            const MOCK_REQUESTS = [
-                                                { id: 881, warehouseName: 'Kho Đông Lạnh Minh Phát', cargoDescription: 'Hải sản đông lạnh xuất khẩu', duration: 6, durationUnit: 'tháng', status: 'Đã duyệt', details: [1, 2] },
-                                                { id: 882, warehouseName: 'Kho Logistics Sài Gòn', cargoDescription: 'Thiết bị điện tử', duration: 1, durationUnit: 'năm', status: 'Đang xử lý', details: [1] }
-                                            ];
-                                            const requests = apiRequests.length > 0 ? apiRequests : MOCK_REQUESTS;
+                                            const requests = ownerDetail?.rentalRequests || renterDetail?.rentalRequests || [];
+                                            if (requests.length === 0) return <p className="text-xs py-2" style={{ color: 'var(--color-text-muted)' }}>Chưa có yêu cầu thuê nào.</p>;
                                             
                                             return (
                                                 <div className="space-y-2">
                                                     {requests.map((r: any) => (
-                                                        <div key={r.id} className="p-3 border border-[var(--color-border)] rounded-md" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                        <div key={r.id} onClick={() => navigate(`/employee/requests/${r.id}`)} className="p-3 border border-[var(--color-border)] rounded-md cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
                                                             <div className="flex items-start justify-between">
                                                                 <div>
                                                                     <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{r.warehouseName}</p>
