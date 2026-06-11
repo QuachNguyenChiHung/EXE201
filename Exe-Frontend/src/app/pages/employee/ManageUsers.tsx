@@ -237,10 +237,7 @@ export default function ManageUsers() {
 
   const handleSave = async (id: number, name: string, companyName: string) => {
     try {
-      await adminUpdateUser(id, {
-        name,
-        company: companyName ? { ...editingUser?.company, company_name: companyName, id_company: editingUser?.company?.id_company ?? 0, user_id: id, company_tax_code: editingUser?.company?.company_tax_code ?? '' } as any : undefined
-      });
+      await employeeService.updateUser(id, { name });
       toast.success('Đã cập nhật thông tin người dùng.');
       setEditingUser(null);
       // update local list optimistically
@@ -248,6 +245,17 @@ export default function ManageUsers() {
     } catch (err) {
       console.error(err);
       toast.error('Cập nhật thất bại');
+    }
+  }
+
+  const handleToggleStatus = async (user: User, newStatus: string) => {
+    try {
+      await employeeService.updateUserStatus(user.id_user, newStatus);
+      toast.success(`Đã ${newStatus === 'ACTIVE' ? 'mở khoá' : 'khoá'} tài khoản.`);
+      setListUsers(prev => prev.map(u => u.id_user === user.id_user ? { ...u, status: newStatus } : u));
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Cập nhật trạng thái thất bại');
     }
   }
   const handleCreateEmployee = async (data: any) => {
@@ -477,6 +485,7 @@ export default function ManageUsers() {
                     user={u}
                     onEdit={setEditingUser}
                     onViewConversations={setViewConvUser}
+                    onToggleStatus={handleToggleStatus}
                     warehouseCount={warehousesByOwner[u.id_user] ?? 0}
                     requestCount={requestsByRenter[u.id_user] ?? 0}
                   />

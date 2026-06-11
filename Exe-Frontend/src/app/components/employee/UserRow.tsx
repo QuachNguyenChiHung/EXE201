@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Warehouse, CheckCircle, Sparkles, Edit2, ChevronDown, ChevronUp, Building, Phone, Mail, Calendar, ShieldCheck, Loader2, FileText, FileSignature, User as UserIcon, AlignLeft, MapPin, CreditCard, Package, Activity } from 'lucide-react';
+import { Warehouse, CheckCircle, Sparkles, Edit2, ChevronDown, ChevronUp, Building, Phone, Mail, Calendar, ShieldCheck, Loader2, FileText, FileSignature, User as UserIcon, AlignLeft, MapPin, CreditCard, Package, Activity, Lock, Unlock } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { User, UserRole } from '../../../types';
 import { employeeService } from '../../../services/employeeService';
@@ -12,10 +12,11 @@ const ROLE_CFG: Record<UserRole, { label: string; color: string; icon: React.Rea
     EMPLOYEE: { label: 'Nhân viên', color: 'var(--color-success, #22c55e)', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
 };
 
-export default function UserRow({ user, onEdit, onViewConversations, warehouseCount, requestCount }: {
+export default function UserRow({ user, onEdit, onViewConversations, onToggleStatus, warehouseCount, requestCount }: {
     user: User;
     onEdit: (u: User) => void;
     onViewConversations: (u: User) => void;
+    onToggleStatus?: (u: User, newStatus: string) => void;
     warehouseCount: number;
     requestCount: number;
 }) {
@@ -125,6 +126,14 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                         style={{ color: 'var(--color-text-secondary)' }}>
                         <Edit2 className="h-3 w-3" /> Sửa
                     </button>
+                    {onToggleStatus && (
+                        <button onClick={() => onToggleStatus(user, user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE')}
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
+                            style={{ color: user.status === 'ACTIVE' ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                            {user.status === 'ACTIVE' ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                            {user.status === 'ACTIVE' ? 'Khoá' : 'Mở Khoá'}
+                        </button>
+                    )}
                     <button onClick={() => setExpanded(p => !p)}
                         className="p-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">
                         {expanded ? <ChevronUp className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />}
@@ -157,51 +166,66 @@ export default function UserRow({ user, onEdit, onViewConversations, warehouseCo
                                     {/* LEFT COLUMN */}
                                     <div className="lg:col-span-1 flex flex-col gap-5">
                                 {/* USER INFO CARD */}
-                                <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
-                                        <UserIcon className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
-                                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Thông tin</span>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>ID / Trạng thái</p>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{user.id_user}</p>
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${user.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {user.status}
-                                                </span>
+                                {(() => {
+                                    const detailUser = ownerDetail?.userInfo || renterDetail?.userInfo;
+                                    const companyName = detailUser?.company?.name || user.company?.company_name;
+                                    const taxCode = detailUser?.company?.taxCode;
+                                    const userPhone = detailUser?.phone || user.phone;
+                                    const userEmail = detailUser?.email || user.email;
+
+                                    return (
+                                        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-md p-5 shadow-sm">
+                                            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
+                                                <UserIcon className="h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                                                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Thông tin</span>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>ID / Trạng thái</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{user.id_user}</p>
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${user.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {user.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {companyName && (
+                                                    <div>
+                                                        <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Công ty</p>
+                                                        <p className="text-sm flex items-center gap-1.5 font-medium" style={{ color: 'var(--color-text)' }}>
+                                                            <Building className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-primary)' }} /> {companyName}
+                                                        </p>
+                                                        {taxCode && (
+                                                            <p className="text-xs mt-1 text-[var(--color-text-muted)]">
+                                                                Mã số thuế: {taxCode}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {userPhone && (
+                                                    <div>
+                                                        <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Điện thoại</p>
+                                                        <a href={`tel:${userPhone}`} className="text-sm flex items-center gap-1.5 font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
+                                                            <Phone className="h-3.5 w-3.5 shrink-0" /> {userPhone}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Email</p>
+                                                    <a href={`mailto:${userEmail}`} className="text-sm flex items-center gap-1.5 font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
+                                                        <Mail className="h-3.5 w-3.5 shrink-0" /> {userEmail}
+                                                    </a>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Ngày tham gia</p>
+                                                    <p className="text-sm flex items-center gap-1.5 font-medium" style={{ color: 'var(--color-text)' }}>
+                                                        <Calendar className="h-3.5 w-3.5 shrink-0" /> {fmtDate(user.create_at)}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                        {user.company?.company_name && (
-                                            <div>
-                                                <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Công ty</p>
-                                                <p className="text-sm flex items-center gap-1.5 font-medium" style={{ color: 'var(--color-text)' }}>
-                                                    <Building className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-primary)' }} /> {user.company.company_name}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {user.phone && (
-                                            <div>
-                                                <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Điện thoại</p>
-                                                <a href={`tel:${user.phone}`} className="text-sm flex items-center gap-1.5 font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
-                                                    <Phone className="h-3.5 w-3.5 shrink-0" /> {user.phone}
-                                                </a>
-                                            </div>
-                                        )}
-                                        <div>
-                                            <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Email</p>
-                                            <a href={`mailto:${user.email}`} className="text-sm flex items-center gap-1.5 font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
-                                                <Mail className="h-3.5 w-3.5 shrink-0" /> {user.email}
-                                            </a>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs mb-1 uppercase tracking-wide font-medium" style={{ color: 'var(--color-text-muted)' }}>Ngày tham gia</p>
-                                            <p className="text-sm flex items-center gap-1.5 font-medium" style={{ color: 'var(--color-text)' }}>
-                                                <Calendar className="h-3.5 w-3.5 shrink-0" /> {fmtDate(user.create_at)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                                    );
+                                })()}
 
                                 {/* RENTER STATS CARD */}
                                 {roleKey === 'RENTER' && renterDetail && (

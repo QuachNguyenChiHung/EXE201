@@ -108,7 +108,7 @@ export default function ManageContracts() {
                       {c.warehouseName || 'Không rõ'}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {c.renterName || 'Khách hàng'}
+                      {c.renterLegalName || 'Khách hàng'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-semibold text-white uppercase ${c.status === 'ACTIVE' ? 'bg-green-500' : c.status === 'CANCELED' ? 'bg-red-500' : c.status === 'COMPLETED' ? 'bg-blue-500' : 'bg-gray-500'}`}>
@@ -116,7 +116,7 @@ export default function ManageContracts() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {c.signedDate ? new Date(c.signedDate).toLocaleDateString('vi-VN') : 'N/A'}
+                      {c.startAt ? new Date(c.startAt).toLocaleDateString('vi-VN') : 'N/A'}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

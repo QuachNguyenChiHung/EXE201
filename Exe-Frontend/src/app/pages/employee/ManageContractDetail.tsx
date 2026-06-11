@@ -29,12 +29,6 @@ export default function ManageContractDetail() {
             if (res.requestId) {
                 employeeService.getRequestDetail(res.requestId)
                     .then(reqRes => {
-                        if (!reqRes.details || reqRes.details.length === 0) {
-                            reqRes.details = [
-                                { id: 991, sector: 1, priceTierLabel: "Tiêu chuẩn", priceTierValue: 150000, rentedArea: 50, areaUnit: "m²" },
-                                { id: 992, sector: 2, priceTierLabel: "Kho Lạnh", priceTierValue: 250000, rentedArea: 100, areaUnit: "m²" }
-                            ];
-                        }
                         setRequestDetail(reqRes);
                     })
                     .catch(reqErr => console.error("Failed to fetch attached request:", reqErr));
@@ -73,22 +67,14 @@ export default function ManageContractDetail() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
-  const signedDateObj = contract.signedDate ? new Date(contract.signedDate) : new Date();
+  const signedDateObj = contract.startAt ? new Date(contract.startAt) : new Date();
   const day = signedDateObj.getDate();
   const month = signedDateObj.getMonth() + 1;
   const year = signedDateObj.getFullYear();
 
-  const mockData = {
-    ownerName: "CÔNG TY TNHH CHO THUÊ KHO BÃI LOGISTICS",
-    renterAddress: "Số 123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
-    warehouseAddress: "Lô E3, KCN Sóng Thần 1, Thành phố Dĩ An, Bình Dương",
-    paymentTerm: "Bên B có trách nhiệm thanh toán tiền thuê cho Bên A vào ngày 05 hàng tháng qua hình thức chuyển khoản ngân hàng. Tiền đặt cọc tương đương 02 tháng tiền thuê.",
-    penaltyClause: "Trong trường hợp Bên B thanh toán chậm quá 10 ngày, Bên B sẽ phải chịu khoản phạt 5% trên tổng số tiền chậm trả. Nếu chậm thanh toán quá 30 ngày, Bên A có quyền đơn phương chấm dứt hợp đồng.",
-    specialTerm: "Bên B cam kết không tàng trữ, lưu trữ các loại hàng hóa quốc cấm, hóa chất độc hại, hoặc chất dễ cháy nổ không có giấy phép hợp lệ. Mọi hành vi vi phạm pháp luật tại khu vực thuê sẽ do Bên B hoàn toàn chịu trách nhiệm."
-  };
-
-  let autoCalculatedTotal = contract.totalPrice || 0;
-  if (!autoCalculatedTotal && requestDetail && requestDetail.details) {
+  const contractTotalPrice = contract.totalPrice || 0;
+  let autoCalculatedTotal = 0;
+  if (requestDetail && requestDetail.details) {
       const totalMonthly = requestDetail.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
       const isYears = requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm';
       const durationMultiplier = isYears ? (requestDetail.duration * 12) : (requestDetail.duration || 1);
@@ -98,8 +84,30 @@ export default function ManageContractDetail() {
   return (
     <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>
       <Navbar />
+      <style>{`
+        @media print {
+          @page { margin: 0; }
+          body { margin: 1.6cm; background: white; }
+          body * {
+            visibility: hidden;
+          }
+          #printable-contract, #printable-contract * {
+            visibility: visible;
+          }
+          #printable-contract {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            box-shadow: none !important;
+            border: none !important;
+          }
+        }
+      `}</style>
 
-      <div className="pt-8 pb-16 px-4" style={{ maxWidth: '896px', margin: '0 auto' }}>
+      <div className="pt-8 pb-16 px-4 print:pt-0 print:pb-0" style={{ maxWidth: '896px', margin: '0 auto' }}>
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigate("/employee/contracts")}
@@ -119,7 +127,8 @@ export default function ManageContractDetail() {
 
         {/* Paper Contract View */}
         <div 
-          className="bg-white shadow-xl mx-auto border border-gray-300"
+          id="printable-contract"
+          className="bg-white shadow-xl mx-auto border border-gray-300 print:shadow-none print:border-none"
           style={{ 
             maxWidth: '210mm', 
             minHeight: '297mm', 
@@ -155,72 +164,97 @@ export default function ManageContractDetail() {
             <div className="mt-6">
               <h3 className="font-bold text-lg mb-2">BÊN CHO THUÊ (BÊN A):</h3>
               <p><strong>Cơ sở / Kho bãi:</strong> {contract.warehouseName || 'Không có tên'}</p>
-              <p><strong>Đại diện pháp luật:</strong> {mockData.ownerName}</p>
-              <p><strong>Địa chỉ kho:</strong> {mockData.warehouseAddress}</p>
+              <p><strong>Đại diện pháp luật:</strong> {contract.ownerLegalName}</p>
+              <p><strong>Mã số thuế:</strong> {contract.ownerTaxCode || 'Chưa cập nhật'}</p>
+              <p><strong>Địa chỉ kho:</strong> {contract.ownerAddress || 'Chưa cập nhật'}</p>
+              <p><strong>Email:</strong> {contract.ownerEmail || 'Chưa cập nhật'}</p>
+              <p><strong>Điện thoại:</strong> {contract.ownerPhone || 'Chưa cập nhật'}</p>
             </div>
 
             <div className="mt-6">
               <h3 className="font-bold text-lg mb-2">BÊN THUÊ (BÊN B):</h3>
-              <p><strong>Đại diện pháp luật:</strong> {contract.renterName || 'Khách hàng'}</p>
-              <p><strong>Địa chỉ:</strong> {mockData.renterAddress}</p>
+              <p><strong>Đại diện pháp luật:</strong> {contract.renterLegalName || 'Khách hàng'}</p>
+              <p><strong>Mã số thuế:</strong> {contract.renterTaxCode || 'Chưa cập nhật'}</p>
+              <p><strong>Địa chỉ:</strong> {contract.renterAddress || 'Chưa cập nhật'}</p>
+              <p><strong>Email:</strong> {contract.renterEmail || 'Chưa cập nhật'}</p>
+              <p><strong>Điện thoại:</strong> {contract.renterPhone || 'Chưa cập nhật'}</p>
               <p><strong>Liên kết Yêu cầu thuê (Request ID):</strong> #{contract.requestId}</p>
             </div>
 
             <div className="mt-8 space-y-4">
               <h3 className="font-bold text-lg">ĐIỀU 1: NỘI DUNG HỢP ĐỒNG</h3>
               <p>
-                Bên A đồng ý cho Bên B thuê không gian tại kho bãi <strong>{contract.warehouseName || 'đã chỉ định'}</strong> dựa theo các tiêu chí và diện tích đã thỏa thuận trong Yêu cầu thuê số <strong>#{contract.requestId}</strong>.
+                Bên A đồng ý cho Bên B thuê không gian tại kho bãi <strong>{contract.warehouseName || 'đã chỉ định'}</strong>.
+              </p>
+              <p className="mt-2">
+                <strong>Thời hạn hiệu lực của hợp đồng:</strong> Từ ngày {contract.startAt ? new Date(contract.startAt).toLocaleDateString('vi-VN') : '...'} đến ngày {contract.endAt ? new Date(contract.endAt).toLocaleDateString('vi-VN') : '...'}.
               </p>
               {requestDetail && (
-                <div className="pl-4 border-l-2 border-gray-400 my-2 py-1 italic text-sm space-y-1">
-                  <p>- Hàng hóa lưu trữ: {requestDetail.cargoDescription || 'Chưa mô tả'}</p>
-                  <p>- Thời gian thuê: {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm' ? 'Năm' : requestDetail.durationUnit}</p>
-                  {requestDetail.details && requestDetail.details.length > 0 && (
-                     <div className="mt-1">
-                        <p>- Phân khu thuê:</p>
-                        <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
-                           {requestDetail.details.map((d: any, i: number) => {
-                             const lineMonthly = d.rentedArea * d.priceTierValue;
+                <div className="mt-4 p-4 border border-gray-300 bg-gray-50 rounded-md print:border-gray-400 print:bg-transparent">
+                  <h4 className="font-bold text-sm uppercase mb-2 text-gray-700 print:text-black">Tham chiếu Yêu cầu thuê (#{contract.requestId})</h4>
+                  <p className="text-sm italic text-gray-600 print:text-black mb-3">
+                    Chi tiết từ Yêu cầu thuê ban đầu. Lưu ý: Các điều khoản, diện tích, hoặc mức giá chính thức trong hợp đồng có thể thay đổi so với yêu cầu ban đầu tùy theo thỏa thuận thực tế.
+                  </p>
+                  <div className="text-sm space-y-1 pl-3 border-l-2 border-gray-300 print:border-black">
+                    <p>- Hàng hóa lưu trữ: {requestDetail.cargoDescription || 'Chưa mô tả'}</p>
+                    <p>- Thời gian thuê: {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm' ? 'Năm' : requestDetail.durationUnit}</p>
+                    {requestDetail.details && requestDetail.details.length > 0 && (
+                       <div className="mt-2">
+                          <p className="font-semibold">- Phân khu yêu cầu thuê:</p>
+                          <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
+                             {requestDetail.details.map((d: any, i: number) => {
+                               const lineMonthly = d.rentedArea * d.priceTierValue;
+                               return (
+                                 <li key={i}>
+                                   Khu vực {d.sector}: {d.rentedArea} {d.areaUnit} x {new Intl.NumberFormat('vi-VN').format(d.priceTierValue)} đ/{d.areaUnit}/tháng = <strong>{new Intl.NumberFormat('vi-VN').format(lineMonthly)} đ/tháng</strong>
+                                 </li>
+                               );
+                             })}
+                          </ul>
+                          {(() => {
+                             const totalMonthly = requestDetail.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
+                             const isYears = requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm';
+                             const durationMultiplier = isYears ? (requestDetail.duration * 12) : (requestDetail.duration || 1);
+                             const totalExpected = totalMonthly * durationMultiplier;
+                             const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
                              return (
-                               <li key={i}>
-                                 Khu vực {d.sector}: {d.rentedArea} {d.areaUnit} x {new Intl.NumberFormat('vi-VN').format(d.priceTierValue)} đ/{d.areaUnit}/tháng = <strong>{new Intl.NumberFormat('vi-VN').format(lineMonthly)} đ/tháng</strong>
-                               </li>
+                               <div className="mt-3 text-sm">
+                                 <p>- Phí thuê hàng tháng dự kiến (Yêu cầu): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
+                                 <p>- Tổng chi phí dự kiến cho toàn kỳ thuê ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong></p>
+                               </div>
                              );
-                           })}
-                        </ul>
-                        {(() => {
-                           const totalMonthly = requestDetail.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
-                           const isYears = requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm';
-                           const durationMultiplier = isYears ? (requestDetail.duration * 12) : (requestDetail.duration || 1);
-                           const totalExpected = totalMonthly * durationMultiplier;
-                           const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
-                           return (
-                             <div className="mt-2 text-sm">
-                               <p>- Tổng phí thuê hàng tháng ước tính: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
-                               <p>- Tổng chi phí dự kiến cho toàn kỳ thuê ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong></p>
-                             </div>
-                           );
-                        })()}
-                     </div>
-                  )}
+                          })()}
+                       </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               <h3 className="font-bold text-lg mt-6">ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG & THANH TOÁN</h3>
               <p>
-                Tổng giá trị hợp đồng được hai bên thống nhất xác nhận là: <strong>{formatCurrency(autoCalculatedTotal)}</strong>.
+                Tổng giá trị hợp đồng chính thức được hai bên thống nhất xác nhận là: <strong>{formatCurrency(contractTotalPrice)}</strong> <em>(Chưa bao gồm thuế GTGT)</em>.
               </p>
-              <p>{mockData.paymentTerm}</p>
+              {autoCalculatedTotal !== contractTotalPrice && autoCalculatedTotal > 0 && (
+                <p className="text-sm italic text-gray-600 print:text-black">
+                  *(Mức giá trên áp dụng theo thỏa thuận cuối cùng của hợp đồng, có thể khác với giá dự kiến ban đầu là {formatCurrency(autoCalculatedTotal)}).
+                </p>
+              )}
+              <p className="mt-2">{contract.paymentTerm || 'Chưa cập nhật phương thức và kỳ hạn thanh toán cụ thể.'}</p>
 
               <h3 className="font-bold text-lg">ĐIỀU 3: ĐIỀU KHOẢN PHẠT & CAM KẾT CHUNG</h3>
-              <p>{mockData.penaltyClause}</p>
-              <p>{mockData.specialTerm}</p>
+              <p>{contract.penaltyClause || 'Chưa cập nhật các điều khoản phạt vi phạm hợp đồng.'}</p>
+              <p>{contract.specialTerm || 'Chưa có các cam kết hoặc điều khoản đặc biệt nào khác.'}</p>
 
               <h3 className="font-bold text-lg">ĐIỀU 4: TÌNH TRẠNG PHÁP LÝ & HIỆU LỰC</h3>
               <p>
                 Tình trạng hiện tại của hợp đồng: <strong className="uppercase">{contract.status}</strong>.
               </p>
-              <p>
+              {contract.cancelReason && (
+                <p>
+                  <strong>Lý do hủy/chấm dứt:</strong> {contract.cancelReason}
+                </p>
+              )}
+              <p className="mt-2">
                 Hợp đồng này được tạo và lưu trữ trên hệ thống nền tảng AiLogis, có giá trị pháp lý tương đương văn bản thỏa thuận điện tử giữa các bên kể từ ngày ký ({day}/{month}/{year}).
               </p>
             </div>
@@ -231,12 +265,12 @@ export default function ManageContractDetail() {
             <div>
               <h3 className="font-bold text-base mb-1">ĐẠI DIỆN BÊN A</h3>
               <p className="text-sm italic mb-20">(Ký, ghi rõ họ tên)</p>
-              <p className="font-bold">{contract.warehouseName}</p>
+              <p className="font-bold">{contract.ownerLegalName}</p>
             </div>
             <div>
               <h3 className="font-bold text-base mb-1">ĐẠI DIỆN BÊN B</h3>
               <p className="text-sm italic mb-20">(Ký, ghi rõ họ tên)</p>
-              <p className="font-bold">{contract.renterName}</p>
+              <p className="font-bold">{contract.renterLegalName}</p>
             </div>
           </div>
           

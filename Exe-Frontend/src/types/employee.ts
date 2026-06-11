@@ -10,6 +10,23 @@ export interface UserDTO {
   status: string;
 }
 
+export interface CompanyResponseDTO {
+  id: number;
+  name: string;
+  taxCode: string;
+}
+
+export interface UserProfileDTO {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string;
+  avatarUrl: string;
+  role: string;
+  status: string;
+  company: CompanyResponseDTO;
+}
+
 export interface CertificationSubmitDTO {
   id: number;
   label: string;
@@ -92,23 +109,61 @@ export interface ContractResponseDTO {
   id: number;
   requestId: number;
   warehouseName: string;
-  renterName: string;
+  cargoDescription: string;
+  startAt: string;
+  endAt: string;
+  paymentTerm: string;
+  penaltyClause: string;
+  specialTerm: string;
+  cancelReason: string;
+
+  ownerLegalName: string;
+  ownerTaxCode: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  ownerAddress: string;
+
+  renterLegalName: string;
+  renterTaxCode: string;
+  renterEmail: string;
+  renterPhone: string;
+  renterAddress: string;
+
   totalPrice: number;
-  signedDate: string;
   status: string;
 }
 
 export interface OwnerDetailResponseDTO {
-  userInfo: UserDTO;
+  userInfo: UserProfileDTO;
   warehouses: WarehouseResponseDTO[];
   rentalRequests: RentRequestResponseDTO[];
   contracts: ContractResponseDTO[];
 }
 
 export interface RenterDetailResponseDTO {
-  userInfo: UserDTO;
+  userInfo: UserProfileDTO;
   aiSubscriptionPlan: string;
   rentalRequests: RentRequestResponseDTO[];
   contracts: ContractResponseDTO[];
   totalSpending: number;
+}
+
+export interface AiTierDTO {
+  id?: number;
+  label: string;
+  description: string;
+  tokenInput: number;
+  tokenOutput: number;
+  price: number;
+  unit: string;
+  activeUsersCount?: number;
+}
+
+export interface SponsorTierDTO {
+  id?: number;
+  priorityLevel: number;
+  pricingPerMonth: number;
+  yearPackSale: number;
+  label: string;
+  activeWarehousesCount?: number;
 }

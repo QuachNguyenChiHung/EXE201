@@ -1,5 +1,5 @@
 import { api } from './asus_api';
-import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO } from '../types/employee';
+import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO, ContractResponseDTO } from '../types/employee';
 
 export const employeeService = {
     getAllWarehouses: async (): Promise<WarehouseEmployeeDTO[]> => {
@@ -62,6 +62,18 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
+    updateUser: async (userID: number, payload: any) => {
+        console.log(`[API CALL] PATCH /users/${userID}`, payload);
+        const response = await api.patch(`/users/${userID}`, payload);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    updateUserStatus: async (userID: number, status: string) => {
+        console.log(`[API CALL] PATCH /users/${userID}/status`, { status });
+        const response = await api.patch(`/users/${userID}/status`, { status });
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
     getCertTypes: async () => {
         console.log('[API CALL] GET /certs');
         const response = await api.get('/certs');
@@ -116,7 +128,7 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    getContracts: async (status?: string) => {
+    getContracts: async (status?: string): Promise<ContractResponseDTO[]> => {
         console.log(`[API CALL] GET /contracts${status ? `?status=${status}` : ''}`);
         const response = await api.get(`/contracts`, { params: status && status !== 'ALL' ? { status } : undefined });
         console.log('[API RESPONSE]', response.data);
@@ -140,9 +152,59 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    getContractDetail: async (id: number) => {
+    getContractDetail: async (id: number): Promise<ContractResponseDTO> => {
         console.log(`[API CALL] GET /contracts/${id}`);
         const response = await api.get(`/contracts/${id}`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    // AI SUBSCRIPTION TIER
+    getAllAiTiers: async () => {
+        console.log('[API CALL] GET /employees/ai-tiers');
+        const response = await api.get('/employees/ai-tiers');
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    createAiTier: async (payload: any) => {
+        console.log('[API CALL] POST /employees/ai-tiers', payload);
+        const response = await api.post('/employees/ai-tiers', payload);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    updateAiTier: async (id: number, payload: any) => {
+        console.log(`[API CALL] PUT /employees/ai-tiers/${id}`, payload);
+        const response = await api.put(`/employees/ai-tiers/${id}`, payload);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    deleteAiTier: async (id: number) => {
+        console.log(`[API CALL] DELETE /employees/ai-tiers/${id}`);
+        const response = await api.delete(`/employees/ai-tiers/${id}`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    // SPONSOR TIER
+    getAllSponsorTiers: async () => {
+        console.log('[API CALL] GET /employees/sponsor-tiers');
+        const response = await api.get('/employees/sponsor-tiers');
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    createSponsorTier: async (payload: any) => {
+        console.log('[API CALL] POST /employees/sponsor-tiers', payload);
+        const response = await api.post('/employees/sponsor-tiers', payload);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    updateSponsorTier: async (id: number, payload: any) => {
+        console.log(`[API CALL] PUT /employees/sponsor-tiers/${id}`, payload);
+        const response = await api.put(`/employees/sponsor-tiers/${id}`, payload);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+    deleteSponsorTier: async (id: number) => {
+        console.log(`[API CALL] DELETE /employees/sponsor-tiers/${id}`);
+        const response = await api.delete(`/employees/sponsor-tiers/${id}`);
         console.log('[API RESPONSE]', response.data);
         return response.data;
     }

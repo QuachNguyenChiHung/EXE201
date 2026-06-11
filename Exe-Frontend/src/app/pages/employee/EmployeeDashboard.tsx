@@ -7,7 +7,7 @@ import { MockWarehouseData as MockWarehouses } from '../../../data/mockWarehouse
 import { MockCompositeRentRequests as MockRentRequests } from '../../../data/mockRequests';
 import { contractsAPI } from '../../../services/apiClient';
 import { employeeService } from '../../../services/employeeService';
-import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Shield } from 'lucide-react';
+import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Shield, Sparkles, Star } from 'lucide-react';
 import { AIStatusPanel } from '../../components/AIStatusPanel';
 import type { CompositeContract } from '../../../types';
 
@@ -114,6 +114,22 @@ export default function EmployeeDashboard() {
       desc: 'Quản lý tất cả các hợp đồng thuê trên hệ thống',
       badge: null,
       path: '/employee/contracts',
+    },
+    {
+      icon: <Sparkles className="h-8 w-8" />,
+      color: '#ec4899', // Pink
+      title: 'Gói AI',
+      desc: 'Quản lý các gói đăng ký AI cho người dùng',
+      badge: null,
+      path: '/employee/ai-tiers',
+    },
+    {
+      icon: <Star className="h-8 w-8" />,
+      color: '#eab308', // Yellow
+      title: 'Gói Tài Trợ',
+      desc: 'Quản lý các gói ưu tiên tìm kiếm kho bãi',
+      badge: null,
+      path: '/employee/sponsor-tiers',
     },
   ];
 
@@ -227,15 +243,15 @@ export default function EmployeeDashboard() {
           </div>
           <div className="divide-y divide-[var(--color-border)]">
             {activeContracts.slice(0, 4).map(c => {
-              const whName = c.warehouseName || MockWarehouses.find(w => w.id_warehouse === c.id_warehouse)?.name;
+              const whName = c.warehouseName || 'Kho';
               return (
-                <div key={c.id || c.id_contract} className="flex items-center justify-between px-4 py-3">
+                <div key={c.id} className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>
-                      {c.contractRef || `Mã HĐ: #${c.id}`}
+                      {`Mã HĐ: #${c.id}`}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                      {whName ?? (c.id_warehouse || 'Kho')} {c.rentedCapacity ? `· ${c.rentedCapacity.toLocaleString()} m³` : ''}
+                      {whName}
                     </p>
                   </div>
                   <span

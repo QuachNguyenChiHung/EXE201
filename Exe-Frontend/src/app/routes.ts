@@ -37,6 +37,8 @@ import ManageCertTypes from './pages/employee/ManageCertTypes';
 import ManageContracts from './pages/employee/ManageContracts';
 import ManageRequestDetail from './pages/employee/ManageRequestDetail';
 import ManageContractDetail from './pages/employee/ManageContractDetail';
+import ManageAiTiers from './pages/employee/ManageAiTiers';
+import ManageSponsorTiers from './pages/employee/ManageSponsorTiers';
 
 // Shared
 import NotFound from './pages/NotFound';
@@ -112,6 +114,8 @@ export const router = createBrowserRouter([
       { path: '/employee/contracts', Component: ManageContracts },
       { path: '/employee/requests/:id', Component: ManageRequestDetail },
       { path: '/employee/contracts/:id', Component: ManageContractDetail },
+      { path: '/employee/ai-tiers', Component: ManageAiTiers },
+      { path: '/employee/sponsor-tiers', Component: ManageSponsorTiers },
     ],
   },
 
