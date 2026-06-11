@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
+import logoUrl from "../../assets/logo.jpg";
 
 
 export default function LoginPage() {
@@ -49,8 +50,8 @@ export default function LoginPage() {
       {/* Left accent panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-[var(--color-primary)] flex-col justify-between p-12">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white flex items-center justify-center">
-            <Warehouse className="h-4 w-4 text-[var(--color-primary)]" />
+          <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-md bg-white p-0.5">
+            <img src={logoUrl} alt="Logicha" className="w-full h-full object-contain" />
           </div>
           <span className="font-extrabold text-xl text-white tracking-tight">Logicha</span>
         </Link>
@@ -72,8 +73,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 bg-[var(--color-primary)] flex items-center justify-center">
-              <Warehouse className="h-4 w-4 text-white" />
+            <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-md bg-[var(--color-primary)] p-0.5">
+              <img src={logoUrl} alt="Logicha" className="w-full h-full object-contain" />
             </div>
             <span className="font-extrabold text-xl tracking-tight">logicha</span>
           </Link>

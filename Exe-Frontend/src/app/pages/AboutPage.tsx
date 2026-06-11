@@ -195,34 +195,7 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="bg-[var(--color-text)] text-white p-12 mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-white mb-2">
-              Logicha trong con số
-            </h2>
-            <p className="text-gray-400 text-sm">
-              Những thành tựu chúng tôi tự hào
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { value: "500+", label: "Kho lạnh" },
-              { value: "1,000+", label: "Doanh nghiệp" },
-              { value: "63/63", label: "Tỉnh thành" },
-              { value: "99%", label: "Hài lòng" },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-4xl font-extrabold text-[var(--color-primary-300)] mb-1">
-                  {s.value}
-                </div>
-                <p className="text-gray-400 text-sm">
-                  {s.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+
 
         {/* CTA */}
         <div className="bg-[var(--color-primary)] text-white p-12 text-center">

@@ -94,33 +94,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Stats bar ──────────────────────────────────────────────────────── */}
-      <section className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
-        <div className="bento-container py-6">
-          <div className="grid grid-cols-3 divide-x divide-[var(--color-border)]">
-            {[
-              { value: "500+", label: "Kho lạnh đã đăng ký" },
-              {
-                value: "1,200+",
-                label: "Doanh nghiệp tin dùng",
-              },
-              { value: "63", label: "Tỉnh thành phủ sóng" },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="text-center px-6"
-              >
-                <div className="text-2xl font-extrabold text-[var(--color-primary)]">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-[var(--color-text-secondary)] mt-1">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* ── Features ───────────────────────────────────────────────────────── */}
       <section className="bento-section">

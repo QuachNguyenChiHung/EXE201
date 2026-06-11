@@ -18,6 +18,7 @@ import {
   FileText,
   Crown,
 } from "lucide-react";
+import logoUrl from "../../assets/logo.jpg";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -159,8 +160,8 @@ export function Navbar() {
       <div className="max-w-[1400px] mx-auto px-6 lg:px-8 h-14 flex justify-between items-stretch">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 bg-[var(--color-primary)] flex items-center justify-center">
-            <Warehouse className="h-4 w-4 text-white" />
+          <div className="w-12 h-12 flex items-center justify-center overflow-hidden rounded-md">
+            <img src={logoUrl} alt="Logicha" className="w-full h-full object-cover" />
           </div>
           <span
             className="font-extrabold text-lg tracking-tight text-[var(--color-text)]"
