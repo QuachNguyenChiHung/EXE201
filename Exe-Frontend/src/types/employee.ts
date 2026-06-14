@@ -31,7 +31,8 @@ export interface CertificationSubmitDTO {
   id: number;
   label: string;
   link: string;
-  isVerified: boolean;
+  status: string;
+  rejectReason?: string;
 }
 
 export interface WarehouseEmployeeDTO {
@@ -102,6 +103,11 @@ export interface RentRequestResponseDTO {
   duration: number;
   durationUnit: string;
   status: string;
+  otherDetail?: string;
+  renterRejectionReason?: string;
+  rejectionReason?: string;
+  offeredPrice?: number;
+  ownerNote?: string;
   details: RentRequestDetailResponseDTO[];
 }
 

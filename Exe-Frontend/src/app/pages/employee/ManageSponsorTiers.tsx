@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { employeeService } from '../../../services/employeeService';
@@ -41,7 +41,9 @@ export default function ManageSponsorTiers() {
     return t.label.toLowerCase().includes(q);
   });
 
-  const fetchTiers = async () => {
+  const fetchTiers = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
     setLoading(true);
     try {
       const res = await employeeService.getAllSponsorTiers();
@@ -50,17 +52,16 @@ export default function ManageSponsorTiers() {
       console.error('Failed to fetch sponsor tiers', err);
       toast.error('Không tải được danh sách gói Tài trợ');
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchTiers() }, []);
+  useEffect(() => { fetchTiers() }, [fetchTiers]);
 
   const user = getUser();
   useEffect(() => {
     if (!user || user.role !== 'EMPLOYEE') {
       navigate('/login');
-      return;
     }
-  }, [user, navigate]);
+  }, [user?.role, user?.id_user, navigate]);
 
   const openCreate = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true); };
   

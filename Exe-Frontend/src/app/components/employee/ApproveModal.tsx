@@ -13,21 +13,27 @@ export default function ApproveModal({
     cert: CertificationSubmit | any;
     certTypes: CertificationType[];
     certTypesLoading: boolean;
-    onConfirm: (isVerified: boolean, typeId: number | null) => void;
+    onConfirm: (status: string, typeId: number | null, rejectReason?: string) => void;
     onCancel: () => void;
 }) {
     const [selectedTypeId, setSelectedTypeId] = useState<number | ''>('');
+    const [status, setStatus] = useState<'VERIFIED' | 'REJECTED'>('VERIFIED');
+    const [rejectReason, setRejectReason] = useState<string>('');
 
-    const handleApprove = () => {
-        if (!selectedTypeId) {
-            alert("Vui lòng chọn loại chứng nhận trước khi duyệt.");
-            return;
+    const handleSubmit = () => {
+        if (status === 'VERIFIED') {
+            if (!selectedTypeId) {
+                alert("Vui lòng chọn loại chứng nhận trước khi duyệt.");
+                return;
+            }
+            onConfirm('VERIFIED', Number(selectedTypeId));
+        } else {
+            if (!rejectReason.trim()) {
+                alert("Lý do từ chối không được để trống.");
+                return;
+            }
+            onConfirm('REJECTED', null, rejectReason.trim());
         }
-        onConfirm(true, Number(selectedTypeId));
-    };
-
-    const handleReject = () => {
-        onConfirm(false, null);
     };
 
     return (
@@ -36,12 +42,12 @@ export default function ApproveModal({
                 <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                        Vui lòng kiểm tra tài liệu PDF bên dưới. Nếu hợp lệ, chọn loại chứng nhận tương ứng và Duyệt. Nếu không hợp lệ, hãy Từ chối.
+                        Vui lòng kiểm tra tài liệu PDF bên dưới. Chọn trạng thái tương ứng để Duyệt hoặc Từ chối.
                     </p>
                 </div>
             </div>
 
-            <div className="px-5 py-5 space-y-4">
+            <div className="px-5 py-5 space-y-5">
                 {/* Certificate Link */}
                 <div className="border border-[var(--color-border)] rounded-md p-4 bg-[var(--color-bg-secondary)] flex flex-col items-center justify-center gap-2">
                     <FileText className="h-8 w-8" style={{ color: 'var(--color-primary)' }} />
@@ -63,34 +69,69 @@ export default function ApproveModal({
                     )}
                 </div>
 
-                {/* Dropdown for Cert Type */}
+                {/* Status Selector */}
                 <div>
                     <label className="block text-xs font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-                        Chọn Loại Chứng Nhận <span className="text-red-500">*</span>
+                        Trạng thái <span className="text-red-500">*</span>
                     </label>
-                    {certTypesLoading ? (
-                        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tải danh sách...
-                        </div>
-                    ) : (
-                        <select 
-                            value={selectedTypeId} 
-                            onChange={(e) => setSelectedTypeId(e.target.value ? Number(e.target.value) : '')}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md text-sm outline-none focus:border-[var(--color-primary)]"
-                            style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                        >
-                            <option value="">-- Chọn loại chứng nhận --</option>
-                            {certTypes.map((ct: any) => {
-                                const idValue = ct.id_certification || ct.certID || ct.id;
-                                return (
-                                    <option key={idValue} value={idValue}>
-                                        {ct.label}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    )}
+                    <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as 'VERIFIED' | 'REJECTED')}
+                        className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md text-sm outline-none focus:border-[var(--color-primary)]"
+                        style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                    >
+                        <option value="VERIFIED">Duyệt tài liệu</option>
+                        <option value="REJECTED">Từ chối</option>
+                    </select>
                 </div>
+
+                {status === 'VERIFIED' && (
+                    <div>
+                        {/* Dropdown for Cert Type */}
+                        <label className="block text-xs font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+                            Chọn Loại Chứng Nhận <span className="text-red-500">*</span>
+                        </label>
+                        {certTypesLoading ? (
+                            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tải danh sách...
+                            </div>
+                        ) : (
+                            <select 
+                                value={selectedTypeId} 
+                                onChange={(e) => setSelectedTypeId(e.target.value ? Number(e.target.value) : '')}
+                                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md text-sm outline-none focus:border-[var(--color-primary)]"
+                                style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                            >
+                                <option value="">-- Chọn loại chứng nhận --</option>
+                                {certTypes.map((ct: any) => {
+                                    const idValue = ct.id_certification || ct.certID || ct.id;
+                                    return (
+                                        <option key={idValue} value={idValue}>
+                                            {ct.label}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        )}
+                    </div>
+                )}
+
+                {status === 'REJECTED' && (
+                    <div>
+                        {/* Textarea for Reject Reason */}
+                        <label className="block text-xs font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+                            Lý do từ chối <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            className="w-full px-3 py-2 border border-[var(--color-error, #ef4444)] rounded-md text-sm outline-none focus:ring-1 focus:ring-[var(--color-error, #ef4444)]"
+                            style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                            rows={3}
+                            placeholder="Vui lòng nhập lý do từ chối tài liệu này..."
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Action Buttons */}
@@ -103,19 +144,12 @@ export default function ApproveModal({
                     Huỷ
                 </button>
                 <button 
-                    onClick={handleReject} 
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-[var(--color-error)] rounded-md transition-colors"
-                    style={{ color: 'var(--color-error, #ef4444)', background: 'var(--color-surface)' }}
+                    onClick={handleSubmit} 
+                    className="flex items-center gap-1.5 px-6 py-2 text-sm font-medium text-white rounded-md transition-colors shadow-sm disabled:opacity-50"
+                    style={{ background: status === 'VERIFIED' ? 'var(--color-success, #22c55e)' : 'var(--color-error, #ef4444)' }}
                 >
-                    <XCircle className="h-4 w-4" /> Từ chối
-                </button>
-                <button 
-                    onClick={handleApprove} 
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors shadow-sm disabled:opacity-50"
-                    style={{ background: 'var(--color-success, #22c55e)' }}
-                    disabled={!selectedTypeId}
-                >
-                    <CheckCircle className="h-4 w-4" /> Duyệt
+                    {status === 'VERIFIED' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    Xác nhận
                 </button>
             </div>
         </Modal>

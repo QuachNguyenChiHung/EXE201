@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
@@ -47,16 +47,19 @@ export default function ManageWarehouses() {
       navigate('/login');
       return;
     }
-  }, [user, navigate]);
+  }, [user?.role, user?.id_user, navigate]);
 
   useEffect(() => {
+    if (!user || user.role !== 'EMPLOYEE') return;
     let mounted = true;
     setCertTypesLoading(true);
     employeeService.getCertTypes().then(res => { if (mounted) setCertTypes(res || []); }).catch(() => { }).finally(() => { if (mounted) setCertTypesLoading(false); });
     return () => { mounted = false; };
   }, []);
 
-  const fetchWarehouses = async () => {
+  const fetchWarehouses = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
     setLoading(true);
     try {
       let data: WarehouseEmployeeDTO[] = [];
@@ -86,11 +89,11 @@ export default function ManageWarehouses() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab]);
 
   useEffect(() => {
     fetchWarehouses();
-  }, [tab]);
+  }, [fetchWarehouses]);
 
   const ownerEmailMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -166,15 +169,16 @@ export default function ManageWarehouses() {
     }
   };
 
-  const handleReviewCert = async (isVerified: boolean, typeId: number | null) => {
+  const handleReviewCert = async (status: string, typeId: number | null, rejectReason?: string) => {
     if (!reviewingCert) return;
     try {
         const certId = (reviewingCert as any).id_cerfSubmit || (reviewingCert as any).id;
         await employeeService.reviewWarehouseCertification(certId, {
-            isVerified,
-            typeId
+            status,
+            typeId,
+            rejectReason
         });
-        toast.success(isVerified ? 'Đã duyệt chứng nhận!' : 'Đã từ chối chứng nhận!');
+        toast.success(status === 'VERIFIED' ? 'Đã duyệt chứng nhận!' : 'Đã từ chối chứng nhận!');
         setReviewingCert(null);
         // We probably want to re-fetch or the user will just close the row and reopen it.
         // For now, refreshing the whole list is the safest to keep it in sync.

@@ -1,5 +1,5 @@
 import { api } from './asus_api';
-import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO, ContractResponseDTO } from '../types/employee';
+import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO, ContractResponseDTO, RentRequestResponseDTO } from '../types/employee';
 
 export const employeeService = {
     getAllWarehouses: async (): Promise<WarehouseEmployeeDTO[]> => {
@@ -98,7 +98,7 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    reviewWarehouseCertification: async (submitId: number, dto: { isVerified: boolean, typeId?: number | null }) => {
+    reviewWarehouseCertification: async (submitId: number, dto: { status: string, rejectReason?: string, typeId?: number | null }) => {
         console.log(`[API CALL] PATCH /employees/certifications/${submitId}/review`, dto);
         const response = await api.patch(`/employees/certifications/${submitId}/review`, dto);
         console.log('[API RESPONSE]', response.data);
@@ -146,7 +146,7 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    getRequestDetail: async (id: number) => {
+    getRequestDetail: async (id: number): Promise<RentRequestResponseDTO> => {
         console.log(`[API CALL] GET /requests/${id}`);
         const response = await api.get(`/requests/${id}`);
         console.log('[API RESPONSE]', response.data);

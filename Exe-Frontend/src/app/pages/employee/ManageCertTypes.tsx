@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { employeeService } from '../../../services/employeeService';
@@ -42,7 +42,9 @@ export default function ManageCertTypes() {
     return ct.label.toLowerCase().includes(q) || (ct.labelDesc && ct.labelDesc.toLowerCase().includes(q)) || (ct.law_references && ct.law_references.toLowerCase().includes(q));
   });
 
-  const fetchCerts = async () => {
+  const fetchCerts = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
     setLoading(true);
     try {
       const res = await employeeService.getCertTypes();
@@ -59,19 +61,17 @@ export default function ManageCertTypes() {
       console.error('Failed to fetch certs', err);
       toast.error('Không tải được danh sách loại chứng nhận');
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchCerts() }, []);
+  useEffect(() => { fetchCerts() }, [fetchCerts]);
 
   const openCreate = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true); };
   const user = getUser();
   useEffect(() => {
     if (!user || user.role !== 'EMPLOYEE') {
       navigate('/login');
-      return;
     }
-
-  }, [user, navigate]);
+  }, [user?.role, user?.id_user, navigate]);
   const openEdit = (ct: CertificationType) => {
     let updateValue = new Date().toISOString().split('T')[0];
     if (ct.update) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
@@ -183,7 +183,7 @@ export default function ManageUsers() {
       return;
     }
 
-  }, [user, navigate]);
+  }, [user?.role, user?.id_user, navigate]);
   const [tab, setTab] = useState<RoleFilter>('all');
 
   const [viewMode, setViewMode] = useState<'list' | 'activity'>('list');
@@ -271,7 +271,9 @@ export default function ManageUsers() {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
     try {
       const res = await employeeService.getUsers();
       console.log('Fetched users:', res);
@@ -287,15 +289,16 @@ export default function ManageUsers() {
     } catch (error) {
       console.error('Error fetching users:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   // Fetch stats when viewMode or dates change
   useEffect(() => {
     if (viewMode === 'activity') {
+      if (!user || user.role !== 'EMPLOYEE') return;
       (async () => {
         try {
           setStatsLoading(true);

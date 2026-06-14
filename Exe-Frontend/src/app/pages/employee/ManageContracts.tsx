@@ -1,31 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
-import { useApp } from '../../../context/AppContext';
+import { getUser } from '../../../utils/auth';
 import { ArrowLeft, FileText, Eye, Loader2 } from "lucide-react";
 import { employeeService } from "../../../services/employeeService";
 
 export default function ManageContracts() {
   const navigate = useNavigate();
-  const { user } = useApp();
+  const user = getUser();
   
   const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  useEffect(() => {
-    if (!user || user.role !== "EMPLOYEE") {
-      navigate("/login");
-    }
-  }, [user, navigate]);
-
-  useEffect(() => {
+  const fetchContracts = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== "EMPLOYEE") return;
     setLoading(true);
     employeeService.getContracts(statusFilter)
       .then(res => setContracts(res))
       .catch(err => console.error("Failed to fetch contracts:", err))
       .finally(() => setLoading(false));
   }, [statusFilter]);
+
+  useEffect(() => {
+    fetchContracts();
+  }, [fetchContracts]);
+
+  useEffect(() => {
+    if (!user || user.role !== "EMPLOYEE") {
+      navigate("/login");
+    }
+  }, [user?.role, user?.id_user, navigate]);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>

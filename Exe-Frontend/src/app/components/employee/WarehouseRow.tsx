@@ -342,9 +342,13 @@ export default function WarehouseRow({
                                                     <div className="flex flex-col min-w-0 flex-1">
                                                         <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text)' }}>{cert.label || `Chứng nhận #${cert.id || cert.id_cerfSubmit}`}</span>
                                                         <div className="flex items-center gap-2 mt-1">
-                                                            {cert.isVerified ? (
+                                                            {cert.status === 'VERIFIED' ? (
                                                                 <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--color-success, #22c55e)' }}>
                                                                     <CheckCircle className="h-3 w-3" /> Đã xác thực
+                                                                </span>
+                                                            ) : cert.status === 'REJECTED' ? (
+                                                                <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--color-error, #ef4444)' }}>
+                                                                    <XCircle className="h-3 w-3" /> Đã từ chối
                                                                 </span>
                                                             ) : (
                                                                 <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--color-warning, #f59e0b)' }}>
@@ -353,8 +357,13 @@ export default function WarehouseRow({
                                                             )}
                                                             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>• PDF</span>
                                                         </div>
+                                                        {cert.status === 'REJECTED' && cert.rejectReason && (
+                                                            <div className="mt-1 text-[10px] italic" style={{ color: 'var(--color-error, #ef4444)' }}>
+                                                                Lý do: {cert.rejectReason}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {onReviewCert && !cert.isVerified && (
+                                                    {onReviewCert && (!cert.status || cert.status === 'PENDING') && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); onReviewCert(cert); }}
                                                             className="px-3 py-1.5 text-xs font-medium border border-[var(--color-primary)] rounded transition-colors bg-[var(--color-surface)] hover:bg-[var(--color-primary)] hover:text-white"

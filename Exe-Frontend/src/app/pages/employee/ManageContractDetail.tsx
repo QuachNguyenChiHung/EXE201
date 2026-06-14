@@ -1,25 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
-import { useApp } from "../../../context/AppContext";
+import { getUser } from '../../../utils/auth';
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
 import { employeeService } from "../../../services/employeeService";
 
 export default function ManageContractDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useApp();
+  const user = getUser();
   
   const [contract, setContract] = useState<any>(null);
   const [requestDetail, setRequestDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user || user.role !== "EMPLOYEE") {
-      navigate("/login");
-      return;
-    }
+  const fetchContractDetail = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== "EMPLOYEE") return;
 
     if (id) {
       setLoading(true);
@@ -40,7 +38,17 @@ export default function ManageContractDetail() {
         })
         .finally(() => setLoading(false));
     }
-  }, [user, navigate, id]);
+  }, [id]);
+
+  useEffect(() => {
+    fetchContractDetail();
+  }, [fetchContractDetail]);
+
+  useEffect(() => {
+    if (!user || user.role !== "EMPLOYEE") {
+      navigate("/login");
+    }
+  }, [user?.role, user?.id_user, navigate]);
 
   if (loading) {
     return (

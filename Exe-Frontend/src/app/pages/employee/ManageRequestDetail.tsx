@@ -1,35 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
-import { useApp } from "../../../context/AppContext";
+import { getUser } from '../../../utils/auth';
 import { ArrowLeft, ClipboardList, Box, Calendar, Building2, Layers, Loader2 } from "lucide-react";
 import { employeeService } from "../../../services/employeeService";
 
 export default function ManageRequestDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useApp();
+  const user = getUser();
 
   const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user || user.role !== "EMPLOYEE") {
-      navigate("/login");
-      return;
-    }
+  const fetchRequestDetail = useCallback(async () => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== "EMPLOYEE") return;
 
     if (id) {
       setLoading(true);
       employeeService.getRequestDetail(Number(id))
         .then(res => {
-            if (!res.details || res.details.length === 0) {
-                res.details = [
-                    { id: 991, sector: 1, priceTierLabel: "Tiêu chuẩn", priceTierValue: 150000, rentedArea: 50, areaUnit: "m²" },
-                    { id: 992, sector: 2, priceTierLabel: "Kho Lạnh", priceTierValue: 250000, rentedArea: 100, areaUnit: "m²" }
-                ];
-            }
             setRequest(res);
         })
         .catch(err => {
@@ -38,7 +30,17 @@ export default function ManageRequestDetail() {
         })
         .finally(() => setLoading(false));
     }
-  }, [user, navigate, id]);
+  }, [id]);
+
+  useEffect(() => {
+    fetchRequestDetail();
+  }, [fetchRequestDetail]);
+
+  useEffect(() => {
+    if (!user || user.role !== "EMPLOYEE") {
+      navigate("/login");
+    }
+  }, [user?.role, user?.id_user, navigate]);
 
   if (loading) {
     return (
@@ -61,12 +63,7 @@ export default function ManageRequestDetail() {
     );
   }
 
-  const mockData = {
-    renterName: "Công ty TNHH Vận Tải ABC",
-    renterEmail: "contact@abc-transport.vn",
-    renterPhone: "0901 234 567",
-    warehouseAddress: "Lô E3, KCN Sóng Thần 1, Dĩ An, Bình Dương"
-  };
+
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>
@@ -127,13 +124,13 @@ export default function ManageRequestDetail() {
               <div>
                 <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Tên kho</p>
                 <p className="text-sm font-medium mb-1">{request.warehouseName || 'N/A'}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">{mockData.warehouseAddress}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">{request.warehouseAddress || 'Đang cập nhật địa chỉ'}</p>
               </div>
               <div className="pt-2 border-t border-[var(--color-border)]">
                 <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Bên thuê (Renter)</p>
-                <p className="text-sm font-medium mb-1">{mockData.renterName}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">Email: {mockData.renterEmail}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">SĐT: {mockData.renterPhone}</p>
+                <p className="text-sm font-medium mb-1">{request.renterName || 'Đang cập nhật tên'}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">Email: {request.renterEmail || 'Đang cập nhật'}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">SĐT: {request.renterPhone || 'Đang cập nhật'}</p>
               </div>
             </div>
           </div>
