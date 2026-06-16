@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
-import { warehousesAPI } from "../../../services/apiClient";
+import { ownerService } from "../../../services/ownerService";
 import { CompositeWarehouse, CompositeWarehouseSection } from "../../../types";
 import { Button } from "../../components/ui/button";
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
@@ -26,22 +26,13 @@ export default function AddWarehouse() {
     address: "",
     location_commune: "",
     location_province: "",
-    latitude: 21.0285,
-    longitude: 105.8542,
-    total_capacity: 0,
-    available_capacity: 0,
-    type: "cold",
+    location_lat: 10.8231,
+    location_long: 106.6297,
     status: "active",
     availability: "available",
     certifications: [],
-    features: [],
     images: [],
     sections: [],
-    stats: {
-      humidity: 85,
-      powerBackup: true,
-      securityLevel: "medium",
-    },
   });
 
   const [certFiles, setCertFiles] = useState<CertFile[]>([]);
@@ -68,21 +59,58 @@ export default function AddWarehouse() {
 
     setSaving(true);
     try {
-      let finalImages = warehouse.images || [];
-
-      // Generate a new ID based on current time for the mock
-      const newId = Date.now().toString();
-
-      const newWarehouse: Partial<CompositeWarehouse> = {
-        ...warehouse,
-        id_warehouse: newId as unknown as number, // Let API handle real ID assignment
-        images: finalImages,
-        create_at: new Date().toISOString(),
-        update_at: new Date().toISOString(),
+      // 1. Build the DTO mapping for the JSON part
+      const dto = {
+        name: warehouse.name,
+        description: warehouse.description,
+        locationAddressText: warehouse.location_address_text || warehouse.address,
+        locationProvince: warehouse.location_province,
+        locationCommune: warehouse.location_commune,
+        locationLong: warehouse.location_long,
+        locationLat: warehouse.location_lat,
+        locationPostalCode: warehouse.location_postal_code || "",
+        sections: (warehouse.sections || []).map(sec => ({
+          sector: sec.sector,
+          totalCapacity: sec.total_capacity,
+          availableCapacity: sec.available_capacity,
+          tempMin: sec.temp_min,
+          tempMax: sec.temp_max,
+          humidity: sec.humidity,
+          hasCertification: sec.hasCertification,
+          priceTiers: (sec.priceTiers || []).map((pt: any) => ({
+            label: pt.label,
+            value: pt.value,
+            unit: pt.unit,
+            areaUnit: pt.area_unit
+          }))
+        }))
       };
 
-      console.log("[WarehouseForm] Submitting creation for:", newWarehouse);
-      await warehousesAPI.create(newWarehouse);
+      // 2. Construct FormData
+      const formData = new FormData();
+      
+      // We append the JSON DTO as a Blob so the backend can parse it as application/json
+      formData.append(
+        "warehouse",
+        new Blob([JSON.stringify(dto)], { type: "application/json" })
+      );
+
+      // 3. Append images
+      if (warehouse.images && warehouse.images.length > 0) {
+        warehouse.images.forEach((img: any) => {
+          if (img instanceof File) {
+            formData.append("images", img);
+          }
+        });
+      }
+
+      // 4. Append certificate
+      if (certFiles.length > 0 && certFiles[0].file) {
+        formData.append("certificate", certFiles[0].file);
+      }
+
+      console.log("[WarehouseForm] Submitting creation for:", dto);
+      await ownerService.createWarehouse(formData);
       toast.success("Thêm kho lạnh mới thành công!");
       navigate("/warehouse/my-warehouses");
     } catch (err: any) {

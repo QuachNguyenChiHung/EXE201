@@ -3,18 +3,20 @@ import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
 import { getUser } from "../../../utils/auth";
-import { warehousesAPI } from "../../../services/apiClient";
+
 import { Button } from "../../components/ui/button";
 import { Plus } from "lucide-react";
 import type { CompositeWarehouse } from "../../../types";
 import { WarehouseDashboardStats } from "../../components/owner/WarehouseDashboardStats";
 import { WarehouseDashboardActions } from "../../components/owner/WarehouseDashboardActions";
 import { WarehouseDashboardList } from "../../components/owner/WarehouseDashboardList";
+import { ownerService, OwnerStatisticResponseDTO } from "../../../services/ownerService";
 
 export default function WarehouseDashboard() {
   const navigate = useNavigate();
   const user = getUser();
-  const [allWarehouses, setAllWarehouses] = useState<CompositeWarehouse[]>([]);
+  const [warehouses, setWarehouses] = useState<CompositeWarehouse[]>([]);
+  const [ownerStats, setOwnerStats] = useState<OwnerStatisticResponseDTO | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "OWNER") {
@@ -22,23 +24,28 @@ export default function WarehouseDashboard() {
       return;
     }
 
-    warehousesAPI.getAll().then(setAllWarehouses).catch(err => {
+    ownerService.getMyWarehouses(0, 10, 'all').then(res => setWarehouses(res.content)).catch(err => {
       console.error('Failed to load warehouses:', err);
     });
-  }, [user, navigate]);
 
-  const warehouses = allWarehouses.filter((w) => w.id_owner === user?.id_user);
+    ownerService.getOwnerStatistics().then(setOwnerStats).catch(err => {
+      console.error('Failed to load owner statistics:', err);
+    });
+  }, [user?.role, navigate]);
 
-  const totalCapacity = warehouses.reduce(
+
+
+  const totalCapacity = ownerStats?.totalCapacity ?? warehouses.reduce(
     (s, w) => s + (w.sections?.reduce((secSum, sec) => secSum + (sec.total_capacity || 0), 0) || 0),
     0,
   );
-  const totalAvailable = warehouses.reduce(
+  const totalAvailable = ownerStats?.totalAvailable ?? warehouses.reduce(
     (s, w) => s + (w.sections?.reduce((secSum, sec) => secSum + (sec.available_capacity || 0), 0) || 0),
     0,
   );
-  const occupancyRate =
-    totalCapacity > 0
+  const occupancyRate = ownerStats?.occupancyRate !== undefined
+    ? ownerStats.occupancyRate.toFixed(1)
+    : totalCapacity > 0
       ? (
         ((totalCapacity - totalAvailable) / totalCapacity) *
         100
@@ -66,10 +73,14 @@ export default function WarehouseDashboard() {
 
         {/* Stats */}
         <WarehouseDashboardStats
-          totalWarehouses={warehouses.length}
+          totalWarehouses={ownerStats?.totalWarehouses ?? warehouses.length}
           totalCapacity={totalCapacity}
           totalAvailable={totalAvailable}
           occupancyRate={occupancyRate}
+          totalPendingRentRequests={ownerStats?.totalPendingRentRequests ?? 0}
+          totalActiveContract={ownerStats?.totalActiveContract ?? 0}
+          billingThisMonth={ownerStats?.billingThisMonth ?? 0}
+          endingContract={ownerStats?.endingContract ?? 0}
         />
 
         {/* Quick actions */}

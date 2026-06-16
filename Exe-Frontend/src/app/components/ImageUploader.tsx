@@ -25,14 +25,16 @@ interface UploadingItem {
   preview: string; // local blob URL for immediate preview
   status: 'uploading' | 'done' | 'error';
   error?: string;
+  file?: File;
 }
 
 interface Props {
-  value: string[];
-  onChange: (urls: string[]) => void;
+  value: any[];
+  onChange: (items: any[]) => void;
   maxFiles?: number;
   disabled?: boolean;
   label?: string;
+  returnFiles?: boolean;
 }
 
 export function ImageUploader({
@@ -41,6 +43,7 @@ export function ImageUploader({
   maxFiles = 6,
   disabled = false,
   label = 'Hình ảnh kho lạnh',
+  returnFiles = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState<UploadingItem[]>([]);
@@ -61,17 +64,19 @@ export function ImageUploader({
 
     const id = `${Date.now()}-${Math.random()}`;
     const preview = URL.createObjectURL(file);
-    const item: UploadingItem = { id, name: file.name, preview, status: 'uploading' };
 
+    if (returnFiles) {
+      onChange([...value, file]);
+      return;
+    }
+
+    const item: UploadingItem = { id, name: file.name, preview, status: 'uploading' };
     setUploading(prev => [...prev, item]);
 
     try {
       const url = await storageAPI.uploadImage(file);
-      // Replace the in-progress item with done status
       setUploading(prev => prev.map(u => u.id === id ? { ...u, status: 'done' } : u));
-      // Add URL to the confirmed list
       onChange([...value, url]);
-      // Clean up done items after a brief moment so the user sees the tick
       setTimeout(() => {
         setUploading(prev => prev.filter(u => u.id !== id));
         URL.revokeObjectURL(preview);
@@ -83,7 +88,7 @@ export function ImageUploader({
       ));
       toast.error(`Tải ảnh thất bại: ${err?.message ?? 'Lỗi không xác định'}`);
     }
-  }, [value, onChange]);
+  }, [value, onChange, returnFiles]);
 
   // ── Handle file selection ───────────────────────────────────────────────────
   const handleFiles = useCallback((files: FileList | File[]) => {
@@ -170,10 +175,14 @@ export function ImageUploader({
             marginBottom: 12,
           }}
         >
-          {/* Confirmed uploaded URLs */}
-          {value.map((url, i) => (
+          {/* Confirmed uploaded URLs or local Files */}
+          {value.map((urlOrFile, i) => {
+            const isFile = urlOrFile instanceof File;
+            const url = isFile ? URL.createObjectURL(urlOrFile) : urlOrFile;
+            
+            return (
             <div
-              key={url}
+              key={isFile ? `${urlOrFile.name}-${i}` : url}
               style={{
                 position: 'relative',
                 aspectRatio: '1',
@@ -234,7 +243,8 @@ export function ImageUploader({
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {/* In-progress uploads */}
           {uploading.map(u => (

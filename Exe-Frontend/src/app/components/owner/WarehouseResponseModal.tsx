@@ -6,28 +6,31 @@ import { IncomingRequest, CARGO_LABEL, fmtDate, fmtCurrency } from './WarehouseR
 
 export interface ResponseModalProps {
   request: IncomingRequest;
-  warehouse: CompositeWarehouse;
+  warehouse?: CompositeWarehouse;
   onClose: () => void;
-  onAccept: (id: string, offeredPrice: number, note: string) => void;
+  onAccept: (id: string) => void;
+  onNegotiate: (id: string, offeredPrice: number, note: string) => void;
   onReject: (id: string, reason: string) => void;
 }
 
-export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, onReject }: ResponseModalProps) {
-  const [mode, setMode] = useState<'accept' | 'reject'>('accept');
+export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, onNegotiate, onReject }: ResponseModalProps) {
+  const [mode, setMode] = useState<'accept' | 'negotiate' | 'reject'>('accept');
   const [offeredPrice, setOfferedPrice] = useState('');
   const [note, setNote]     = useState('');
   const [reason, setReason] = useState('');
 
-  const section = warehouse.sections?.find(s => s.id_section === request.sectionId);
+  const section = warehouse?.sections?.find(s => s.id_section === request.sectionId);
   const suggestedPrice = section
-    ? (section.priceTiers?.find(t => t.unit === 'month')?.value ?? warehouse.pricePerCubicMeter)
-    : warehouse.pricePerCubicMeter;
+    ? (section.priceTiers?.find(t => t.unit === 'month')?.value ?? warehouse?.pricePerCubicMeter ?? request.priceTierValue)
+    : (warehouse?.pricePerCubicMeter ?? request.priceTierValue);
 
   const handleSubmit = () => {
     if (mode === 'accept') {
+      onAccept(request.id_rentRequest.toString());
+    } else if (mode === 'negotiate') {
       const price = parseFloat(offeredPrice) || suggestedPrice;
       if (!note.trim()) { toast.error('Vui lòng nhập lời nhắn cho người thuê'); return; }
-      onAccept(request.id_rentRequest.toString(), price, note);
+      onNegotiate(request.id_rentRequest.toString(), price, note);
     } else {
       if (!reason.trim()) { toast.error('Vui lòng nhập lý do từ chối'); return; }
       onReject(request.id_rentRequest.toString(), reason);
@@ -87,7 +90,18 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
             }}
             onClick={() => setMode('accept')}
           >
-            <CheckCircle className="h-4 w-4" /> Chấp nhận
+            <CheckCircle className="h-4 w-4" /> Chấp nhận ngay
+          </button>
+          <button
+            className="flex-1 py-3 text-sm flex items-center justify-center gap-2 border-b-2 transition-colors"
+            style={{
+              borderBottomColor: mode === 'negotiate' ? '#f59e0b' : 'transparent',
+              color: mode === 'negotiate' ? '#f59e0b' : 'var(--color-text-secondary)',
+              fontWeight: mode === 'negotiate' ? 600 : 400,
+            }}
+            onClick={() => setMode('negotiate')}
+          >
+            <DollarSign className="h-4 w-4" /> Đề xuất giá
           </button>
           <button
             className="flex-1 py-3 text-sm flex items-center justify-center gap-2 border-b-2 transition-colors"
@@ -104,6 +118,14 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
 
         <div className="px-5 py-5 space-y-4">
           {mode === 'accept' ? (
+            <div className="text-center py-4">
+              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Xác nhận đồng ý với yêu cầu này</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                Yêu cầu sẽ được chuyển sang trạng thái "Đã chấp nhận". Bạn không cần gửi thêm lời nhắn hay thay đổi giá.
+              </p>
+            </div>
+          ) : mode === 'negotiate' ? (
             <>
               <div>
                 <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
@@ -186,10 +208,12 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
           <button
             onClick={handleSubmit}
             className="flex-1 py-2.5 text-sm text-white flex items-center justify-center gap-2"
-            style={{ background: mode === 'accept' ? '#22c55e' : '#ef4444' }}
+            style={{ background: mode === 'accept' ? '#22c55e' : mode === 'negotiate' ? '#f59e0b' : '#ef4444' }}
           >
             {mode === 'accept'
-              ? <><CheckCircle className="h-4 w-4" /> Xác nhận chấp nhận</>
+              ? <><CheckCircle className="h-4 w-4" /> Chấp nhận yêu cầu</>
+              : mode === 'negotiate'
+              ? <><DollarSign className="h-4 w-4" /> Gửi đề xuất giá</>
               : <><XCircle className="h-4 w-4" /> Xác nhận từ chối</>}
           </button>
         </div>

@@ -12,15 +12,33 @@ export default function ManageContracts() {
   const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   const fetchContracts = useCallback(async () => {
     const currentUser = getUser();
     if (!currentUser || currentUser.role !== "EMPLOYEE") return;
     setLoading(true);
-    employeeService.getContracts(statusFilter)
-      .then(res => setContracts(res))
+    employeeService.getContracts(statusFilter, page, 10)
+      .then(res => {
+        const list = Array.isArray(res) ? res : ((res as any)?.content || (res as any)?.data || (res as any)?.contracts || []);
+        setContracts(list);
+        if (res && !(Array.isArray(res))) {
+          setTotalPages((res as any).totalPages || 0);
+          setTotalElements((res as any).totalElements || 0);
+        } else {
+          setTotalPages(1);
+          setTotalElements(list.length);
+        }
+      })
       .catch(err => console.error("Failed to fetch contracts:", err))
       .finally(() => setLoading(false));
+  }, [statusFilter, page]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setPage(0);
   }, [statusFilter]);
 
   useEffect(() => {
@@ -57,7 +75,7 @@ export default function ManageContracts() {
                 Quản lý Hợp đồng
               </h1>
               <p className="text-sm mt-1" style={{ color: "var(--color-text-secondary)" }}>
-                Quản lý toàn bộ {contracts.length} hợp đồng trên hệ thống
+                Quản lý toàn bộ {totalElements} hợp đồng trên hệ thống
               </p>
             </div>
           </div>
@@ -126,7 +144,7 @@ export default function ManageContracts() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        onClick={() => navigate(`/employee/contracts/${c.id}`)}
+                        onClick={() => navigate(`/shared/contracts/${c.id}`)}
                         className="inline-flex items-center gap-1 text-[var(--color-primary)] hover:underline"
                       >
                         <Eye className="h-4 w-4" /> Xem
@@ -136,6 +154,29 @@ export default function ManageContracts() {
                 ))}
               </tbody>
             </table>
+          )}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)]">
+              <span className="text-sm text-[var(--color-text-secondary)]">
+                Trang {page + 1} / {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Trước
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                  className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

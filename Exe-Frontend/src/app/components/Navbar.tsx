@@ -282,12 +282,6 @@ export function Navbar() {
                     <span style={{ color: isActive("/warehouse/requests") ? "var(--color-primary)" : "var(--color-text-secondary)" }}>
                       Yêu cầu thuê
                     </span>
-                    <span
-                      className="w-4 h-4 flex items-center justify-center text-[10px] text-white"
-                      style={{ background: "var(--color-error)", fontWeight: 700 }}
-                    >
-                      3
-                    </span>
                   </NavRawBtn>
 
                   <NavBtn
@@ -405,12 +399,6 @@ export function Navbar() {
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           Yêu cầu thuê kho
-                          <span
-                            className="ml-auto text-xs px-1.5 py-0.5 text-white"
-                            style={{ background: "var(--color-error)" }}
-                          >
-                            3
-                          </span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => navigate("/warehouse/contracts")}

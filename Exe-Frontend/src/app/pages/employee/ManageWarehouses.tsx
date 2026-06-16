@@ -32,6 +32,13 @@ export default function ManageWarehouses() {
   const [warehouses, setWarehouses] = useState<CompositeWarehouse[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination & Caching
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [cache, setCache] = useState<Record<string, { list: CompositeWarehouse[], totalPages: number, totalElements: number }>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({ all: 0, pending: 0, active: 0, rejected: 0 });
+
   const [confirmModal, setConfirmModal] = useState<{
     title: string; message: string; confirmLabel: string; confirmColor: string; onConfirm: () => void;
   } | null>(null);
@@ -57,19 +64,28 @@ export default function ManageWarehouses() {
     return () => { mounted = false; };
   }, []);
 
-  const fetchWarehouses = useCallback(async () => {
-    const currentUser = getUser();
-    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
-    setLoading(true);
+  const fetchPage = useCallback(async (p: number, t: StatusFilter, isPreload: boolean = false) => {
+    const cacheKey = `${t}_${p}`;
+    if (cache[cacheKey]) {
+      if (!isPreload) {
+        setWarehouses(cache[cacheKey].list);
+        setTotalPages(cache[cacheKey].totalPages);
+        setTotalElements(cache[cacheKey].totalElements);
+        setLoading(false);
+      }
+      return cache[cacheKey];
+    }
+
+    if (!isPreload) setLoading(true);
     try {
-      let data: WarehouseEmployeeDTO[] = [];
-      if (tab === 'pending') {
-        data = await employeeService.getPendingWarehouses();
+      let dataRes;
+      if (t === 'pending') {
+        dataRes = await employeeService.getPendingWarehouses(p, 10);
       } else {
-        data = await employeeService.getAllWarehouses();
+        dataRes = await employeeService.getAllWarehouses(p, 10, t === 'all' ? undefined : t);
       }
 
-      const mappedData = (data || []).map((w: WarehouseEmployeeDTO) => {
+      const mappedData = (dataRes.content || []).map((w: WarehouseEmployeeDTO) => {
         let st: string = w.status;
         if (st === 'PENDING') st = 'pending';
         if (st === 'APPROVED' || st === 'ACTIVE') st = 'active';
@@ -78,22 +94,47 @@ export default function ManageWarehouses() {
         return { ...w, status: st } as unknown as CompositeWarehouse;
       });
 
-      if (tab === 'all' || tab === 'pending') {
+      const newData = { list: mappedData, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
+      setCache(prev => ({ ...prev, [cacheKey]: newData }));
+
+      if (!isPreload) {
         setWarehouses(mappedData);
-      } else {
-        setWarehouses(mappedData.filter(w => w.status === tab));
+        setTotalPages(dataRes.totalPages);
+        setTotalElements(dataRes.totalElements);
       }
+      return newData;
     } catch (err: any) {
       console.error('Failed to fetch warehouses', err);
-      toast.error('Không tải được danh sách kho');
+      if (!isPreload) toast.error('Không tải được danh sách kho');
     } finally {
-      setLoading(false);
+      if (!isPreload) setLoading(false);
     }
-  }, [tab]);
+  }, [cache]);
 
+  // Preload tab counts
   useEffect(() => {
-    fetchWarehouses();
-  }, [fetchWarehouses]);
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
+
+    const tabs: StatusFilter[] = ['all', 'pending', 'active', 'rejected'];
+    for (const currentTab of tabs) {
+      fetchPage(0, currentTab, true).then(data => {
+        if (data) setCounts(prev => ({ ...prev, [currentTab]: data.totalElements }));
+      });
+    }
+  }, []);
+
+  // Fetch current page and preload next page
+  useEffect(() => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
+
+    fetchPage(page, tab).then(data => {
+      if (data && page < data.totalPages - 1) {
+        fetchPage(page + 1, tab, true);
+      }
+    });
+  }, [page, tab]);
 
   const ownerEmailMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -133,7 +174,9 @@ export default function ManageWarehouses() {
     try {
       await employeeService.acceptWarehouse(w.id_warehouse);
       toast.success('Kho đã được duyệt');
-      fetchWarehouses();
+      setCache({}); // Invalidate cache
+      setPage(0);
+      fetchPage(0, tab);
     } catch (err) {
       toast.error('Có lỗi xảy ra khi duyệt kho');
     }
@@ -143,7 +186,9 @@ export default function ManageWarehouses() {
     try {
       await employeeService.rejectWarehouse(w.id_warehouse);
       toast.success('Kho đã bị từ chối');
-      fetchWarehouses();
+      setCache({}); // Invalidate cache
+      setPage(0);
+      fetchPage(0, tab);
     } catch (err) {
       toast.error('Có lỗi xảy ra khi từ chối kho');
     }
@@ -153,7 +198,8 @@ export default function ManageWarehouses() {
     try {
       // await employeeService.hideWarehouse(w.id_warehouse);
       toast.info('API ẩn kho chưa được hỗ trợ');
-      fetchWarehouses();
+      setCache({}); // Invalidate cache
+      fetchPage(page, tab);
     } catch (err) {
       toast.error('Có lỗi xảy ra khi ẩn kho');
     }
@@ -163,7 +209,9 @@ export default function ManageWarehouses() {
     try {
       await employeeService.rejectWarehouse(w.id_warehouse);
       toast.success('Đã xoá / từ chối kho');
-      fetchWarehouses();
+      setCache({}); // Invalidate cache
+      setPage(0);
+      fetchPage(0, tab);
     } catch (err) {
       toast.error('Có lỗi xảy ra khi xoá kho');
     }
@@ -182,7 +230,8 @@ export default function ManageWarehouses() {
         setReviewingCert(null);
         // We probably want to re-fetch or the user will just close the row and reopen it.
         // For now, refreshing the whole list is the safest to keep it in sync.
-        fetchWarehouses();
+        setCache({}); // Invalidate cache
+        fetchPage(page, tab);
         setRefetchCounter(prev => prev + 1);
     } catch (err) {
         toast.error('Có lỗi xảy ra khi xét duyệt chứng nhận.');
@@ -208,7 +257,7 @@ export default function ManageWarehouses() {
               <div>
                 <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--color-text)' }}>Quản lý kho</h1>
                 <p className="text-[var(--color-text-secondary)] mt-1 text-sm">
-                  Xem và quản lý {warehouses.length} kho trên nền tảng
+                  Xem và quản lý {totalElements} kho trên nền tảng
                 </p>
               </div>
             </div>
@@ -220,12 +269,23 @@ export default function ManageWarehouses() {
 
         <div className="mb-3 flex gap-2">
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={`px-3 py-1 text-sm border ${tab === t.key ? 'bg-[var(--color-primary)] text-white' : ''}`}>{t.label}</button>
+            <button key={t.key} onClick={() => { setTab(t.key); setPage(0); }} className={`px-3 py-1 text-sm border flex items-center gap-1 ${tab === t.key ? 'bg-[var(--color-primary)] text-white' : ''}`}>
+              {t.label} <span className="bg-white/20 px-1 rounded text-xs">{counts[t.key]}</span>
+            </button>
           ))}
         </div>
 
         <div className="space-y-3">
-          {filtered.map(w => (
+          {loading ? (
+             <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
+             </div>
+          ) : filtered.length === 0 ? (
+             <div className="border border-[var(--color-border)] p-16 text-center" style={{ background: 'var(--color-surface)' }}>
+                <Warehouse className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--color-text-muted)' }} />
+                <p style={{ color: 'var(--color-text-secondary)' }}>Không có kho nào.</p>
+             </div>
+          ) : filtered.map(w => (
             <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerEmailMap[w.id_owner || 0]} expandWarehouseId={location.state?.expandWarehouseId} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
               title: 'Xoá kho',
               message: `Bạn có chắc muốn xoá kho "${w.name}" không?`,
@@ -235,6 +295,30 @@ export default function ManageWarehouses() {
             })} refetchCounter={refetchCounter} />
           ))}
         </div>
+        
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded mt-4">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Trang {page + 1} / {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
 
         {confirmModal && (
           <ConfirmModal title={confirmModal.title} message={confirmModal.message} confirmLabel={confirmModal.confirmLabel} confirmColor={confirmModal.confirmColor} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />

@@ -93,13 +93,22 @@ export function WarehouseDashboardList({ warehouses }: WarehouseDashboardListPro
                   </span>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                className="w-full rounded-none border border-[var(--color-border)] hover:border-[var(--color-primary)]"
-                onClick={() => navigate(`/warehouse/edit/${w.id_warehouse}`)}
-              >
-                Chỉnh sửa
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-none border border-[var(--color-border)] hover:border-[var(--color-primary)]"
+                  onClick={() => navigate(`/warehouse/detail/${w.id_warehouse}`)}
+                >
+                  Chi tiết
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-none border border-[var(--color-border)] hover:border-[var(--color-primary)]"
+                  onClick={() => navigate(`/warehouse/edit/${w.id_warehouse}`)}
+                >
+                  Chỉnh sửa
+                </Button>
+              </div>
             </div>
           </div>
         ))}

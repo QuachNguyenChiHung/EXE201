@@ -1,4 +1,4 @@
-export type RentRequestStatus = "sent" | "viewed" | "rejected" | "inprogress" | "contracted";
+export type RentRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface RentRequest {
   id_rentRequest: number;
@@ -69,10 +69,12 @@ export interface CompositeRentRequest extends RentRequest {
   renterPhone?: string;
   renterEmail?: string;
   renterCompany?: string;
+  warehouseName?: string;
   cargoType?: string;
   requestedCapacity?: number;
   durationLabel?: string;
   priceTierValue?: number;
+  renterOfferedPrice?: number;
   priceTierUnit?: string;
   priceTierLabel?: string;
   message?: string;

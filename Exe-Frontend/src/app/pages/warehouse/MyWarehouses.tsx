@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
-import { warehousesAPI } from '../../../services/apiClient';
+import { ownerService } from '../../../services/ownerService';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import {
@@ -12,46 +12,90 @@ import { CompositeWarehouse } from '../../../types';
 import { MyWarehouseCard } from '../../components/owner/MyWarehouseCard';
 import { MyWarehouseCertsModal } from '../../components/owner/MyWarehouseCertsModal';
 
+type StatusFilter = 'all' | 'active' | 'inactive' | 'pending';
+const TABS: { key: StatusFilter; label: string; icon: any }[] = [
+  { key: 'all', label: 'Tất cả', icon: Warehouse },
+  { key: 'active', label: 'Đang hoạt động', icon: Eye },
+  { key: 'pending', label: 'Chờ duyệt', icon: Clock },
+  { key: 'inactive', label: 'Đã ẩn', icon: EyeOff },
+];
+
 export default function MyWarehouses() {
   const navigate  = useNavigate();
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } });
-  const [allWarehouses, setAllWarehouses] = useState<CompositeWarehouse[]>([]);
-  const [showHidden, setShowHidden] = useState(false);
+  
+  const [tab, setTab] = useState<StatusFilter>('all');
+  const [warehouses, setWarehouses] = useState<CompositeWarehouse[]>([]);
+  const [loading, setLoading] = useState(true);
   const [reuploadTarget, setReuploadTarget] = useState<CompositeWarehouse | null>(null);
 
+  // Pagination & Caching
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [cache, setCache] = useState<Record<string, { list: CompositeWarehouse[], totalPages: number, totalElements: number }>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({ all: 0, active: 0, inactive: 0, pending: 0 });
+
+  const fetchPage = useCallback(async (p: number, t: StatusFilter, isPreload: boolean = false) => {
+    const cacheKey = `${t}_${p}`;
+    if (cache[cacheKey]) {
+      if (!isPreload) {
+        setWarehouses(cache[cacheKey].list);
+        setTotalPages(cache[cacheKey].totalPages);
+        setTotalElements(cache[cacheKey].totalElements);
+        setLoading(false);
+      }
+      return cache[cacheKey];
+    }
+
+    if (!isPreload) setLoading(true);
+    try {
+      const dataRes = await ownerService.getMyWarehouses(p, 10, t === 'all' ? undefined : t);
+      const newData = { list: dataRes.content, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
+      setCache(prev => ({ ...prev, [cacheKey]: newData }));
+
+      if (!isPreload) {
+        setWarehouses(dataRes.content);
+        setTotalPages(dataRes.totalPages);
+        setTotalElements(dataRes.totalElements);
+      }
+      return newData;
+    } catch (err: any) {
+      console.error('Failed to fetch warehouses', err);
+      if (!isPreload) toast.error('Không tải được danh sách kho');
+    } finally {
+      if (!isPreload) setLoading(false);
+    }
+  }, [cache]);
+
+  // Preload tab counts
   useEffect(() => {
-    let mounted = true;
-    warehousesAPI.getAll().then(items => { if (mounted) setAllWarehouses(items); }).catch(err => console.error('Failed to load warehouses:', err));
-    return () => { mounted = false; };
+    if (!user || user.role !== 'OWNER') return;
+    const tabs: StatusFilter[] = ['all', 'active', 'inactive', 'pending'];
+    for (const currentTab of tabs) {
+      fetchPage(0, currentTab, true).then(data => {
+        if (data) setCounts(prev => ({ ...prev, [currentTab]: data.totalElements }));
+      });
+    }
   }, []);
 
-  const myWarehouses = useMemo(
-    () => allWarehouses.filter(w => w.id_owner === user?.id_user),
-    [allWarehouses, user],
-  );
-
-  const activeWarehouses = useMemo(
-    () => myWarehouses.filter(w => w.status !== 'inactive'),
-    [myWarehouses],
-  );
-
-  const pendingCount = useMemo(
-    () => myWarehouses.filter(w => w.status === 'pending').length,
-    [myWarehouses],
-  );
-
-  const hiddenWarehouses = useMemo(
-    () => myWarehouses.filter(w => w.status === 'inactive'),
-    [myWarehouses],
-  );
-
-  const warehouses = showHidden ? hiddenWarehouses : activeWarehouses;
+  // Fetch current page and preload next page
+  useEffect(() => {
+    if (!user || user.role !== 'OWNER') return;
+    fetchPage(page, tab).then(data => {
+      if (data && page < data.totalPages - 1) {
+        fetchPage(page + 1, tab, true);
+      }
+    });
+  }, [page, tab]);
 
   const handleHide = async (warehouse: CompositeWarehouse) => {
     if (!confirm(`Ẩn kho "${warehouse.name}"? Kho sẽ không hiển thị cho người thuê nhưng bạn có thể khôi phục bất cứ lúc nào.`)) return;
     try {
-      await warehousesAPI.update(warehouse.id_warehouse.toString(), { status: 'inactive', updatedAt: new Date().toISOString() });
-      setAllWarehouses(prev => prev.map(w => w.id_warehouse === warehouse.id_warehouse ? { ...w, status: 'inactive', updatedAt: new Date().toISOString() } : w));
+      await ownerService.hideWarehouse(warehouse.id_warehouse);
+      setCache({});
+      setPage(0);
+      fetchPage(0, tab);
       toast.success(`Đã ẩn kho "${warehouse.name}".`);
     } catch (err: any) {
       console.error('[MyWarehouses] hide failed', err);
@@ -61,8 +105,10 @@ export default function MyWarehouses() {
 
   const handleRestore = async (warehouse: CompositeWarehouse) => {
     try {
-      await warehousesAPI.update(warehouse.id_warehouse.toString(), { status: 'active', updatedAt: new Date().toISOString() });
-      setAllWarehouses(prev => prev.map(w => w.id_warehouse === warehouse.id_warehouse ? { ...w, status: 'active', updatedAt: new Date().toISOString() } : w));
+      await ownerService.restoreWarehouse(warehouse.id_warehouse);
+      setCache({});
+      setPage(0);
+      fetchPage(0, tab);
       toast.success(`Đã khôi phục kho "${warehouse.name}".`);
     } catch (err: any) {
       console.error('[MyWarehouses] restore failed', err);
@@ -72,8 +118,9 @@ export default function MyWarehouses() {
 
   const handleCertSaved = async (updated: CompositeWarehouse) => {
     try {
-      await warehousesAPI.update(updated.id_warehouse.toString(), updated);
-      setAllWarehouses(prev => prev.map(w => w.id_warehouse === updated.id_warehouse ? updated : w));
+      await ownerService.updateWarehouse(updated.id_warehouse, updated);
+      setCache({});
+      fetchPage(page, tab);
       toast.success(`Đã cập nhật chứng nhận cho kho "${updated.name}".`);
       setReuploadTarget(null);
     } catch (err: any) {
@@ -91,7 +138,7 @@ export default function MyWarehouses() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Kho lạnh của tôi</h1>
             <p className="text-[var(--color-text-secondary)]">
-              Quản lý {myWarehouses.length} kho lạnh của bạn
+              Quản lý {counts.all} kho lạnh của bạn
             </p>
           </div>
           <Button onClick={() => navigate('/warehouse/add')} className="flex items-center gap-2">
@@ -99,59 +146,44 @@ export default function MyWarehouses() {
           </Button>
         </div>
 
-        {/* ── Tabs: Active / Hidden ── */}
-        <div className="flex items-center gap-1 mb-6 border-b border-[var(--color-border)]">
-          <button
-            onClick={() => setShowHidden(false)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              !showHidden
-                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
-            }`}
-          >
-            <Eye className="h-4 w-4" />
-            Đang hoạt động
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-              !showHidden ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]'
-            }`}>
-              {activeWarehouses.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setShowHidden(true)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              showHidden
-                ? 'border-[var(--color-error)] text-[var(--color-error)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
-            }`}
-          >
-            <EyeOff className="h-4 w-4" />
-            Đã ẩn
-            {hiddenWarehouses.length > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                showHidden ? 'bg-[var(--color-error)] text-white' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]'
-              }`}>
-                {hiddenWarehouses.length}
-              </span>
-            )}
-          </button>
+        <div className="flex items-center gap-1 mb-6 border-b border-[var(--color-border)] overflow-x-auto">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setTab(t.key); setPage(0); }}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
+                  tab === t.key
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  tab === t.key ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]'
+                }`}>
+                  {counts[t.key]}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── Pending info banner ── */}
-        {!showHidden && pendingCount > 0 && (
+        {!['inactive', 'pending'].includes(tab) && counts.pending > 0 && (
           <div
             className="flex items-center gap-3 px-4 py-3 mb-5 border border-blue-200 rounded-lg"
             style={{ background: 'rgba(37,99,235,0.06)' }}
           >
             <Clock className="h-4 w-4 text-blue-500 shrink-0" />
             <p className="text-sm text-blue-700">
-              Bạn có <strong>{pendingCount} kho đang chờ duyệt</strong>. Nhân viên Logicha sẽ xem xét và kích hoạt kho của bạn sớm nhất có thể.
+              Bạn có <strong>{counts.pending} kho đang chờ duyệt</strong>. Nhân viên Logicha sẽ xem xét và kích hoạt kho của bạn sớm nhất có thể.
             </p>
           </div>
         )}
 
-        {/* ── Hidden tab info banner ── */}
-        {showHidden && hiddenWarehouses.length > 0 && (
+        {tab === 'inactive' && counts.inactive > 0 && (
           <div
             className="flex items-center gap-3 px-4 py-3 mb-5 border border-amber-200 rounded-lg"
             style={{ background: 'rgba(245,158,11,0.06)' }}
@@ -163,13 +195,17 @@ export default function MyWarehouses() {
           </div>
         )}
 
-        {warehouses.length > 0 ? (
+        {loading ? (
+             <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
+             </div>
+        ) : warehouses.length > 0 ? (
           <div className="grid grid-cols-1 gap-4">
             {warehouses.map((warehouse) => (
               <MyWarehouseCard
                 key={warehouse.id_warehouse}
                 warehouse={warehouse}
-                isHidden={warehouse.status === 'inactive'}
+                isHidden={warehouse.status === 'inactive' || warehouse.status === 'hidden'}
                 isPending={warehouse.status === 'pending'}
                 onRestore={handleRestore}
                 onHide={handleHide}
@@ -179,14 +215,14 @@ export default function MyWarehouses() {
           </div>
         ) : (
           <Card className="bento-card p-12 text-center">
-            {showHidden ? (
+            {tab === 'inactive' ? (
               <>
                 <EyeOff className="h-16 w-16 mx-auto mb-4 text-[var(--color-text-muted)]" />
                 <h3 className="text-xl font-semibold mb-2">Không có kho nào bị ẩn</h3>
                 <p className="text-[var(--color-text-secondary)] mb-6">
                   Tất cả kho lạnh của bạn đang hoạt động bình thường
                 </p>
-                <Button variant="outline" onClick={() => setShowHidden(false)}>
+                <Button variant="outline" onClick={() => setTab('active')}>
                   Xem kho đang hoạt động
                 </Button>
               </>
@@ -195,7 +231,7 @@ export default function MyWarehouses() {
                 <Warehouse className="h-16 w-16 mx-auto mb-4 text-[var(--color-text-muted)]" />
                 <h3 className="text-xl font-semibold mb-2">Chưa có kho lạnh nào</h3>
                 <p className="text-[var(--color-text-secondary)] mb-6">
-                  Bắt đầu bằng cách thêm kho lạnh đầu tiên
+                  {tab === 'pending' ? 'Bạn không có kho nào đang chờ duyệt' : 'Bắt đầu bằng cách thêm kho lạnh đầu tiên'}
                 </p>
                 <Button onClick={() => navigate('/warehouse/add')}>
                   Thêm kho mới
@@ -203,6 +239,30 @@ export default function MyWarehouses() {
               </>
             )}
           </Card>
+        )}
+        
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded mt-4">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Trang {page + 1} / {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

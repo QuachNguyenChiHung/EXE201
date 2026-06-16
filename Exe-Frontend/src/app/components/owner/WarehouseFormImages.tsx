@@ -4,13 +4,17 @@ import { Image as ImageIcon } from "lucide-react";
 import { WarehouseImage } from "../../../types";
 
 interface Props {
-  images: (string | WarehouseImage)[];
-  onChange: (images: string[]) => void;
+  images: (string | File | WarehouseImage)[];
+  onChange: (images: (string | File)[]) => void;
 }
 
 export function WarehouseFormImages({ images, onChange }: Props) {
-  // Normalize images to string[]
-  const imgUrls = images.map(img => typeof img === 'string' ? img : img.image_url);
+  // Normalize images
+  const imgItems = images.map(img => {
+    if (typeof img === 'string') return img;
+    if (img instanceof File) return img;
+    return img.image_url;
+  });
 
   return (
     <Card className="bento-card p-6">
@@ -19,9 +23,10 @@ export function WarehouseFormImages({ images, onChange }: Props) {
         Hình ảnh kho lạnh
       </h2>
       <ImageUploader
-        value={imgUrls}
+        value={imgItems}
         onChange={onChange}
         maxFiles={10}
+        returnFiles={true}
       />
     </Card>
   );

@@ -308,7 +308,7 @@ export default function UserRow({ user, onEdit, onViewConversations, onToggleSta
                                             return (
                                                 <div className="space-y-2">
                                                     {contracts.map((c: any) => (
-                                                        <div key={c.id} onClick={() => navigate(`/employee/contracts/${c.id}`)} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-[var(--color-border)] rounded-md cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                        <div key={c.id} onClick={() => navigate(`/shared/contracts/${c.id}`)} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-[var(--color-border)] rounded-md cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
                                                             <div>
                                                                 <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{c.warehouseName}</p>
                                                                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>ID Yêu cầu: {c.requestId} • Ký: {c.signedDate}</p>
@@ -341,7 +341,7 @@ export default function UserRow({ user, onEdit, onViewConversations, onToggleSta
                                             return (
                                                 <div className="space-y-2">
                                                     {requests.map((r: any) => (
-                                                        <div key={r.id} onClick={() => navigate(`/employee/requests/${r.id}`)} className="p-3 border border-[var(--color-border)] rounded-md cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
+                                                        <div key={r.id} onClick={() => navigate(`/shared/requests/${r.id}`)} className="p-3 border border-[var(--color-border)] rounded-md cursor-pointer hover:border-[var(--color-primary)] transition-colors" style={{ background: 'var(--color-bg-secondary)' }}>
                                                             <div className="flex items-start justify-between">
                                                                 <div>
                                                                     <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{r.warehouseName}</p>

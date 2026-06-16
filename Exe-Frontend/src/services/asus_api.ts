@@ -18,4 +18,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      if (localStorage.getItem('user')) {
+        localStorage.removeItem('user');
+        // If needed, redirect the user to the login page or refresh
+        // window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export { api };

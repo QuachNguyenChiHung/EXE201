@@ -23,8 +23,11 @@ export default function EmployeeDashboard() {
       return;
     }
 
-    employeeService.getContracts()
-      .then(c => setContractList(c))
+    employeeService.getContracts(undefined, 0, 1000)
+      .then(c => {
+        const list = Array.isArray(c) ? c : ((c as any)?.content || (c as any)?.data || (c as any)?.contracts || []);
+        setContractList(list);
+      })
       .catch(err => console.error('Failed to load contracts:', err));
 
     // fetch employee statistics
@@ -78,7 +81,7 @@ export default function EmployeeDashboard() {
 
   // ── Active contracts ───────────────────────────────────────────────────────
   const activeContracts = useMemo(
-    () => contractList.filter(c => c.status === 'active' || c.status === 'expiring_soon' || c.status === 'ACTIVE' || c.status === 'EXPIRING_SOON'),
+    () => (Array.isArray(contractList) ? contractList : []).filter(c => c.status === 'active' || c.status === 'expiring_soon' || c.status === 'ACTIVE' || c.status === 'EXPIRING_SOON'),
     [contractList],
   );
 

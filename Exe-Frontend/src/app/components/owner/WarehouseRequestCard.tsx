@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronDown, User, Building, Phone, Mail, LayoutGrid, Clock, Eye, MessageSquare, XCircle, CheckCircle, FilePlus, ExternalLink } from 'lucide-react';
+import { ChevronDown, User, Building, Phone, Mail, LayoutGrid, Clock, Eye, MessageSquare, XCircle, CheckCircle, FilePlus, ExternalLink, Loader2, Calendar, Building2, Layers, Box } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types/warehouse';
 import { CompositeContract } from '../../../types/renter';
 import { IncomingRequest, RequestStatus, STATUS_CFG, CARGO_LABEL, UNIT_LABEL, CONTRACT_CFG, relativeTime, fmtDate, fmtCurrency } from './WarehouseRequestUtils';
+import { ownerService } from '../../../services/ownerService';
 
 interface RequestCardProps {
   req: IncomingRequest;
@@ -19,14 +20,33 @@ export function WarehouseRequestCard({
 }: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [sectionOpen, setSectionOpen] = useState(false);
+  const [requestDetail, setRequestDetail] = useState<any>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-  if (!warehouse) return null;
+  const handleExpand = async () => {
+    const newExpanded = !isExpanded;
+    setIsExpanded(newExpanded);
+    if (newExpanded && !requestDetail) {
+      setIsLoadingDetail(true);
+      try {
+        const data = await ownerService.getRequestDetail(req.id_rentRequest || (req as any).id);
+        setRequestDetail(data);
+      } catch (err) {
+        console.error("Failed to fetch request detail", err);
+      } finally {
+        setIsLoadingDetail(false);
+      }
+    }
+  };
+
+  // Remove strict warehouse requirement so cards always render
+  // if (!warehouse) return null;
   const cfg = STATUS_CFG[req.status as RequestStatus] ?? {
     label: req.status, color: 'var(--color-text-muted)', icon: <Clock className="h-3 w-3" />,
   };
 
-  const section = req.sectionId
-    ? warehouse.sections?.find(s => s.id_section === req.sectionId)
+  const section = req.sectionId && warehouse?.sections
+    ? warehouse.sections.find(s => s.id_section === req.sectionId)
     : undefined;
 
   return (
@@ -36,8 +56,8 @@ export function WarehouseRequestCard({
     >
       {/* ── Collapsed header ── */}
       <button
-        onClick={() => setIsExpanded(p => !p)}
-        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-[var(--color-bg-secondary)] transition-colors"
+        onClick={handleExpand}
+        className="w-full text-left px-4 py-3.5 flex items-center gap-4 hover:bg-[rgba(0,0,0,0.01)] transition-colors focus:outline-none"
       >
         {/* Status badge */}
         <span
@@ -58,7 +78,7 @@ export function WarehouseRequestCard({
             )}
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-            {warehouse.name}
+            {warehouse?.name || req.warehouseName || 'Kho bãi không xác định'}
             {req.sectionName && <span style={{ color: 'var(--color-primary)' }}> · {req.sectionName}</span>}
             {' · '}{relativeTime(req.submit_at)}
           </p>
@@ -90,143 +110,146 @@ export function WarehouseRequestCard({
             {/* ┌──────────────────────────────┐
                 │    YÊU CẦU TỪ KHÁCH HÀNG    │
                 └──────────────────────────────┘ */}
-            <div className="p-4 space-y-3" style={{ background: 'var(--color-surface)' }}>
+            <div className="p-4 space-y-4 border-r border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest pb-2 border-b border-[var(--color-border)]" style={{ color: 'var(--color-text-muted)' }}>
                 Yêu cầu từ khách hàng
               </p>
 
-              {/* Renter identity + contacts */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 shrink-0 flex items-center justify-center" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <User className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{req.renterName}</p>
-                    {req.renterCompany && (
-                      <p className="text-[11px] flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                        <Building className="h-2.5 w-2.5 shrink-0" /> {req.renterCompany}
-                      </p>
-                    )}
-                  </div>
+              {isLoadingDetail ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--color-primary)' }} />
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Đang tải chi tiết...</p>
                 </div>
-                <div className="flex gap-1.5 shrink-0">
-                  <a href={`tel:${req.renterPhone}`}
-                    className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:border-[#22c55e] transition-colors"
-                    title={req.renterPhone}>
-                    <Phone className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
-                  </a>
-                  <a href={`mailto:${req.renterEmail}`}
-                    className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
-                    title={req.renterEmail}>
-                    <Mail className="h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
-                  </a>
-                </div>
-              </div>
-
-              {/* Request detail fields */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <div>
-                  <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Dung tích</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                    {req.requestedCapacity?.toLocaleString()} m³
-                  </p>
-                </div>
-                {req.cargoType && (
-                  <div>
-                    <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Loại hàng</p>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                      {CARGO_LABEL[req.cargoType] ?? req.cargoType}
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Từ ngày</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{fmtDate(req.start_date)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Thời hạn</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{req.durationLabel ?? '—'}</p>
-                </div>
-                {req.priceTierValue && (
-                  <div className="col-span-2">
-                    <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>{req.priceTierLabel ?? 'Giá mục tiêu'}</p>
-                    <p className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-                      {fmtCurrency(req.priceTierValue)}
-                      <span className="font-normal text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
-                        /m³/{UNIT_LABEL[req.priceTierUnit ?? 'month']}
-                      </span>
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Message */}
-              {req.message && (
-                <div
-                  className="px-3 py-2 text-xs border-l-2"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }}
-                >
-                  {req.message}
-                </div>
-              )}
-
-              {/* Section toggle */}
-              {section && (
-                <div>
-                  <button
-                    onClick={() => setSectionOpen(o => !o)}
-                    className="flex items-center gap-1.5 text-xs transition-colors"
-                    style={{ color: 'var(--color-primary)' }}
-                  >
-                    <LayoutGrid className="h-3 w-3 shrink-0" />
-                    Phân khu: <span className="font-semibold">{section.name}</span>
-                    <ChevronDown
-                      className="h-3 w-3 transition-transform"
-                      style={{ transform: sectionOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                    />
-                  </button>
-                  {sectionOpen && (
-                    <div
-                      className="mt-2 border border-[var(--color-border)] p-3 grid grid-cols-2 gap-x-4 gap-y-2"
-                      style={{ background: 'var(--color-bg-secondary)' }}
-                    >
+              ) : requestDetail ? (
+                <div className="space-y-6">
+                  
+                  {/* Kho bãi & Đối tác */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-sm flex items-center gap-1.5 pb-1 border-b" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+                      <Building2 className="h-4 w-4" style={{ color: "var(--color-primary)" }} /> Kho bãi & Đối tác
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Nhiệt độ</p>
-                        <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                          {section.temp_min}°C ~ {section.temp_max}°C
-                        </p>
+                        <p className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "var(--color-text-muted)" }}>Tên kho</p>
+                        <p className="text-sm font-medium">{requestDetail.warehouseName || 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Sức chứa trống</p>
-                        <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                          {section.available_capacity?.toLocaleString()} / {section.capacity?.toLocaleString()} m³
+                        <p className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "var(--color-text-muted)" }}>Bên thuê</p>
+                        <p className="text-sm font-medium">{requestDetail.renterName || 'Đang cập nhật'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Thông tin thuê */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-sm flex items-center gap-1.5 pb-1 border-b" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+                      <Box className="h-4 w-4" style={{ color: "var(--color-primary)" }} /> Thông tin thuê
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "var(--color-text-muted)" }}>Hàng hóa</p>
+                        <p className="text-sm">{requestDetail.cargoDescription || 'Không có mô tả'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "var(--color-text-muted)" }}>Thời gian thuê</p>
+                        <p className="text-sm flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                            {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' ? 'Năm' : requestDetail.durationUnit}
                         </p>
                       </div>
-                      {section.description && (
-                        <div className="col-span-2">
-                          <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Mô tả</p>
-                          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{section.description}</p>
-                        </div>
-                      )}
-                      {/* Revenue estimate */}
-                      {req.priceTierValue && (() => {
-                        const months = parseInt(req.durationLabel || '');
-                        if (!isNaN(months) && months > 0) return (
-                          <div className="col-span-2 flex items-center justify-between px-3 py-2"
-                            style={{ background: 'var(--color-primary-100)', borderLeft: '3px solid var(--color-primary)' }}>
-                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                              Ước tính doanh thu ({(req.requestedCapacity || 0).toLocaleString()} m³ × {req.durationLabel})
-                            </span>
-                            <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-                              ~{fmtCurrency(req.priceTierValue * (req.requestedCapacity || 0) * months)}
-                            </span>
+                    </div>
+                  </div>
+
+                  {/* Các phân khu được chọn */}
+                  {requestDetail.details && requestDetail.details.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm flex items-center gap-1.5 pb-1 border-b" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+                        <Layers className="h-4 w-4" style={{ color: "var(--color-primary)" }} /> Phân khu được chọn
+                      </h3>
+                      <div className="space-y-3">
+                        {requestDetail.details.map((detail: any, idx: number) => (
+                          <div key={idx} className="border border-[var(--color-border)] rounded-sm p-3" style={{ background: 'var(--color-bg-secondary)' }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-semibold text-sm" style={{ color: "var(--color-text)" }}>Khu vực {detail.sector}</span>
+                              <span className="px-2 py-0.5 rounded text-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                                {detail.priceTierLabel}
+                              </span>
+                            </div>
+                            <div className="space-y-1.5 text-xs">
+                              <div className="flex justify-between">
+                                <span className="text-[var(--color-text-muted)]">Diện tích thuê:</span>
+                                <span className="font-medium">{detail.rentedArea} {detail.areaUnit}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-[var(--color-text-muted)]">Đơn giá:</span>
+                                <span className="font-medium">
+                                  {fmtCurrency(detail.priceTierValue || 0)} / {detail.areaUnit}
+                                </span>
+                              </div>
+                              <div className="flex justify-between pt-1.5 mt-1.5 border-t border-[var(--color-border)]">
+                                <span className="font-semibold" style={{ color: "var(--color-text)" }}>Thành tiền/tháng:</span>
+                                <span className="font-bold" style={{ color: "var(--color-primary)" }}>
+                                  {fmtCurrency((detail.rentedArea || 0) * (detail.priceTierValue || 0))}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Tổng ước tính */}
+                      {(() => {
+                        const totalMonthly = requestDetail.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
+                        const isYears = requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm';
+                        const durationMultiplier = isYears ? (requestDetail.duration * 12) : (requestDetail.duration || 1);
+                        const totalExpected = totalMonthly * durationMultiplier;
+                        const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
+                        return (
+                          <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex flex-col items-end gap-1.5">
+                            <div className="flex items-center gap-4 text-xs">
+                              <span style={{ color: "var(--color-text-muted)" }}>Tổng tiền thuê/tháng:</span>
+                              <span className="font-bold" style={{ color: "var(--color-text)" }}>
+                                {fmtCurrency(totalMonthly)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span style={{ color: "var(--color-text-muted)" }}>Ước tính doanh thu ({requestDetail.duration} {unitLabel}):</span>
+                              <span className="font-bold" style={{ color: "var(--color-primary)" }}>
+                                {fmtCurrency(totalExpected)}
+                              </span>
+                            </div>
                           </div>
                         );
-                        return null;
                       })()}
                     </div>
                   )}
+
+                  {/* Lời nhắn / Mức giá trọn gói */}
+                  {(requestDetail.otherDetail || requestDetail.renterOfferedPrice) && (
+                    <div className="space-y-3 pt-3 border-t border-[var(--color-border)]">
+                      {requestDetail.renterOfferedPrice && (
+                        <div>
+                          <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Khách hàng đề xuất mức giá trọn gói</p>
+                          <p className="text-sm font-bold text-orange-600">
+                            {fmtCurrency(requestDetail.renterOfferedPrice)}
+                          </p>
+                        </div>
+                      )}
+                      {requestDetail.otherDetail && (
+                        <div
+                          className="px-3 py-2 text-xs border-l-2"
+                          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }}
+                        >
+                          {requestDetail.otherDetail}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Không thể tải chi tiết yêu cầu.</p>
                 </div>
               )}
             </div>
@@ -240,38 +263,44 @@ export function WarehouseRequestCard({
               </p>
 
               {/* Awaiting action */}
-              {(req.status === 'sent' || req.status === 'viewed') && (
-                <div className="flex flex-col items-center justify-center py-6 gap-3">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <Clock className="h-6 w-6" style={{ color: 'var(--color-text-muted)' }} />
-                    <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
-                      {req.status === 'sent' ? 'Yêu cầu mới — chưa phản hồi' : 'Đã xem — chưa phản hồi'}
-                    </p>
-                  </div>
-                  {/* Action buttons inline */}
-                  <div className="flex flex-col gap-2 w-full">
-                    {req.status === 'sent' && (
-                      <button
-                        onClick={() => onMarkViewed(req.id_rentRequest.toString())}
-                        className="w-full text-xs py-2 border flex items-center justify-center gap-1.5 transition-colors hover:border-[#f59e0b]"
-                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-                      >
-                        <Eye className="h-3.5 w-3.5" /> Đánh dấu đã xem
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onOpenModal(req)}
-                      className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 transition-colors hover:opacity-80"
-                      style={{ background: 'var(--color-primary)' }}
+              {req.status === 'PENDING' && (
+                req.owner_note ? (
+                  <div className="space-y-3">
+                    <div
+                      className="flex items-center gap-2 px-3 py-2"
+                      style={{ background: 'rgba(245,158,11,0.07)', borderLeft: '3px solid #f59e0b' }}
                     >
-                      <MessageSquare className="h-3.5 w-3.5" /> Phản hồi yêu cầu
-                    </button>
+                      <Clock className="h-4 w-4 shrink-0" style={{ color: '#f59e0b' }} />
+                      <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Đã gửi đề xuất - Chờ khách phản hồi</p>
+                    </div>
+                    {req.offered_price && (
+                      <div className="px-3 py-2 flex justify-between items-center rounded-sm" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Mức giá đề xuất mới</span>
+                        <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>{fmtCurrency(req.offered_price)} <span className="text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>/ tháng</span></span>
+                      </div>
+                    )}
+                    <div
+                      className="px-3 py-2.5 text-xs border-l-2"
+                      style={{ borderColor: '#f59e0b', color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }}
+                    >
+                      <div className="font-semibold mb-1" style={{ color: 'var(--color-text)' }}>Lời nhắn:</div>
+                      <div className="italic">"{req.owner_note}"</div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 gap-3">
+                    <div className="flex flex-col items-center gap-1.5">
+                      <Clock className="h-6 w-6" style={{ color: 'var(--color-text-muted)' }} />
+                      <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
+                        Yêu cầu mới — chưa phản hồi
+                      </p>
+                    </div>
+                  </div>
+                )
               )}
 
               {/* Rejected */}
-              {req.status === 'rejected' && (
+              {req.status === 'REJECTED' && (
                 <div className="space-y-2">
                   <div
                     className="flex items-center gap-2 px-3 py-2"
@@ -291,8 +320,8 @@ export function WarehouseRequestCard({
                 </div>
               )}
 
-              {/* Inprogress */}
-              {req.status === 'inprogress' && (
+              {/* Inprogress / Approved */}
+              {req.status === 'APPROVED' && (
                 <div className="space-y-2">
                   <div
                     className="flex items-center gap-2 px-3 py-2"
@@ -321,34 +350,7 @@ export function WarehouseRequestCard({
                       </span>
                     </div>
                   )}
-                  {/* Contract actions */}
-                  <div className="pt-1">
-                    {!existingContract ? (
-                      <button
-                        onClick={() => onCreateContract(req.id_rentRequest.toString())}
-                        className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
-                        style={{ background: 'var(--color-primary)' }}
-                      >
-                        <FilePlus className="h-3.5 w-3.5" /> Soạn hợp đồng
-                      </button>
-                    ) : existingContract.status === 'draft' ? (
-                      <button
-                        onClick={onViewContract}
-                        className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
-                        style={{ background: 'var(--color-primary)' }}
-                      >
-                        <FilePlus className="h-3.5 w-3.5" /> Tiếp tục soạn hợp đồng
-                      </button>
-                    ) : null}
-                    {/* Quick call */}
-                    <a
-                      href={`tel:${req.renterPhone}`}
-                      className="mt-2 w-full text-xs py-2 border flex items-center justify-center gap-1.5 transition-colors hover:border-[#22c55e]"
-                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-                    >
-                      <Phone className="h-3.5 w-3.5" /> Gọi {req.renterPhone}
-                    </a>
-                  </div>
+
                 </div>
               )}
 
@@ -372,48 +374,48 @@ export function WarehouseRequestCard({
                         </p>
                       </div>
                     </div>
-                    {req.status !== 'inprogress' && (
-                      <button
-                        onClick={onViewContract}
-                        className="w-full text-xs py-2 flex items-center justify-center gap-1.5 border transition-colors hover:opacity-80"
-                        style={{ borderColor: ccfg.color, color: ccfg.color }}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        {existingContract.status === 'draft' ? 'Chỉnh sửa hợp đồng' : 'Xem hợp đồng'}
-                      </button>
-                    )}
                   </div>
                 );
               })()}
 
-              {/* Contracted, no contract yet */}
-              {req.status === 'contracted' && !existingContract && (
-                <div
-                  className="flex items-center gap-2 px-3 py-2"
-                  style={{ background: 'rgba(124,58,237,0.07)', borderLeft: '3px solid #7c3aed' }}
-                >
-                  <FileText className="h-4 w-4 shrink-0" style={{ color: '#7c3aed' }} />
-                  <p className="text-xs" style={{ color: '#7c3aed' }}>Hợp đồng đang được soạn thảo.</p>
-                </div>
-              )}
+
             </div>
           </div>
 
           {/* ── Action row ── */}
           <div
-            className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-border)]"
+            className="flex items-center gap-3 px-4 py-3 border-t border-[var(--color-border)]"
             style={{ background: 'var(--color-bg-secondary)' }}
           >
             <p className="text-[11px] flex-1" style={{ color: 'var(--color-text-muted)' }}>
               Gửi {relativeTime(req.submit_at)}
             </p>
-            {(req.status === 'sent' || req.status === 'viewed') && (
+            {req.status === 'PENDING' && (
               <button
                 onClick={() => onOpenModal(req)}
-                className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-primary)]"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}
+                className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"
+                style={{ background: 'var(--color-primary)' }}
               >
-                Phản hồi
+                <MessageSquare className="h-3.5 w-3.5" /> Thương lượng
+              </button>
+            )}
+            {req.status === 'APPROVED' && !existingContract && (
+              <button
+                onClick={() => onCreateContract(req.id_rentRequest.toString())}
+                className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                <FilePlus className="h-3.5 w-3.5" /> Soạn hợp đồng
+              </button>
+            )}
+            {existingContract && (
+              <button
+                onClick={onViewContract}
+                className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {existingContract.status === 'draft' ? 'Tiếp tục soạn hợp đồng' : 'Xem hợp đồng'}
               </button>
             )}
           </div>

@@ -56,17 +56,17 @@ export async function nominatimSearch(
   city: string,
   state: string,
 ): Promise<NominatimResult[]> {
+  const qParts = [houseNumber, street, city, state].filter(Boolean);
+  if (qParts.length === 0) return [];
+  
   const params = new URLSearchParams({
     format: "jsonv2",
     addressdetails: "1",
     countrycodes: "vn",
     limit: "5",
+    q: qParts.join(", "),
   });
-  const streetParam = [houseNumber, street].filter(Boolean).join(" ");
-  if (streetParam) params.set("street", streetParam);
-  if (city) params.set("city", city);
-  if (state) params.set("state", state);
-  if (!streetParam && !city && !state) return [];
+
   const res = await fetch(`${BASE}/search?${params}`, LANG);
   if (!res.ok) throw new Error(`Nominatim search HTTP ${res.status}`);
   return res.json() as Promise<NominatimResult[]>;
@@ -109,7 +109,25 @@ export function parseAddress(addr: NominatimAddress, displayName = "") {
     "";
   const district =
     addr.city_district || addr.county || addr.town || addr.city || "";
-  const city = addr.state || addr.province || addr.city || "";
+  let city = addr.state || addr.province || "";
+  
+  if (!city) {
+    // If state/province are missing but we have ISO code, map it
+    const isoMap: Record<string, string> = {
+      "VN-SG": "Thành phố Hồ Chí Minh",
+      "VN-HN": "Hà Nội",
+      "VN-DN": "Đà Nẵng",
+      "VN-HP": "Hải Phòng",
+      "VN-CT": "Cần Thơ",
+      // add others if needed, but these are common
+    };
+    const iso = addr["ISO3166-2-lvl4" as keyof NominatimAddress] as string;
+    if (iso && isoMap[iso]) {
+      city = isoMap[iso];
+    } else if (addr.city && addr.city !== district) {
+      city = addr.city;
+    }
+  }
 
   return { houseNumber, street, ward, district, city };
 }
@@ -129,6 +147,7 @@ export const UNIT_AREA_SHORT: Record<string, string> = {
 };
 
 export const PRICE_TIER_OPTIONS = [
+  { unit: "year", label: "Giá theo năm" },
   { unit: "month", label: "Giá theo tháng" },
   { unit: "day", label: "Giá theo ngày" },
   { unit: "hour", label: "Giá theo giờ" },

@@ -7,7 +7,7 @@ import { SubscriptionTierBadge } from '../SubscriptionTierBadge';
 import { getMinMaxPrice, fmtVnd, Thumb, MainImage } from './MyWarehouseUtils';
 import {
   Edit, MapPin, Thermometer, Package, Tag, LayoutGrid, Image as ImageIcon,
-  EyeOff, RotateCcw, Clock, Shield, Upload, FileText, Plus, Crown, TrendingUp,
+  EyeOff, RotateCcw, Clock, Shield, Upload, FileText, Plus, Crown, TrendingUp, Eye
 } from 'lucide-react';
 
 export function MyWarehouseCard({
@@ -44,7 +44,7 @@ export function MyWarehouseCard({
           style={{ minHeight: 160, background: 'var(--color-bg-secondary)' }}
         >
           {/* Main cover photo */}
-          <MainImage src={typeof imgs[0] === 'string' ? imgs[0] : (imgs[0] as any)?.url || ''} alt={warehouse.name} />
+          <MainImage src={typeof imgs[0] === 'string' ? imgs[0] : (imgs[0] as any)?.image_url || ''} alt={warehouse.name} />
 
           {/* Greyscale overlay when hidden */}
           {isHidden && (
@@ -62,7 +62,7 @@ export function MyWarehouseCard({
                   key={i}
                   className="w-8 h-8 overflow-hidden border border-white/30 flex-shrink-0"
                 >
-                  <Thumb src={typeof imgs[i] === 'string' ? imgs[i] : (imgs[i] as any)?.url || ''} />
+                  <Thumb src={typeof imgs[i] === 'string' ? imgs[i] : (imgs[i] as any)?.image_url || ''} />
                 </div>
               ))}
               {imgs.length > 4 && (
@@ -145,6 +145,14 @@ export function MyWarehouseCard({
                 </Button>
               ) : (
                 <>
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => navigate(`/warehouse/detail/${warehouse.id_warehouse}`)}
+                    className="flex items-center gap-1.5"
+                    title="Xem chi tiết kho"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Chi tiết
+                  </Button>
                   <Button
                     variant="outline" size="sm"
                     onClick={() => navigate(`/warehouse/edit/${warehouse.id_warehouse}`)}

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { CompositeWarehouse } from "../../../types";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
@@ -32,7 +32,7 @@ function LocationMarker({ position, onDragEnd }: { position: L.LatLngExpression;
   const markerRef = useRef<L.Marker>(null);
   const icon = createWarehouseIcon();
   
-  const eventHandlers = useCallback({
+  const eventHandlers = useMemo(() => ({
     dragend() {
       const marker = markerRef.current;
       if (marker != null) {
@@ -40,7 +40,7 @@ function LocationMarker({ position, onDragEnd }: { position: L.LatLngExpression;
         onDragEnd(pos.lat, pos.lng);
       }
     },
-  }, [onDragEnd]);
+  }), [onDragEnd]);
 
   // @ts-ignore - Leaflet types might clash
   return (
@@ -60,6 +60,59 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
   const [searchingLocation, setSearchingLocation] = useState(false);
   const [houseNumber, setHouseNumber] = useState("");
   const [street, setStreet] = useState("");
+  const [ward, setWard] = useState("");
+  const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const [provincesData, setProvincesData] = useState<any[]>([]);
+  const [districtsData, setDistrictsData] = useState<any[]>([]);
+
+  useEffect(() => {
+    import("../../MapData/sapnhap-bando-vn.json").then((module) => {
+      const data = (module.default || module) as any[];
+      setProvincesData(data.filter((d: any) => d.kind === "province"));
+      setDistrictsData(data.filter((d: any) => d.kind === "district" || d.kind === "commune"));
+    }).catch(e => console.error("Failed to load map data", e));
+  }, []);
+
+  const provinceNames = useMemo(() => Array.from(new Set([...vietnamProvinces, ...provincesData.map(p => p.ten)])).sort(), [provincesData]);
+  
+  const filteredDistricts = useMemo(() => {
+    if (!warehouse.location_province) return Array.from(new Set(districtsData.map(d => d.ten))).sort();
+    const provMatch = warehouse.location_province.toLowerCase().replace(/^(thành phố|tỉnh|thủ đô)\s+/i, '').trim();
+    return Array.from(new Set(
+      districtsData
+        .filter(d => d.parent_ten && d.parent_ten.toLowerCase().includes(provMatch))
+        .map(d => d.ten)
+    )).sort();
+  }, [districtsData, warehouse.location_province]);
+
+  const normalizeProvince = (name: string) => {
+    if (!name) return "";
+    const normalized = name.replace(/^(Thành phố|Tỉnh|Thủ đô)\s+/i, '').trim();
+    const match = vietnamProvinces.find(p => p.toLowerCase() === normalized.toLowerCase() || p.toLowerCase().includes(normalized.toLowerCase()) || normalized.toLowerCase().includes(p.toLowerCase()));
+    return match || name;
+  };
+
+  const handleInputSearch = (addressStr: string, c: string, p: string) => {
+    if (typingTimeout) clearTimeout(typingTimeout);
+    setTypingTimeout(setTimeout(async () => {
+       if (addressStr || c || p) {
+         try {
+           const results = await nominatimSearch("", addressStr, c, p);
+           if (results && results.length > 0) {
+             const best = results[0];
+             const lat = parseFloat(best.lat);
+             const lon = parseFloat(best.lon);
+             setMapCenter([lat, lon]);
+             setMapZoom(17);
+             onChange({ location_lat: lat, location_long: lon });
+           }
+         } catch (err) {
+           // Silent
+         }
+       }
+    }, 800));
+  };
 
   const updateLocationField = (key: keyof CompositeWarehouse, val: any) => {
     onChange({ [key]: val });
@@ -70,28 +123,42 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
       setMapCenter([warehouse.location_lat, warehouse.location_long]);
       setMapZoom(16);
     }
-    if (warehouse.address) {
-      const parts = warehouse.address.split(" ");
+  }, [warehouse.location_lat, warehouse.location_long]);
+
+  useEffect(() => {
+    if (warehouse.address && !houseNumber && !street && !ward) {
+      const parts = warehouse.address.split(",").map(p => p.trim());
       if (parts.length > 0) {
-        if (/^\d/.test(parts[0])) {
+        if (parts.length === 3) {
           setHouseNumber(parts[0]);
-          setStreet(parts.slice(1).join(" "));
+          setStreet(parts[1]);
+          setWard(parts[2]);
+        } else if (parts.length === 2) {
+          if (/^\d/.test(parts[0])) {
+            setHouseNumber(parts[0]);
+            setStreet(parts[1]);
+          } else {
+            setStreet(parts[0]);
+            setWard(parts[1]);
+          }
         } else {
           setStreet(warehouse.address);
         }
       }
     }
-  }, [warehouse.location_lat, warehouse.location_long, warehouse.address]);
+  }, [warehouse.address]);
 
   const handleSearchLocation = async () => {
     setSearchingLocation(true);
     try {
       const results = await nominatimSearch(
-        houseNumber,
-        street,
+        "",
+        warehouse.address || "",
         warehouse.location_commune || "",
         warehouse.location_province || ""
       );
+
+      console.log("[Map Search Results]:", results);
 
       if (results && results.length > 0) {
         const best = results[0];
@@ -99,8 +166,9 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
         const lon = parseFloat(best.lon);
 
         const parsed = parseAddress(best.address, best.display_name);
-        if (parsed.houseNumber) setHouseNumber(parsed.houseNumber);
-        if (parsed.street) setStreet(parsed.street);
+        setHouseNumber(parsed.houseNumber || "");
+        setStreet(parsed.street || "");
+        setWard(parsed.ward || "");
 
         setMapCenter([lat, lon]);
         setMapZoom(17);
@@ -109,9 +177,9 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
           location_lat: lat,
           location_long: lon,
           location_address_text: best.display_name,
-          location_province: parsed.city || warehouse.location_province,
+          location_province: normalizeProvince(parsed.city || warehouse.location_province),
           location_commune: parsed.district || warehouse.location_commune,
-          address: `${parsed.houseNumber ? parsed.houseNumber + " " : ""}${parsed.street}`,
+          address: [parsed.houseNumber, parsed.street, parsed.ward].filter(Boolean).join(", "),
         });
 
         toast.success("Đã tìm thấy vị trí");
@@ -132,19 +200,45 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
 
     try {
       const data = await nominatimReverse(lat, lon);
+      
+      console.log("[Map Pin Drop Result]:", {
+        lat, lon,
+        reverseGeocodeData: data
+      });
+
+      let newAddressText = data?.display_name || "";
+      let newProvince = warehouse.location_province;
+      let newCommune = warehouse.location_commune;
+      let newAddress = warehouse.address;
+
       if (data) {
         const parsed = parseAddress(data.address, data.display_name);
-        onChange({
-          location_address_text: data.display_name,
-          location_province: parsed.city || warehouse.location_province,
-          location_commune: parsed.district || warehouse.location_commune,
-          address: `${parsed.houseNumber ? parsed.houseNumber + " " : ""}${parsed.street}`,
-        });
-        if (parsed.houseNumber) setHouseNumber(parsed.houseNumber);
-        if (parsed.street) setStreet(parsed.street);
+        // Use Nominatim's parsed data as the primary source
+        newProvince = normalizeProvince(parsed.city || newProvince);
+        newCommune = parsed.district || newCommune;
+        newAddress = [parsed.houseNumber, parsed.street, parsed.ward].filter(Boolean).join(", ");
+        
+        setHouseNumber(parsed.houseNumber || "");
+        setStreet(parsed.street || "");
+        setWard(parsed.ward || "");
+        
+        if (parsed.district || parsed.city) {
+           toast.success(`Xác định được khu vực: ${parsed.district ? parsed.district + ", " : ""}${parsed.city || newProvince}`);
+        } else {
+           toast.success("Đã thả ghim vị trí.");
+        }
       }
+
+      onChange({
+        location_address_text: newAddressText,
+        location_province: newProvince,
+        location_commune: newCommune,
+        address: newAddress,
+      });
+
     } catch (err) {
-      console.error("Reverse geocoding error:", err);
+      console.error("Geocoding error:", err);
+      toast.error("Lỗi khi lấy thông tin vị trí.");
     }
   };
 
@@ -157,6 +251,22 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
     return null;
   };
 
+  const handleClearLocation = () => {
+    setHouseNumber("");
+    setStreet("");
+    setWard("");
+    setMapCenter(HCMC_CENTER);
+    setMapZoom(13);
+    onChange({
+      location_lat: undefined as any,
+      location_long: undefined as any,
+      location_address_text: "",
+      location_province: "",
+      location_commune: "",
+      address: "",
+    });
+  };
+
   return (
     <Card className="bento-card p-6">
       <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -164,9 +274,9 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
         Vị trí & Bản đồ
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+      <div className="flex flex-col gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="col-span-1">
               <Label htmlFor="houseNumber">Số nhà/Ngõ</Label>
               <Input
@@ -174,85 +284,121 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
                 placeholder="VD: 123A"
                 value={houseNumber}
                 onChange={(e) => {
-                  setHouseNumber(e.target.value);
-                  updateLocationField("address", `${e.target.value} ${street}`.trim());
+                  const val = e.target.value;
+                  setHouseNumber(val);
+                  const combined = [val, street, ward].filter(Boolean).join(", ");
+                  updateLocationField("address", combined);
+                  handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
                 }}
                 className="mt-1"
               />
             </div>
-            <div className="col-span-2">
-              <Label htmlFor="street">Đường/Phố</Label>
+            <div className="col-span-1">
+              <Label htmlFor="street">Đường/Phố <span className="text-red-500">*</span></Label>
               <Input
                 id="street"
                 placeholder="VD: Nguyễn Văn Linh"
                 value={street}
+                required
                 onChange={(e) => {
-                  setStreet(e.target.value);
-                  updateLocationField("address", `${houseNumber} ${e.target.value}`.trim());
+                  const val = e.target.value;
+                  setStreet(val);
+                  const combined = [houseNumber, val, ward].filter(Boolean).join(", ");
+                  updateLocationField("address", combined);
+                  handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
+                }}
+                className="mt-1"
+              />
+            </div>
+            <div className="col-span-1">
+              <Label htmlFor="ward">Phường/Xã <span className="text-red-500">*</span></Label>
+              <Input
+                id="ward"
+                placeholder="VD: Phường Tây Thạnh"
+                value={ward}
+                required
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setWard(val);
+                  const combined = [houseNumber, street, val].filter(Boolean).join(", ");
+                  updateLocationField("address", combined);
+                  handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
                 }}
                 className="mt-1"
               />
             </div>
           </div>
           <div>
-            <Label htmlFor="province">Tỉnh/Thành phố</Label>
-            <Select
+            <Label htmlFor="province">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
+            <Input
+              id="province"
+              list="provinces-list"
+              placeholder="VD: Thành phố Hồ Chí Minh"
               value={warehouse.location_province || ""}
-              onValueChange={(val) => updateLocationField("location_province", val)}
-            >
-              <SelectTrigger id="province" className="mt-1">
-                <SelectValue placeholder="Chọn Tỉnh/Thành phố" />
-              </SelectTrigger>
-              <SelectContent>
-                {vietnamProvinces.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              required
+              onChange={(e) => {
+                 updateLocationField("location_province", e.target.value);
+                 handleInputSearch(warehouse.address || "", warehouse.location_commune || "", e.target.value);
+              }}
+              className="mt-1"
+            />
+            <datalist id="provinces-list">
+              {provinceNames.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
           </div>
           <div>
-            <Label htmlFor="commune">Quận/Huyện</Label>
+            <Label htmlFor="commune">Quận/Huyện <span className="text-red-500">*</span></Label>
             <Input
               id="commune"
+              list="districts-list"
               placeholder="VD: Quận 7"
               value={warehouse.location_commune || ""}
-              onChange={(e) => updateLocationField("location_commune", e.target.value)}
+              required
+              onChange={(e) => {
+                const val = e.target.value;
+                updateLocationField("location_commune", val);
+                handleInputSearch(warehouse.address || "", val, warehouse.location_province || "");
+              }}
               className="mt-1"
             />
+            <datalist id="districts-list">
+              {filteredDistricts.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
           </div>
-          <div>
-            <Label htmlFor="postalCode">Mã bưu chính (Tùy chọn)</Label>
-            <Input
-              id="postalCode"
-              placeholder="VD: 700000"
-              value={warehouse.location_postal_code || ""}
-              onChange={(e) => updateLocationField("location_postal_code", e.target.value)}
-              className="mt-1"
-            />
+          <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearLocation}
+            >
+              Xóa trắng
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSearchLocation}
+              disabled={searchingLocation}
+            >
+              {searchingLocation ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4 mr-2" />
+              )}
+              {searchingLocation ? "Đang tìm kiếm..." : "Tìm vị trí trên bản đồ"}
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            onClick={handleSearchLocation}
-            disabled={searchingLocation}
-          >
-            {searchingLocation ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4 mr-2" />
-            )}
-            {searchingLocation ? "Đang tìm kiếm..." : "Tìm vị trí trên bản đồ"}
-          </Button>
           {warehouse.location_address_text && (
-            <div className="mt-2 p-3 bg-[var(--color-bg-secondary)] rounded-md border border-[var(--color-border)]">
+            <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-[var(--color-bg-secondary)] rounded-md border border-[var(--color-border)]">
               <Label className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1 block">Địa chỉ được ghim:</Label>
               <p className="text-sm font-medium">{warehouse.location_address_text}</p>
             </div>
           )}
         </div>
 
-        <div className="h-[400px] rounded-xl overflow-hidden border-2 border-[var(--color-border)] relative">
+        <div className="h-[500px] w-full rounded-xl overflow-hidden border-2 border-[var(--color-border)] relative">
           {/* @ts-ignore */}
           <MapContainer
             center={mapCenter}

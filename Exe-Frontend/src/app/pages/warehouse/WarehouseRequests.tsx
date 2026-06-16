@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
+import { ownerService } from '../../../services/ownerService';
 import { CompositeWarehouse } from '../../../types/warehouse';
 import { ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,71 +12,197 @@ import { WarehouseRequestCard } from '../../components/owner/WarehouseRequestCar
 
 export default function WarehouseRequests() {
   const navigate = useNavigate();
-  const { user, requests: allRequests, warehouses: warehouseList, contracts, updateRequest } = useApp();
+  const { user, warehouses: warehouseList, loading: appLoading, contracts, updateRequest } = useApp();
   const [tab, setTab]         = useState<FilterTab>('all');
   const [modalReq, setModalReq] = useState<IncomingRequest | null>(null);
+
+  // Pagination & Caching
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [requestsList, setRequestsList] = useState<IncomingRequest[]>([]);
+  const [cache, setCache] = useState<Record<string, { list: IncomingRequest[], totalPages: number, totalElements: number }>>({});
 
   const warehouses = useMemo<Record<string, CompositeWarehouse>>(() =>
     Object.fromEntries(warehouseList.map(w => [w.id_warehouse, w])),
   [warehouseList]);
 
-  const ownerWarehouseIds = useMemo(
-    () => warehouseList.filter(w => w.id_owner === user?.id_user).map(w => w.id_warehouse),
-    [warehouseList, user],
-  );
+  const fetchPage = useCallback(async (p: number, t: FilterTab, isPreload: boolean = false, forceRefetch: boolean = false) => {
+    const cacheKey = `${t}_${p}`;
+    if (!forceRefetch && cache[cacheKey]) {
+      if (!isPreload) {
+        setRequestsList(cache[cacheKey].list);
+        setTotalPages(cache[cacheKey].totalPages);
+        setTotalElements(cache[cacheKey].totalElements);
+        setLoading(false);
+      }
+      return cache[cacheKey];
+    }
 
-  const requests = useMemo(() =>
-    allRequests.filter(r => ownerWarehouseIds.includes(r.id_warehouse as number)) as IncomingRequest[],
-  [allRequests, ownerWarehouseIds]);
+    if (!isPreload) setLoading(true);
+    try {
+      const dataRes = await ownerService.getIncomingRequests(p, 10, t === 'all' ? undefined : t);
+      const mapped = (dataRes.content as any[]).map(r => {
+        const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
+        return {
+          ...r,
+          id_rentRequest: r.id || r.id_rentRequest,
+          id_warehouse: matchingWarehouse?.id_warehouse,
+          cargo_description: r.cargoDescription,
+          cargoType: r.cargoDescription,
+          other_detail: r.otherDetail,
+          message: r.otherDetail,
+          duration: r.duration,
+          duration_unit: r.durationUnit,
+          durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
+          status: r.status,
+          offered_price: r.offeredPrice,
+          renterOfferedPrice: r.renterOfferedPrice,
+          owner_note: r.ownerNote,
+          rejection_reason: r.rejectionReason,
+          renterName: r.renterName,
+          renterPhone: r.renterPhone || 'N/A',
+          renterEmail: r.renterEmail || 'N/A',
+          requestedCapacity: r.details?.[0]?.rentedArea,
+          priceTierLabel: r.details?.[0]?.priceTierLabel,
+          priceTierValue: r.details?.[0]?.priceTierValue,
+          sectionName: r.details?.[0]?.sector ? `Phân khu ${r.details[0].sector}` : undefined,
+          submit_at: r.createdAt || r.submit_at || new Date().toISOString()
+        } as IncomingRequest;
+      });
+      
+      const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
+      setCache(prev => ({ ...prev, [cacheKey]: newData }));
 
-  const handleMarkViewed = async (id: string) => {
-    await updateRequest(id, { status: 'viewed' });
-    toast.success('Đã đánh dấu là đã xem.');
+      if (!isPreload) {
+        setRequestsList(mapped);
+        setTotalPages(dataRes.totalPages);
+        setTotalElements(dataRes.totalElements);
+      }
+      return newData;
+    } catch (err: any) {
+      console.error('Failed to fetch requests', err);
+      if (!isPreload) toast.error('Không tải được danh sách yêu cầu');
+    } finally {
+      if (!isPreload) setLoading(false);
+    }
+  }, [cache, warehouseList]);
+
+
+  useEffect(() => {
+    if (!user || user.role !== 'OWNER' || appLoading.warehouses) return;
+    fetchPage(page, tab).then(data => {
+      if (data && page < data.totalPages - 1) {
+        fetchPage(page + 1, tab, true);
+      }
+    });
+  }, [page, tab, user?.id_user, appLoading.warehouses]);
+
+  const invalidateAndRefetch = () => {
+    setCache({});
+    fetchPage(page, tab, false, true);
   };
 
-  const handleAccept = async (id: string, offeredPrice: number, ownerNote: string) => {
+  const handleMarkViewed = async (id: string) => {
+    // Backend RequestStatus enum only supports PENDING, APPROVED, REJECTED
+    // We cannot mark it as 'viewed' anymore.
+  };
+
+  const refetchSingleRequest = async (id: string) => {
     try {
-      await updateRequest(id, { status: 'inprogress', offered_price: offeredPrice, owner_note: ownerNote });
+      const r = await ownerService.getRequestDetail(Number(id));
+      const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
+      const updatedReq: IncomingRequest = {
+        ...r,
+        id_rentRequest: r.id || r.id_rentRequest,
+        id_warehouse: matchingWarehouse?.id_warehouse,
+        cargo_description: r.cargoDescription,
+        cargoType: r.cargoDescription,
+        other_detail: r.otherDetail,
+        message: r.otherDetail,
+        duration: r.duration,
+        duration_unit: r.durationUnit,
+        durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
+        status: r.status,
+        offered_price: r.offeredPrice,
+        renterOfferedPrice: r.renterOfferedPrice,
+        owner_note: r.ownerNote,
+        rejection_reason: r.rejectionReason,
+        renterName: r.renterName,
+        renterPhone: r.renterPhone || 'N/A',
+        renterEmail: r.renterEmail || 'N/A',
+        requestedCapacity: r.details?.[0]?.rentedArea,
+        priceTierLabel: r.details?.[0]?.priceTierLabel,
+        priceTierValue: r.details?.[0]?.priceTierValue,
+        sectionName: r.details?.[0]?.sector ? `Phân khu ${r.details[0].sector}` : undefined,
+        sectionId: r.details?.[0]?.sector,
+        submit_at: r.createdAt || r.submit_at || new Date().toISOString()
+      } as IncomingRequest;
+
+      setRequestsList(prev => prev.map(req => req.id_rentRequest.toString() === id ? updatedReq : req));
+      
+      // Update cache
+      setCache(prev => {
+        const newCache = { ...prev };
+        Object.keys(newCache).forEach(key => {
+          newCache[key] = {
+            ...newCache[key],
+            list: newCache[key].list.map((req: any) => req.id_rentRequest.toString() === id ? updatedReq : req)
+          };
+        });
+        return newCache;
+      });
+    } catch (err) {
+      console.error("Failed to refetch single request", err);
+    }
+  };
+
+  const handleAccept = async (id: string) => {
+    try {
+      await ownerService.updateRequestStatus(id, { status: 'APPROVED' });
       setModalReq(null);
-      toast.success('Đã chấp nhận thương lượng. Người thuê sẽ nhận được thông báo!');
+      toast.success('Đã chấp nhận yêu cầu thuê!');
+      refetchSingleRequest(id);
     } catch (err) {
       toast.error('Không thể chấp nhận yêu cầu');
     }
   };
 
+  const handleNegotiate = async (id: string, offeredPrice: number, ownerNote: string) => {
+    try {
+      await ownerService.updateRequestStatus(id, { status: 'PENDING', offeredPrice: offeredPrice, ownerNote: ownerNote });
+      setModalReq(null);
+      toast.success('Đã gửi đề xuất giá. Người thuê sẽ nhận được thông báo!');
+      refetchSingleRequest(id);
+    } catch (err) {
+      toast.error('Không thể gửi đề xuất giá');
+    }
+  };
+
   const handleReject = async (id: string, rejectionReason: string) => {
     try {
-      await updateRequest(id, { status: 'rejected', rejection_reason: rejectionReason });
+      await ownerService.updateRequestStatus(id, { status: 'REJECTED', rejectionReason: rejectionReason });
       setModalReq(null);
       toast.success('Đã từ chối yêu cầu và gửi lý do cho người thuê.');
+      refetchSingleRequest(id);
     } catch (err) {
       toast.error('Không thể từ chối yêu cầu');
     }
   };
 
-  const filtered = tab === 'all' ? requests : requests.filter(r => r.status === tab);
-
-  const counts: Record<FilterTab, number> = {
-    all:        requests.length,
-    sent:       requests.filter(r => r.status === 'sent').length,
-    viewed:     requests.filter(r => r.status === 'viewed').length,
-    inprogress: requests.filter(r => r.status === 'inprogress').length,
-    contracted: requests.filter(r => r.status === 'contracted').length,
-    rejected:   requests.filter(r => r.status === 'rejected').length,
-  };
-
-  const pendingCount = counts.sent + counts.viewed;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Navbar />
 
-      {modalReq && warehouses[modalReq.id_warehouse as number] && (
+      {modalReq && (
         <WarehouseResponseModal
           request={modalReq}
           warehouse={warehouses[modalReq.id_warehouse as number]}
           onClose={() => setModalReq(null)}
           onAccept={handleAccept}
+          onNegotiate={handleNegotiate}
           onReject={handleReject}
         />
       )}
@@ -100,45 +227,17 @@ export default function WarehouseRequests() {
                 <p style={{ color: 'var(--color-text-secondary)' }}>Quản lý và phản hồi các yêu cầu từ khách hàng</p>
               </div>
             </div>
-            {pendingCount > 0 && (
-              <div
-                className="shrink-0 flex items-center gap-2 px-3 py-2 text-sm"
-                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
-              >
-                <AlertCircle className="h-4 w-4" />
-                {pendingCount} yêu cầu cần phản hồi
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-px bg-[var(--color-border)] mb-6">
-          {(Object.keys(STATUS_CFG) as RequestStatus[]).map(s => {
-            const cfg = STATUS_CFG[s];
-            return (
-              <button
-                key={s}
-                onClick={() => setTab(tab === s ? 'all' : s)}
-                className="bg-[var(--color-surface)] p-4 text-left hover:bg-[var(--color-bg-secondary)] transition-colors"
-                style={{ outline: tab === s ? `2px solid ${cfg.color}` : 'none', outlineOffset: -2 }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 shrink-0" style={{ background: cfg.color }} />
-                  <span className="text-2xl font-extrabold" style={{ color: 'var(--color-text)' }}>{counts[s]}</span>
-                </div>
-                <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{cfg.label}</p>
-              </button>
-            );
-          })}
-        </div>
+
 
         {/* Tabs */}
         <div className="flex border-b border-[var(--color-border)] mb-4 overflow-x-auto">
           {TABS.map(t => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => { setTab(t.key); setPage(0); }}
               className="px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors"
               style={{
                 borderBottomColor: tab === t.key ? 'var(--color-primary)' : 'transparent',
@@ -147,28 +246,21 @@ export default function WarehouseRequests() {
               }}
             >
               {t.label}
-              {counts[t.key] > 0 && (
-                <span
-                  className="ml-1.5 text-[10px] px-1.5 py-0.5"
-                  style={{
-                    background: tab === t.key ? 'var(--color-primary)' : 'var(--color-bg-secondary)',
-                    color: tab === t.key ? 'white' : 'var(--color-text-muted)',
-                  }}
-                >
-                  {counts[t.key]}
-                </span>
-              )}
             </button>
           ))}
         </div>
 
         {/* Results bar */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{filtered.length} yêu cầu</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{totalElements} yêu cầu</p>
         </div>
 
         {/* Content */}
-        {filtered.length === 0 ? (
+        {loading ? (
+             <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
+             </div>
+        ) : requestsList.length === 0 ? (
           <div className="border border-[var(--color-border)] p-16 text-center" style={{ background: 'var(--color-surface)' }}>
             <ClipboardList className="h-10 w-10 mx-auto mb-4" style={{ color: 'var(--color-text-muted)' }} />
             <h3 className="mb-2" style={{ color: 'var(--color-text)' }}>Không có yêu cầu nào</h3>
@@ -183,16 +275,7 @@ export default function WarehouseRequests() {
           </div>
         ) : (
           <div className="space-y-2">
-            {tab === 'all' && pendingCount > 0 && (
-              <div
-                className="flex items-center gap-3 px-4 py-3 border text-sm"
-                style={{ background: 'rgba(239,68,68,0.06)', borderColor: 'rgba(239,68,68,0.25)', color: 'var(--color-text)' }}
-              >
-                <AlertCircle className="h-4 w-4 shrink-0" style={{ color: '#ef4444' }} />
-                Có <strong className="mx-1">{pendingCount} yêu cầu chưa được phản hồi</strong>. Hãy phản hồi sớm!
-              </div>
-            )}
-            {filtered.map(req => (
+            {requestsList.map(req => (
               <WarehouseRequestCard
                 key={req.id_rentRequest}
                 req={req}
@@ -204,6 +287,30 @@ export default function WarehouseRequests() {
                 onViewContract={() => navigate(`/warehouse/contracts/create/${req.id_rentRequest}`)}
               />
             ))}
+          </div>
+        )}
+        
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded mt-4">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Trang {page + 1} / {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
           </div>
         )}
       </div>

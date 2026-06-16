@@ -20,21 +20,17 @@ export const CARGO_LABEL: Record<string, string> = {
 export const UNIT_LABEL: Record<string, string> = { month: 'tháng', day: 'ngày', year: 'năm' };
 
 export const STATUS_CFG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  sent:        { label: 'Chờ xem',           color: '#3b82f6', icon: <Send className="h-3 w-3" /> },
-  viewed:      { label: 'Đã xem',            color: '#f59e0b', icon: <Eye className="h-3 w-3" /> },
-  inprogress:  { label: 'Đang thương lượng', color: '#22c55e', icon: <MessageSquare className="h-3 w-3" /> },
-  rejected:    { label: 'Đã từ chối',        color: '#ef4444', icon: <XCircle className="h-3 w-3" /> },
-  contracted:  { label: 'Có hợp đồng',       color: '#7c3aed', icon: <FileText className="h-3 w-3" /> },
+  PENDING:     { label: 'Đang chờ',           color: '#f59e0b', icon: <Clock className="h-3 w-3" /> },
+  APPROVED:    { label: 'Đã chấp nhận',       color: '#22c55e', icon: <CheckCircle className="h-3 w-3" /> },
+  REJECTED:    { label: 'Đã từ chối',         color: '#ef4444', icon: <XCircle className="h-3 w-3" /> },
 };
 
 export type FilterTab = 'all' | RequestStatus;
 export const TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all',        label: 'Tất cả' },
-  { key: 'sent',       label: 'Chờ xem' },
-  { key: 'viewed',     label: 'Đã xem' },
-  { key: 'inprogress', label: 'Thương lượng' },
-  { key: 'contracted', label: 'Có hợp đồng' },
-  { key: 'rejected',   label: 'Đã từ chối' },
+  { key: 'all',      label: 'Tất cả' },
+  { key: 'PENDING',  label: 'Đang chờ' },
+  { key: 'APPROVED', label: 'Đã chấp nhận' },
+  { key: 'REJECTED', label: 'Đã từ chối' },
 ];
 
 export const CONTRACT_CFG: Record<string, { label: string; sublabel: string; color: string; bg: string; icon: React.ReactNode }> = {

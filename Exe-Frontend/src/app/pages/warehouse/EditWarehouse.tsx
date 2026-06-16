@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
-import { warehousesAPI, storageAPI } from "../../../services/apiClient";
+import { storageAPI } from "../../../services/apiClient";
+import { ownerService } from "../../../services/ownerService";
 import { CompositeWarehouse, CompositeWarehouseSection, WarehouseImage } from "../../../types";
 import { Button } from "../../components/ui/button";
-import { Save, ArrowLeft, Loader2, RotateCcw } from "lucide-react";
+import { Save, ArrowLeft, Loader2, RotateCcw, EyeOff, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { CertFile } from "../../components/owner/WarehouseFormUtils";
 
@@ -22,6 +23,7 @@ export default function WarehouseForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [warehouse, setWarehouse] = useState<CompositeWarehouse | null>(null);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
   // Additional transient states not directly inside `warehouse` object or requiring specific handling
   const [certFiles, setCertFiles] = useState<CertFile[]>([]);
@@ -31,7 +33,7 @@ export default function WarehouseForm() {
       if (!id) return;
       try {
         setLoading(true);
-        const data = (await warehousesAPI.getById(id)) as CompositeWarehouse;
+        const data = (await ownerService.getMyWarehouseDetail(Number(id))) as CompositeWarehouse;
         if (!data) {
           toast.error("Không tìm thấy dữ liệu kho!");
           navigate("/warehouse/my-warehouses");
@@ -72,6 +74,27 @@ export default function WarehouseForm() {
     setWarehouse((prev) => prev ? { ...prev, sections } : null);
   };
 
+  const handleToggleStatus = async () => {
+    if (!warehouse) return;
+    setIsTogglingStatus(true);
+    try {
+      if (warehouse.status === 'active') {
+        await ownerService.hideWarehouse(warehouse.id_warehouse);
+        setWarehouse((prev) => prev ? { ...prev, status: 'inactive' } : null);
+        toast.success("Đã ngừng hoạt động kho lạnh");
+      } else {
+        await ownerService.restoreWarehouse(warehouse.id_warehouse);
+        setWarehouse((prev) => prev ? { ...prev, status: 'active' } : null);
+        toast.success("Đã kích hoạt lại kho lạnh");
+      }
+    } catch (err: any) {
+      console.error("Lỗi khi thay đổi trạng thái:", err);
+      toast.error("Thao tác thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!warehouse) return;
@@ -83,21 +106,36 @@ export default function WarehouseForm() {
 
     setSaving(true);
     try {
-      let finalImages = warehouse.images || [];
-      if (finalImages.length > 0 && typeof finalImages[0] !== 'string' && (finalImages[0] as any).file) {
-         // In a real scenario, we would upload these File objects to storageAPI. 
-         // Since ImageUploader might return a mix of URLs and blobs, we'd process them here.
-         // Assuming ImageUploader returns string URLs for simplicity.
-      }
-
-      const updatedWarehouse: CompositeWarehouse = {
-        ...warehouse,
-        images: finalImages,
-        update_at: new Date().toISOString(),
+      // Build the DTO mapping for the JSON part, matching AddWarehouse structure
+      const dto = {
+        name: warehouse.name,
+        description: warehouse.description,
+        locationAddressText: warehouse.location_address_text || warehouse.address,
+        locationProvince: warehouse.location_province,
+        locationCommune: warehouse.location_commune,
+        locationLong: warehouse.location_long,
+        locationLat: warehouse.location_lat,
+        locationPostalCode: warehouse.location_postal_code || "",
+        sections: (warehouse.sections || []).map(sec => ({
+          id_section: sec.id_section, // Included for update
+          sector: sec.sector,
+          totalCapacity: sec.total_capacity,
+          availableCapacity: sec.available_capacity,
+          tempMin: sec.temp_min,
+          tempMax: sec.temp_max,
+          humidity: sec.humidity,
+          hasCertification: sec.hasCertification,
+          priceTiers: (sec.priceTiers || []).map((pt: any) => ({
+            label: pt.label,
+            value: pt.value,
+            unit: pt.unit,
+            areaUnit: pt.area_unit
+          }))
+        }))
       };
 
-      console.log("[WarehouseForm] Submitting update for:", updatedWarehouse.id_warehouse);
-      await warehousesAPI.update(updatedWarehouse.id_warehouse.toString(), updatedWarehouse);
+      console.log("[WarehouseForm] Submitting update for:", warehouse.id_warehouse, dto);
+      await ownerService.updateWarehouse(warehouse.id_warehouse, dto);
       toast.success("Cập nhật kho lạnh thành công!");
       navigate("/warehouse/my-warehouses");
     } catch (err: any) {
@@ -141,6 +179,29 @@ export default function WarehouseForm() {
               <p className="text-[var(--color-text-secondary)]">Cập nhật thông tin chi tiết cho kho lạnh của bạn</p>
             </div>
             <div className="flex items-center gap-3">
+              {warehouse.status === 'active' ? (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="text-[var(--color-error)] hover:bg-red-50 border-[var(--color-error)]"
+                  onClick={handleToggleStatus}
+                  disabled={isTogglingStatus}
+                >
+                  {isTogglingStatus ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeOff className="h-4 w-4 mr-2" />}
+                  Ngừng hoạt động
+                </Button>
+              ) : (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="text-[var(--color-success)] hover:bg-green-50 border-[var(--color-success)]"
+                  onClick={handleToggleStatus}
+                  disabled={isTogglingStatus}
+                >
+                  {isTogglingStatus ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />}
+                  Kích hoạt lại
+                </Button>
+              )}
               <Button type="button" variant="outline" onClick={() => window.location.reload()}>
                 <RotateCcw className="h-4 w-4 mr-2" /> Khôi phục
               </Button>

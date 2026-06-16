@@ -98,6 +98,7 @@ export interface CompositeWarehouse extends Warehouse {
   ratingScore?: number;
   ratingCount?: number;
   subscriptionTier?: SubscriptionTierLevel;
+  pendingRequestCount?: number;
 }
 
 export type SubscriptionTierLevel = 'free' | 'silver' | 'gold' | 'platinum';

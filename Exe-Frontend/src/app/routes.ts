@@ -23,6 +23,7 @@ import RentalRequests from './pages/renter/RentalRequests';
 import WarehouseDashboard from './pages/warehouse/WarehouseDashboard';
 import AddWarehouse from './pages/warehouse/AddWarehouse';
 import EditWarehouse from './pages/warehouse/EditWarehouse';
+import MyWarehouseDetail from './pages/warehouse/MyWarehouseDetail';
 import MyWarehouses from './pages/warehouse/MyWarehouses';
 import WarehouseRequests from './pages/warehouse/WarehouseRequests';
 import OwnerContracts from './pages/warehouse/OwnerContracts';
@@ -35,13 +36,13 @@ import ManageWarehouses from './pages/employee/ManageWarehouses';
 import ManageUsers from './pages/employee/ManageUsers';
 import ManageCertTypes from './pages/employee/ManageCertTypes';
 import ManageContracts from './pages/employee/ManageContracts';
-import ManageRequestDetail from './pages/employee/ManageRequestDetail';
-import ManageContractDetail from './pages/employee/ManageContractDetail';
 import ManageAiTiers from './pages/employee/ManageAiTiers';
 import ManageSponsorTiers from './pages/employee/ManageSponsorTiers';
 
 // Shared
 import NotFound from './pages/NotFound';
+import SharedRequestDetail from './pages/shared/SharedRequestDetail';
+import SharedContractDetail from './pages/shared/SharedContractDetail';
 
 export const router = createBrowserRouter([
   // ── Public routes ──────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export const router = createBrowserRouter([
       { path: '/warehouse/my-warehouses', Component: MyWarehouses },
       { path: '/warehouse/add', Component: AddWarehouse },
       { path: '/warehouse/edit/:id', Component: EditWarehouse },
+      { path: '/warehouse/detail/:id', Component: MyWarehouseDetail },
       { path: '/warehouse/subscription', Component: SubscriptionManagement },
     ],
   },
@@ -112,10 +114,18 @@ export const router = createBrowserRouter([
       { path: '/employee/users', Component: ManageUsers },
       { path: '/employee/cert-types', Component: ManageCertTypes },
       { path: '/employee/contracts', Component: ManageContracts },
-      { path: '/employee/requests/:id', Component: ManageRequestDetail },
-      { path: '/employee/contracts/:id', Component: ManageContractDetail },
       { path: '/employee/ai-tiers', Component: ManageAiTiers },
       { path: '/employee/sponsor-tiers', Component: ManageSponsorTiers },
+    ],
+  },
+
+  // ── Shared Authenticated routes ───────────────────────────────────────────
+  {
+    element: createElement(ProtectedRoute, { allowedRoles: ['RENTER', 'OWNER', 'EMPLOYEE'] }),
+    ErrorBoundary: ErrorPage,
+    children: [
+      { path: '/shared/requests/:id', Component: SharedRequestDetail },
+      { path: '/shared/contracts/:id', Component: SharedContractDetail },
     ],
   },
 

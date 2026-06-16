@@ -39,7 +39,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
         temp_min: -18,
         temp_max: 5,
         humidity: 85,
-        hasCertification: false,
+        hasCertification: true,
         availability: "available",
         priceTiers: [
           { id_price_tier: Date.now() + 1, unit: "month", label: "Giá theo tháng", value: 0, area_unit: "m3" }
@@ -54,7 +54,16 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
   };
 
   const updateSection = (id: number, key: keyof CompositeWarehouseSection, value: any) => {
-    onChange(sections.map((s) => (s.id_section === id ? { ...s, [key]: value } : s)));
+    onChange(sections.map((s) => {
+      if (s.id_section === id) {
+        const next = { ...s, [key]: value };
+        if (key === "total_capacity") {
+          next.available_capacity = value;
+        }
+        return next;
+      }
+      return s;
+    }));
   };
 
   const addPriceTier = (sectionId: number) => {
@@ -75,12 +84,12 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
     );
   };
 
-  const updatePriceTier = (sectionId: number, tierId: number, key: keyof PriceTier, value: any) => {
+  const updatePriceTier = (sectionId: number, tierId: number, updates: Partial<PriceTier>) => {
     onChange(
       sections.map((s) => {
         if (s.id_section === sectionId) {
           const updatedTiers = (s.priceTiers || []).map((t) =>
-            t.id_price_tier === tierId ? { ...t, [key]: value } : t
+            t.id_price_tier === tierId ? { ...t, ...updates } : t
           );
           return { ...s, priceTiers: updatedTiers };
         }
@@ -136,7 +145,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-[var(--color-text)]">
-                      {s.name || "Khu vực mới"}
+                      Khu vực {s.sector || index + 1}
                     </h3>
                     <p className="text-xs text-[var(--color-text-secondary)]">
                       {s.total_capacity} m³ • Nhiệt độ: {s.temp_min}°C đến {s.temp_max}°C
@@ -164,16 +173,6 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
               {isExpanded && (
                 <div className="p-4 border-t border-[var(--color-border)] bg-white/50 space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <Label>Tên phân khu <span className="text-red-500">*</span></Label>
-                      <Input
-                        placeholder="VD: Phòng đông lạnh số 1"
-                        value={s.name || ""}
-                        onChange={(e) => updateSection(s.id_section, "name", e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                    
                     <div>
                       <Label>Tổng sức chứa (m³)</Label>
                       <Input
@@ -182,17 +181,6 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                         placeholder="VD: 500"
                         value={s.total_capacity !== undefined ? s.total_capacity : ""}
                         onChange={(e) => updateSection(s.id_section, "total_capacity", parseFloat(e.target.value) || 0)}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label>Sức chứa còn trống (m³)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="VD: 250"
-                        value={s.available_capacity !== undefined ? s.available_capacity : ""}
-                        onChange={(e) => updateSection(s.id_section, "available_capacity", parseFloat(e.target.value) || 0)}
                         className="mt-1"
                       />
                     </div>
@@ -219,43 +207,18 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                     </div>
 
                     <div>
-                      <Label>Trạng thái phân khu</Label>
-                      <Select
-                        value={s.availability || "available"}
-                        onValueChange={(val) => updateSection(s.id_section, "availability", val)}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="available">Đang trống</SelectItem>
-                          <SelectItem value="partially">Còn một phần</SelectItem>
-                          <SelectItem value="full">Đã đầy</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-8">
-                      <Checkbox
-                        id={`cert-${s.id_section}`}
-                        checked={s.hasCertification ?? false}
-                        onCheckedChange={(val) => updateSection(s.id_section, "hasCertification", !!val)}
-                      />
-                      <Label htmlFor={`cert-${s.id_section}`} className="cursor-pointer font-normal text-sm">
-                        Yêu cầu có chứng nhận
-                      </Label>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <Label>Mô tả chi tiết</Label>
-                      <Textarea
-                        placeholder="Loại hàng hóa phù hợp, trang thiết bị riêng..."
-                        value={s.description || ""}
-                        onChange={(e) => updateSection(s.id_section, "description", e.target.value)}
-                        className="mt-1 h-20"
+                      <Label>Độ ẩm tiêu chuẩn (%)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="VD: 85"
+                        value={s.humidity !== undefined ? s.humidity : ""}
+                        onChange={(e) => updateSection(s.id_section, "humidity", parseFloat(e.target.value) || 0)}
+                        className="mt-1"
                       />
                     </div>
-                  </div>
+                    </div>
 
                   {/* Price Tiers */}
                   <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
@@ -283,10 +246,10 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                                 value={tier.unit}
                                 onValueChange={(val) => {
                                   const option = PRICE_TIER_OPTIONS.find(o => o.unit === val);
-                                  updatePriceTier(s.id_section, tier.id_price_tier, "unit", val);
-                                  if (option) {
-                                    updatePriceTier(s.id_section, tier.id_price_tier, "label", option.label);
-                                  }
+                                  updatePriceTier(s.id_section, tier.id_price_tier, {
+                                    unit: val,
+                                    label: option?.label || val
+                                  });
                                 }}
                               >
                                 <SelectTrigger className="h-9">
@@ -305,7 +268,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                                 min="0"
                                 placeholder="Nhập giá"
                                 value={tier.value !== undefined ? tier.value : ""}
-                                onChange={(e) => updatePriceTier(s.id_section, tier.id_price_tier, "value", parseInt(e.target.value) || 0)}
+                                onChange={(e) => updatePriceTier(s.id_section, tier.id_price_tier, { value: parseInt(e.target.value) || 0 })}
                                 className="h-9 pr-6"
                               />
                               <span className="absolute right-2 text-xs font-semibold text-gray-500 pointer-events-none">₫</span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { requestsAPI, warehousesAPI, contractsAPI } from '../../../services/apiClient';
+import { ownerService } from '../../../services/ownerService';
 import { CompositeContract } from '../../../types/renter';
 import { CreateContractParties } from '../../components/owner/CreateContractParties';
 import { CreateContractTerms } from '../../components/owner/CreateContractTerms';
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type InputMode = 'form' | 'pdf';
+
 
 const today = () => new Date().toISOString().slice(0, 10);
 const genRef = () => `LGC-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
@@ -26,9 +27,7 @@ export default function CreateContract() {
   const [warehouse, setWarehouse] = useState<any | undefined>(undefined);
   const [existingDraft, setExistingDraft] = useState<CompositeContract | undefined>(undefined);
 
-  const [inputMode, setInputMode] = useState<InputMode>('form');
   const [showPreview, setShowPreview] = useState(false);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const contractRef = existingDraft?.contractRef ?? genRef();
   const contractId = existingDraft?.id_contract || Date.now();
@@ -87,13 +86,7 @@ export default function CreateContract() {
     if (!user && !request && !existingDraft) return;
 
     if (existingDraft) {
-      setInputMode((existingDraft.inputMode as InputMode) ?? 'form');
       setContract(existingDraft);
-      if (existingDraft.pdfFileName) {
-        const blob = new Blob([], { type: 'application/pdf' });
-        (blob as any).name = existingDraft.pdfFileName;
-        setPdfFile(blob as unknown as File);
-      }
     } else {
       setContract(prev => ({
         ...prev,
@@ -118,23 +111,13 @@ export default function CreateContract() {
   };
 
   const validateForm = (): boolean => {
-    if (inputMode === 'form') {
-      if (!contract.owner_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên A'); return false; }
-      if (!contract.owner_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên A'); return false; }
-      if (!contract.renter_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên B'); return false; }
-      if (!contract.renter_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên B'); return false; }
-      if (!contract.start_at) { toast.error('Vui lòng chọn ngày bắt đầu'); return false; }
-      if (!contract.end_at) { toast.error('Vui lòng chọn ngày kết thúc'); return false; }
-      if (!contract.monthlyRate || contract.monthlyRate <= 0) { toast.error('Vui lòng nhập đơn giá'); return false; }
-    } else {
-      if (!pdfFile) { toast.error('Vui lòng tải lên file PDF hợp đồng'); return false; }
-      if (!contract.owner_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên A'); return false; }
-      if (!contract.owner_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên A'); return false; }
-      if (!contract.renter_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên B'); return false; }
-      if (!contract.renter_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên B'); return false; }
-      if (!contract.start_at) { toast.error('Vui lòng nhập ngày bắt đầu'); return false; }
-      if (!contract.end_at) { toast.error('Vui lòng nhập ngày kết thúc'); return false; }
-    }
+    if (!contract.owner_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên A'); return false; }
+    if (!contract.owner_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên A'); return false; }
+    if (!contract.renter_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên B'); return false; }
+    if (!contract.renter_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên B'); return false; }
+    if (!contract.start_at) { toast.error('Vui lòng chọn ngày bắt đầu'); return false; }
+    if (!contract.end_at) { toast.error('Vui lòng chọn ngày kết thúc'); return false; }
+    if (!contract.monthlyRate || contract.monthlyRate <= 0) { toast.error('Vui lòng nhập đơn giá'); return false; }
     return true;
   };
 
@@ -148,7 +131,6 @@ export default function CreateContract() {
     sectionIds: request?.sectionIds,
     isWholeWarehouse: request?.isWholeWarehouse,
     contractRef,
-    inputMode,
     status,
     contractTitle: contract.contractTitle || `Hợp đồng thuê kho lạnh${warehouse ? ` – ${warehouse.name}` : ''}`,
     
@@ -178,14 +160,72 @@ export default function CreateContract() {
     rentedCapacity: Number(contract.rentedCapacity) || 0,
     monthlyRate: Number(contract.monthlyRate) || 0,
     notes: contract.notes,
-    pdfFileName: pdfFile?.name,
-    pdfFileSize: pdfFile?.size,
     sentAt: status === 'pending_renter' ? new Date().toISOString() : undefined,
-  });
+    
+    // camelCase aliases to match backend API expectations and SharedContractDetail.tsx
+    requestId: request?.id_rentRequest,
+    warehouseName: warehouse?.name || '',
+    totalPrice: Number(contract.monthlyRate) * (request?.duration || 1) || 0,
+    ownerLegalName: contract.owner_legal_name || '',
+    ownerTaxCode: contract.owner_tax_code || '',
+    ownerAddress: contract.owner_address || '',
+    ownerPhone: contract.owner_phone || '',
+    ownerEmail: contract.owner_email || '',
+    renterLegalName: contract.renter_legal_name || '',
+    renterTaxCode: contract.renter_tax_code || '',
+    renterAddress: contract.renter_address || '',
+    renterPhone: contract.renter_phone || '',
+    renterEmail: contract.renter_email || '',
+    startAt: contract.start_at || '',
+    endAt: contract.end_at || '',
+    cargoDescription: contract.cargo_description || '',
+    paymentTerm: contract.payment_term || '',
+    penaltyClause: contract.penalty_clause || '',
+    specialTerm: contract.special_term || '',
+    cancelReason: contract.cancel_reason || '',
+  } as any);
+
+  const buildApiPayload = (status: string) => {
+    // Calculate duration based on start and end dates
+    let durationMonths = 1;
+    if (contract.start_at && contract.end_at) {
+      const start = new Date(contract.start_at);
+      const end = new Date(contract.end_at);
+      durationMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+      if (durationMonths <= 0) durationMonths = 1;
+    }
+    const totalPrice = (Number(contract.monthlyRate) || 0) * durationMonths;
+
+    return {
+      requestId: request?.id_rentRequest,
+      totalPrice: totalPrice,
+      startAt: contract.start_at || '',
+      endAt: contract.end_at || '',
+      paymentTerm: contract.payment_term || '',
+      penaltyClause: contract.penalty_clause || '',
+      specialTerm: contract.special_term || '',
+      ownerLegalName: contract.owner_legal_name || '',
+      ownerTaxCode: contract.owner_tax_code || '',
+      ownerAddress: contract.owner_address || '',
+      ownerPhone: contract.owner_phone || '',
+      ownerEmail: contract.owner_email || '',
+      renterLegalName: contract.renter_legal_name || '',
+      renterTaxCode: contract.renter_tax_code || '',
+      renterAddress: contract.renter_address || '',
+      renterPhone: contract.renter_phone || '',
+      renterEmail: contract.renter_email || '',
+      warehouseName: warehouse?.name || '',
+      cargoDescription: contract.cargo_description || '',
+      cancelReason: contract.cancel_reason || '',
+      status: status
+    };
+  };
 
   const handleSaveDraft = async () => {
     try {
-      await contractsAPI.create(buildContractData('draft'));
+      // Still using mock for draft since API might only support create -> ACTIVE/PENDING
+      // But we will send to API with status DRAFT if API supports it later
+      await ownerService.createContract(buildApiPayload('draft'));
       toast.success('Đã lưu bản nháp hợp đồng!');
       navigate('/warehouse/contracts');
     } catch (err: any) {
@@ -197,7 +237,7 @@ export default function CreateContract() {
   const handleSendToRenter = async () => {
     if (!validateForm()) return;
     try {
-      await contractsAPI.create(buildContractData('pending_renter'));
+      await ownerService.createContract(buildApiPayload('pending_renter'));
       if (requestId) {
         try {
           await requestsAPI.update(requestId, { status: 'contracted' });
@@ -306,30 +346,7 @@ export default function CreateContract() {
           );
         })()}
 
-        <div className="flex border border-[var(--color-border)] mb-6 overflow-hidden"
-          style={{ background: 'var(--color-surface)' }}>
-          {([
-            { key: 'form' as InputMode, icon: <Edit3 className="h-4 w-4" />, label: 'Nhập liệu thủ công' },
-            { key: 'pdf' as InputMode, icon: <Upload className="h-4 w-4" />, label: 'Tải lên PDF / Scan' },
-          ]).map(({ key, icon, label }) => (
-            <button key={key}
-              onClick={() => setInputMode(key)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors border-b-2"
-              style={{
-                borderBottomColor: inputMode === key ? 'var(--color-primary)' : 'transparent',
-                color: inputMode === key ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                fontWeight: inputMode === key ? 600 : 400,
-                background: inputMode === key ? 'rgba(37,99,235,0.05)' : 'transparent',
-              }}>
-              {icon} {label}
-            </button>
-          ))}
-        </div>
-
         <div className="space-y-6">
-          {inputMode === 'pdf' && (
-            <CreateContractPDFUpload pdfFile={pdfFile} setPdfFile={setPdfFile} contract={contract} onChange={onChange} />
-          )}
 
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
@@ -351,14 +368,12 @@ export default function CreateContract() {
           <CreateContractTerms contract={contract} onChange={onChange} />
 
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex flex-wrap items-center gap-3">
-            {inputMode === 'form' && (
-              <button
-                onClick={() => setShowPreview(true)}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm border transition-colors"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                <Edit3 className="h-4 w-4" /> Xem trước hợp đồng
-              </button>
-            )}
+            <button
+              onClick={() => setShowPreview(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm border transition-colors"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+              <Edit3 className="h-4 w-4" /> Xem trước hợp đồng
+            </button>
 
             <div className="flex-1" />
 

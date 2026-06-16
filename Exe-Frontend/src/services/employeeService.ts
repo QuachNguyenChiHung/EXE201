@@ -2,17 +2,41 @@ import { api } from './asus_api';
 import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO, ContractResponseDTO, RentRequestResponseDTO } from '../types/employee';
 
 export const employeeService = {
-    getAllWarehouses: async (): Promise<WarehouseEmployeeDTO[]> => {
-        console.log('[API CALL] GET /employees/warehouses');
-        const response = await api.get('/employees/warehouses');
+    getAllWarehouses: async (page: number = 0, size: number = 10, status?: string): Promise<{ content: WarehouseEmployeeDTO[], totalPages: number, totalElements: number }> => {
+        const params: any = { page, size };
+        if (status && status !== 'all') params.status = status;
+        console.log('[API CALL] GET /employees/warehouses', params);
+        const response = await api.get('/employees/warehouses', { params });
         console.log('[API RESPONSE]', response.data);
-        return response.data;
+        if (response.data && !Array.isArray(response.data)) {
+            return {
+                content: response.data.content || [],
+                totalPages: response.data.totalPages || 0,
+                totalElements: response.data.totalElements || 0,
+            };
+        }
+        return {
+            content: Array.isArray(response.data) ? response.data : [],
+            totalPages: 1,
+            totalElements: Array.isArray(response.data) ? response.data.length : 0,
+        };
     },
-    getPendingWarehouses: async (): Promise<WarehouseEmployeeDTO[]> => {
-        console.log('[API CALL] GET /employees/warehouses/pending');
-        const response = await api.get('/employees/warehouses/pending');
+    getPendingWarehouses: async (page: number = 0, size: number = 10): Promise<{ content: WarehouseEmployeeDTO[], totalPages: number, totalElements: number }> => {
+        console.log('[API CALL] GET /employees/warehouses/pending', { page, size });
+        const response = await api.get('/employees/warehouses/pending', { params: { page, size } });
         console.log('[API RESPONSE]', response.data);
-        return response.data;
+        if (response.data && !Array.isArray(response.data)) {
+            return {
+                content: response.data.content || [],
+                totalPages: response.data.totalPages || 0,
+                totalElements: response.data.totalElements || 0,
+            };
+        }
+        return {
+            content: Array.isArray(response.data) ? response.data : [],
+            totalPages: 1,
+            totalElements: Array.isArray(response.data) ? response.data.length : 0,
+        };
     },
     // getAcceptedWarehouses: async (): Promise<WarehouseEmployeeDTO[]> => {
     //     const response = await api.get('/employees/warehouses/accepted');
@@ -50,11 +74,26 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    getUsers: async (): Promise<UserDTO[]> => {
-        console.log('[API CALL] GET /employees/users');
-        const response = await api.get('/employees/users');
+    getUsers: async (page: number = 0, size: number = 10, role?: string, keyword?: string): Promise<{ content: UserDTO[], totalPages: number, totalElements: number }> => {
+        const params: any = { page, size };
+        if (role && role !== 'all') params.role = role;
+        if (keyword) params.keyword = keyword;
+        
+        console.log('[API CALL] GET /users', params);
+        const response = await api.get('/users', { params });
         console.log('[API RESPONSE]', response.data);
-        return response.data;
+        if (response.data && !Array.isArray(response.data)) {
+            return {
+                content: response.data.content || [],
+                totalPages: response.data.totalPages || 0,
+                totalElements: response.data.totalElements || 0,
+            };
+        }
+        return {
+            content: Array.isArray(response.data) ? response.data : [],
+            totalPages: 1,
+            totalElements: Array.isArray(response.data) ? response.data.length : 0,
+        };
     },
     createUser: async (payload: any) => {
         console.log('[API CALL] POST /users', payload);
@@ -128,9 +167,14 @@ export const employeeService = {
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },
-    getContracts: async (status?: string): Promise<ContractResponseDTO[]> => {
-        console.log(`[API CALL] GET /contracts${status ? `?status=${status}` : ''}`);
-        const response = await api.get(`/contracts`, { params: status && status !== 'ALL' ? { status } : undefined });
+    getContracts: async (status?: string, page: number = 0, size: number = 6): Promise<{ content: ContractResponseDTO[], totalElements: number, totalPages: number }> => {
+        const queryParams = new URLSearchParams();
+        if (status && status !== 'ALL') queryParams.append('status', status);
+        queryParams.append('page', page.toString());
+        queryParams.append('size', size.toString());
+        
+        console.log(`[API CALL] GET /contracts?${queryParams.toString()}`);
+        const response = await api.get(`/contracts`, { params: { status: status && status !== 'ALL' ? status : undefined, page, size } });
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },

@@ -5,7 +5,7 @@ import { getUser } from '../../../utils/auth';
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
 import { employeeService } from "../../../services/employeeService";
 
-export default function ManageContractDetail() {
+export default function SharedContractDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = getUser();
@@ -17,7 +17,7 @@ export default function ManageContractDetail() {
 
   const fetchContractDetail = useCallback(async () => {
     const currentUser = getUser();
-    if (!currentUser || currentUser.role !== "EMPLOYEE") return;
+    if (!currentUser) return;
 
     if (id) {
       setLoading(true);
@@ -45,10 +45,10 @@ export default function ManageContractDetail() {
   }, [fetchContractDetail]);
 
   useEffect(() => {
-    if (!user || user.role !== "EMPLOYEE") {
+    if (!user) {
       navigate("/login");
     }
-  }, [user?.role, user?.id_user, navigate]);
+  }, [user, navigate]);
 
   if (loading) {
     return (
@@ -63,7 +63,7 @@ export default function ManageContractDetail() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-bg)" }}>
         <div className="text-center">
           <p className="text-lg mb-4" style={{ color: "var(--color-text-secondary)" }}>{error || "Không tìm thấy hợp đồng."}</p>
-          <button onClick={() => navigate("/employee/contracts")} className="text-[var(--color-primary)] hover:underline">
+          <button onClick={() => navigate(-1)} className="text-[var(--color-primary)] hover:underline">
             Quay lại
           </button>
         </div>
@@ -118,7 +118,7 @@ export default function ManageContractDetail() {
       <div className="pt-8 pb-16 px-4 print:pt-0 print:pb-0" style={{ maxWidth: '896px', margin: '0 auto' }}>
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => navigate("/employee/contracts")}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1 text-sm hover:underline transition-colors"
             style={{ color: "var(--color-text-secondary)" }}
           >
@@ -226,14 +226,32 @@ export default function ManageContractDetail() {
                              const totalExpected = totalMonthly * durationMultiplier;
                              const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
                              return (
-                               <div className="mt-3 text-sm">
-                                 <p>- Phí thuê hàng tháng dự kiến (Yêu cầu): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
-                                 <p>- Tổng chi phí dự kiến cho toàn kỳ thuê ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong></p>
+                               <div className="mt-3 text-sm space-y-1">
+                                 <p>- Phí thuê hàng tháng dự kiến gốc: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
+                                 <p>- Tổng chi phí dự kiến gốc ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong></p>
+                                 {requestDetail.renterOfferedPrice && (
+                                    <p>- Khách hàng đề xuất: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.renterOfferedPrice)}</strong></p>
+                                 )}
+                                 {requestDetail.offeredPrice && (
+                                    <p>- Chủ kho chốt giá: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.offeredPrice)}</strong></p>
+                                 )}
                                </div>
                              );
                           })()}
                        </div>
                     )}
+
+                    {/* Notes & Negotiation */}
+                    {(requestDetail.otherDetail || requestDetail.ownerNote || requestDetail.rejectionReason || requestDetail.renterRejectionReason) && (
+                      <div className="mt-4 pt-3 border-t border-gray-300 border-dashed print:border-black">
+                        <p className="font-semibold mb-1">- Ghi chú & Lịch sử thương lượng:</p>
+                        {requestDetail.otherDetail && <p className="ml-4 italic text-xs mb-1"><span className="not-italic font-medium">Khách hàng ghi chú:</span> {requestDetail.otherDetail}</p>}
+                        {requestDetail.ownerNote && <p className="ml-4 italic text-xs mb-1"><span className="not-italic font-medium">Chủ kho phản hồi:</span> {requestDetail.ownerNote}</p>}
+                        {requestDetail.rejectionReason && <p className="ml-4 italic text-xs text-red-600 print:text-black mb-1"><span className="not-italic font-medium">Lý do chủ kho từ chối:</span> {requestDetail.rejectionReason}</p>}
+                        {requestDetail.renterRejectionReason && <p className="ml-4 italic text-xs text-red-600 print:text-black"><span className="not-italic font-medium">Lý do khách hàng từ chối:</span> {requestDetail.renterRejectionReason}</p>}
+                      </div>
+                    )}
+
                   </div>
                 </div>
               )}

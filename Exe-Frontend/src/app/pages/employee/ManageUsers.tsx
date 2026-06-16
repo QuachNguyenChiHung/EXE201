@@ -193,6 +193,23 @@ export default function ManageUsers() {
   const [creatingEmployee, setCreatingEmployee] = useState(false);
   const [listUsers, setListUsers] = useState<any[]>([]);
 
+  // Pagination & Caching
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [cache, setCache] = useState<Record<string, { list: any[], totalPages: number, totalElements: number }>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({ all: 0, RENTER: 0, OWNER: 0, EMPLOYEE: 0 });
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   // Stats state
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsByDate, setStatsByDate] = useState<any[]>([]);
@@ -208,7 +225,7 @@ export default function ManageUsers() {
   const [inputStartDate, setInputStartDate] = useState(defaultStartStr);
   const [inputEndDate, setInputEndDate] = useState(todayStr);
   const [inputHourlyDate, setInputHourlyDate] = useState(todayStr);
-  const { warehouses: warehouseList, requests: requestList, adminUpdateUser } = useApp();
+  const { warehouses: warehouseList, requests: requestList } = useApp();
 
   const warehousesByOwner = useMemo(() =>
     (warehouseList || []).reduce((acc: Record<number, number>, w: any) => { acc[w.id_owner || 0] = (acc[w.id_owner || 0] ?? 0) + 1; return acc }, {}),
@@ -218,22 +235,6 @@ export default function ManageUsers() {
     (requestList || []).reduce((acc: Record<number, number>, r: any) => { acc[r.id_renter || 0] = (acc[r.id_renter || 0] ?? 0) + 1; return acc }, {}),
     [requestList]);
 
-  const filtered = useMemo(() => {
-    let list = listUsers as any[];
-    if (tab !== 'all') list = list.filter(u => u.role === tab);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || ((u.company?.company_name ?? '').toLowerCase().includes(q)));
-    }
-    return list;
-  }, [listUsers, tab, search]);
-
-  const counts = useMemo(() => ({
-    all: listUsers.length,
-    RENTER: listUsers.filter(u => u.role === 'RENTER').length,
-    OWNER: listUsers.filter(u => u.role === 'OWNER').length,
-    EMPLOYEE: listUsers.filter(u => u.role === 'EMPLOYEE').length,
-  }), [listUsers]);
 
   const handleSave = async (id: number, name: string, companyName: string) => {
     try {
@@ -263,7 +264,9 @@ export default function ManageUsers() {
       await employeeService.createUser(data);
       toast.success('Đã tạo tài khoản nhân viên thành công!');
       setCreatingEmployee(false);
-      fetchUsers();
+      // Invalidate cache and refetch
+      setCache({});
+      setPage(0);
     } catch (err: any) {
       console.error(err);
       const errMsg = err.response?.data || err.message || 'Lỗi không xác định';
@@ -271,13 +274,22 @@ export default function ManageUsers() {
     }
   };
 
-  const fetchUsers = useCallback(async () => {
-    const currentUser = getUser();
-    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
+  const fetchPage = useCallback(async (p: number, t: RoleFilter, s: string, isPreload: boolean = false) => {
+    const cacheKey = `${t}_${p}_${s}`;
+    if (cache[cacheKey]) {
+      if (!isPreload) {
+        setListUsers(cache[cacheKey].list);
+        setTotalPages(cache[cacheKey].totalPages);
+        setTotalElements(cache[cacheKey].totalElements);
+        setLoading(false);
+      }
+      return cache[cacheKey];
+    }
+
+    if (!isPreload) setLoading(true);
     try {
-      const res = await employeeService.getUsers();
-      console.log('Fetched users:', res);
-      const mapped = (res || []).map((u: UserDTO) => ({
+      const res = await employeeService.getUsers(p, 10, t, s);
+      const mapped = (res.content || []).map((u: UserDTO) => ({
         id_user: u.id,
         email: u.email,
         name: u.fullName ?? '',
@@ -285,15 +297,47 @@ export default function ManageUsers() {
         status: u.status,
         company: u.companyName ? { company_name: u.companyName, id_company: 0, user_id: u.id, company_tax_code: '' } : undefined,
       }));
-      setListUsers(mapped);
+      
+      const newData = { list: mapped, totalPages: res.totalPages, totalElements: res.totalElements };
+      setCache(prev => ({ ...prev, [cacheKey]: newData }));
+      
+      if (!isPreload) {
+        setListUsers(mapped);
+        setTotalPages(res.totalPages);
+        setTotalElements(res.totalElements);
+      }
+      return newData;
     } catch (error) {
       console.error('Error fetching users:', error);
+    } finally {
+      if (!isPreload) setLoading(false);
     }
-  }, []);
+  }, [cache]);
 
+  // Preload tab counts on mount
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
+    
+    const roles: RoleFilter[] = ['all', 'RENTER', 'OWNER', 'EMPLOYEE'];
+    for (const r of roles) {
+      fetchPage(0, r, '', true).then(data => {
+        if (data) setCounts(prev => ({ ...prev, [r]: data.totalElements }));
+      });
+    }
+  }, []); // Only once on mount
+
+  // Fetch current page and preload next page
+  useEffect(() => {
+    const currentUser = getUser();
+    if (!currentUser || currentUser.role !== 'EMPLOYEE') return;
+    
+    fetchPage(page, tab, debouncedSearch).then(data => {
+      if (data && page < data.totalPages - 1) {
+        fetchPage(page + 1, tab, debouncedSearch, true);
+      }
+    });
+  }, [page, tab, debouncedSearch]);
 
   // Fetch stats when viewMode or dates change
   useEffect(() => {
@@ -429,7 +473,7 @@ export default function ManageUsers() {
               {TABS.map(t => {
                 const cfg = t.key === 'all' ? null : ROLE_CFG[t.key as UserRole];
                 return (
-                  <button key={t.key} onClick={() => setTab(t.key)}
+                  <button key={t.key} onClick={() => { setTab(t.key); setPage(0); }}
                     className="bg-[var(--color-surface)] p-5 text-left hover:bg-[var(--color-bg-secondary)] transition-colors"
                     style={{ borderBottom: tab === t.key ? `2px solid var(--color-primary)` : '2px solid transparent' }}>
                     <div className="flex items-center gap-2 mb-1">
@@ -452,7 +496,7 @@ export default function ManageUsers() {
             {/* Tabs */}
             <div className="flex border-b border-[var(--color-border)] mb-6 overflow-x-auto">
               {TABS.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)}
+                <button key={t.key} onClick={() => { setTab(t.key); setPage(0); }}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors"
                   style={{
                     borderBottomColor: tab === t.key ? 'var(--color-primary)' : 'transparent',
@@ -472,7 +516,11 @@ export default function ManageUsers() {
             </div>
 
             {/* User list */}
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+                 <Loader2 className="h-6 w-6 animate-spin text-[var(--color-primary)]" />
+              </div>
+            ) : listUsers.length === 0 ? (
               <div className="border border-[var(--color-border)] p-16 text-center"
                 style={{ background: 'var(--color-surface)' }}>
                 <UserIcon className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--color-text-muted)' }} />
@@ -482,7 +530,7 @@ export default function ManageUsers() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filtered.map(u => (
+                {listUsers.map(u => (
                   <UserRow
                     key={u.id_user}
                     user={u}
@@ -493,6 +541,29 @@ export default function ManageUsers() {
                     requestCount={requestsByRenter[u.id_user] ?? 0}
                   />
                 ))}
+              </div>
+            )}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded mt-4">
+                <span className="text-sm text-[var(--color-text-secondary)]">
+                  Trang {page + 1} / {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Trước
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sau
+                  </button>
+                </div>
               </div>
             )}
           </>

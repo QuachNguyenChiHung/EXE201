@@ -5,7 +5,7 @@ import { getUser } from '../../../utils/auth';
 import { ArrowLeft, ClipboardList, Box, Calendar, Building2, Layers, Loader2 } from "lucide-react";
 import { employeeService } from "../../../services/employeeService";
 
-export default function ManageRequestDetail() {
+export default function SharedRequestDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = getUser();
@@ -16,7 +16,7 @@ export default function ManageRequestDetail() {
 
   const fetchRequestDetail = useCallback(async () => {
     const currentUser = getUser();
-    if (!currentUser || currentUser.role !== "EMPLOYEE") return;
+    if (!currentUser) return;
 
     if (id) {
       setLoading(true);
@@ -37,10 +37,10 @@ export default function ManageRequestDetail() {
   }, [fetchRequestDetail]);
 
   useEffect(() => {
-    if (!user || user.role !== "EMPLOYEE") {
+    if (!user) {
       navigate("/login");
     }
-  }, [user?.role, user?.id_user, navigate]);
+  }, [user, navigate]);
 
   if (loading) {
     return (
@@ -55,7 +55,7 @@ export default function ManageRequestDetail() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-bg)" }}>
         <div className="text-center">
           <p className="text-lg mb-4" style={{ color: "var(--color-text-secondary)" }}>{error || "Không tìm thấy yêu cầu."}</p>
-          <button onClick={() => navigate("/employee/contracts")} className="text-[var(--color-primary)] hover:underline">
+          <button onClick={() => navigate(-1)} className="text-[var(--color-primary)] hover:underline">
             Quay lại
           </button>
         </div>
@@ -72,7 +72,7 @@ export default function ManageRequestDetail() {
       <div className="bento-container pt-8 pb-16" style={{ maxWidth: '896px', margin: '0 auto', padding: '2rem 1rem' }}>
         <div className="bento-header mb-6">
           <button
-            onClick={() => navigate("/employee/contracts")}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1 text-sm mb-2 hover:underline transition-colors"
             style={{ color: "var(--color-text-secondary)" }}
           >
@@ -124,13 +124,10 @@ export default function ManageRequestDetail() {
               <div>
                 <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Tên kho</p>
                 <p className="text-sm font-medium mb-1">{request.warehouseName || 'N/A'}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">{request.warehouseAddress || 'Đang cập nhật địa chỉ'}</p>
               </div>
               <div className="pt-2 border-t border-[var(--color-border)]">
                 <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Bên thuê (Renter)</p>
                 <p className="text-sm font-medium mb-1">{request.renterName || 'Đang cập nhật tên'}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">Email: {request.renterEmail || 'Đang cập nhật'}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">SĐT: {request.renterPhone || 'Đang cập nhật'}</p>
               </div>
             </div>
           </div>
@@ -190,14 +187,65 @@ export default function ManageRequestDetail() {
                     <span className="font-semibold">{request.duration} {unitLabel}</span>
                   </div>
                   <div className="flex justify-between w-full max-w-sm pt-2 mt-1 border-t border-[var(--color-border)]">
-                    <span className="font-bold text-lg" style={{ color: "var(--color-text)" }}>Dự toán tổng chi phí:</span>
-                    <span className="font-bold text-xl text-[var(--color-success, #22c55e)]">
+                    <span className="font-bold text-lg" style={{ color: "var(--color-text)" }}>Dự toán chi phí gốc:</span>
+                    <span className="font-bold text-xl text-[var(--color-text)]">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}
                     </span>
                   </div>
+                  {request.renterOfferedPrice && (
+                    <div className="flex justify-between w-full max-w-sm pt-2">
+                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Khách hàng đề xuất:</span>
+                      <span className="font-bold text-lg text-[var(--color-warning, #f59e0b)]">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.renterOfferedPrice)}
+                      </span>
+                    </div>
+                  )}
+                  {request.offeredPrice && (
+                    <div className="flex justify-between w-full max-w-sm pt-2">
+                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Chủ kho chốt giá:</span>
+                      <span className="font-bold text-lg text-[var(--color-success, #22c55e)]">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.offeredPrice)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* Notes and Negotiations */}
+        {(request.otherDetail || request.ownerNote || request.rejectionReason || request.renterRejectionReason) && (
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-sm p-6 mb-6">
+            <h3 className="font-semibold text-lg border-b pb-3 mb-4" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
+              Ghi chú & Thương lượng
+            </h3>
+            <div className="space-y-4">
+              {request.otherDetail && (
+                <div>
+                  <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Ghi chú của khách hàng</p>
+                  <p className="text-sm bg-[var(--color-bg-secondary)] p-3 rounded border border-[var(--color-border)]">{request.otherDetail}</p>
+                </div>
+              )}
+              {request.ownerNote && (
+                <div>
+                  <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Phản hồi của chủ kho</p>
+                  <p className="text-sm bg-[var(--color-bg-secondary)] p-3 rounded border border-[var(--color-border)]">{request.ownerNote}</p>
+                </div>
+              )}
+              {request.rejectionReason && (
+                <div>
+                  <p className="text-xs uppercase font-semibold mb-1 text-red-500">Lý do chủ kho từ chối</p>
+                  <p className="text-sm bg-red-50 text-red-700 p-3 rounded border border-red-200">{request.rejectionReason}</p>
+                </div>
+              )}
+              {request.renterRejectionReason && (
+                <div>
+                  <p className="text-xs uppercase font-semibold mb-1 text-red-500">Lý do khách hàng từ chối</p>
+                  <p className="text-sm bg-red-50 text-red-700 p-3 rounded border border-red-200">{request.renterRejectionReason}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
