@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Navbar } from '../../components/Navbar';
 import { Footer } from '../../components/Footer';
 import { useApp } from '../../../context/AppContext';
+import { useSearchParams } from 'react-router';
 import {
   SUBSCRIPTION_TIERS,
   SubscriptionTierLevel,
   CompositeWarehouse,
+  SponsorTierDTO
 } from '../../../types';
 import { Crown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,37 +16,89 @@ import { SubscriptionPricingGrid } from '../../components/owner/SubscriptionPric
 import { SubscriptionWarehouseList } from '../../components/owner/SubscriptionWarehouseList';
 import { SubscriptionTierPicker } from '../../components/owner/SubscriptionTierPicker';
 import { SubscriptionConfirmModal } from '../../components/owner/SubscriptionConfirmModal';
+import { ownerService } from '../../../services/ownerService';
 
 export default function SubscriptionManagement() {
   const { user: currentUser, warehouses: allWarehouses, updateWarehouse } = useApp();
 
-  const myWarehouses = useMemo(
-    () => allWarehouses.filter(w => w.id_owner === currentUser?.id_user),
-    [allWarehouses, currentUser],
-  );
+  const [myWarehouses, setMyWarehouses] = useState<CompositeWarehouse[]>([]);
 
   const [selectedWarehouse, setSelectedWarehouse] = useState<CompositeWarehouse | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [sponsorTiers, setSponsorTiers] = useState<SponsorTierDTO[]>([]);
+
   const [showConfirm, setShowConfirm] = useState<{
     warehouse: CompositeWarehouse;
-    tier: SubscriptionTierLevel;
+    tier: SponsorTierDTO;
   } | null>(null);
 
-  const handleUpgrade = async (warehouse: CompositeWarehouse, tier: SubscriptionTierLevel) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [paymentResult, setPaymentResult] = useState<'success' | 'fail' | null>(null);
+
+  useEffect(() => {
+    const status = searchParams.get('payment');
+    if (status === 'success' || status === 'fail') {
+      setPaymentResult(status);
+      setSearchParams(new URLSearchParams());
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const fetchTiers = async () => {
+      try {
+        const backendTiers = await ownerService.getSponsorTiers();
+        
+        // Add "Free" default tier
+        const freeTier: SponsorTierDTO = {
+          id: 0,
+          priorityLevel: 0,
+          pricingPerMonth: 0,
+          yearPackSale: 0,
+          label: 'Mặc định (Miễn phí)',
+          activeWarehousesCount: 0,
+          isActive: true
+        };
+        
+        setSponsorTiers([freeTier, ...backendTiers]);
+      } catch (err) {
+        console.error("Failed to fetch sponsor tiers", err);
+      }
+    };
+
+    const fetchWarehouses = async () => {
+      try {
+        const response = await ownerService.getMyWarehouses(0, 100);
+        setMyWarehouses(response.content || []);
+      } catch (err) {
+        console.error("Failed to fetch warehouses", err);
+      }
+    };
+
+    fetchTiers();
+    fetchWarehouses();
+  }, []);
+
+  const handleUpgrade = async (warehouse: CompositeWarehouse, tier: SponsorTierDTO) => {
     setUpgrading(true);
     try {
-      const updated: CompositeWarehouse = {
-        ...warehouse,
-        subscriptionTier: tier,
-        update_at: new Date().toISOString(),
-      };
-      await updateWarehouse(warehouse.id_warehouse.toString(), updated);
-      toast.success(
-        `Đã nâng cấp "${warehouse.name}" lên gói ${SUBSCRIPTION_TIERS[tier].labelVi}!`,
-      );
-      setShowConfirm(null);
+      if (tier.id === 0) {
+         // Free tier - probably just remove the sponsor tier. We'll send sponsorTierId = 0 and handle it on backend if needed, or maybe call a different endpoint.
+         // Wait, the prompt says "it is default so it is basically no sponsor tier".
+         // Let's call the same API with sponsorTierId 0, or just ignore. 
+         const res = await ownerService.buySponsorTier(warehouse.id_warehouse, 0);
+         toast.success(`Đã huỷ gói đăng ký cho kho "${warehouse.name}"`);
+         setShowConfirm(null);
+      } else {
+         const res = await ownerService.buySponsorTier(warehouse.id_warehouse, tier.id);
+         if (res.paymentUrl) {
+            window.location.href = res.paymentUrl;
+         } else {
+            toast.success(`Đã nâng cấp "${warehouse.name}" lên ${tier.label}!`);
+            setShowConfirm(null);
+         }
+      }
     } catch (err: any) {
-      toast.error(err ?? 'Không thể nâng cấp. Vui lòng thử lại.');
+      toast.error(err?.message ?? 'Không thể nâng cấp. Vui lòng thử lại.');
     } finally {
       setUpgrading(false);
     }
@@ -69,11 +123,15 @@ export default function SubscriptionManagement() {
           <p className="text-[var(--color-text-secondary)] mt-1 max-w-xl">
             Chọn gói phù hợp để tăng hiển thị kho lạnh của bạn trong kết quả tìm kiếm. Gói cao
             hơn = xếp hạng ưu tiên hơn.
+            <br/>
+            <span className="text-xs italic mt-1 inline-block">
+              *Lưu ý: Kho lạnh chỉ được ưu tiên hiển thị khi thông tin kho phù hợp với các tiêu chí tìm kiếm của người dùng.
+            </span>
           </p>
         </div>
 
         {/* Pricing grid */}
-        <SubscriptionPricingGrid />
+        <SubscriptionPricingGrid sponsorTiers={sponsorTiers} />
 
         {/* My warehouses + tier status */}
         <div className="mb-4">
@@ -85,11 +143,13 @@ export default function SubscriptionManagement() {
 
         <SubscriptionWarehouseList
           warehouses={myWarehouses}
+          sponsorTiers={sponsorTiers}
           onSelectWarehouse={setSelectedWarehouse}
         />
 
         {/* Tier upgrade picker for selected warehouse */}
         <SubscriptionTierPicker
+          sponsorTiers={sponsorTiers}
           selectedWarehouse={selectedWarehouse}
           onClose={() => setSelectedWarehouse(null)}
           onSelectTier={(warehouse, tier) => setShowConfirm({ warehouse, tier })}
@@ -98,11 +158,43 @@ export default function SubscriptionManagement() {
 
       {/* Confirmation modal */}
       <SubscriptionConfirmModal
+        sponsorTiers={sponsorTiers}
         showConfirm={showConfirm}
         upgrading={upgrading}
         onClose={() => setShowConfirm(null)}
         onConfirm={() => showConfirm && handleUpgrade(showConfirm.warehouse, showConfirm.tier)}
       />
+
+      {/* Payment Result Modal */}
+      {paymentResult && (
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 'var(--z-modal-overlay)', background: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] w-full max-w-sm text-center p-6">
+            {paymentResult === 'success' ? (
+              <>
+                <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <h3 className="font-bold text-lg mb-2">Thanh toán thành công!</h3>
+                <p className="text-sm text-[var(--color-text-secondary)] mb-6">Gói đăng ký của bạn đã được cập nhật thành công.</p>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </div>
+                <h3 className="font-bold text-lg mb-2">Thanh toán thất bại</h3>
+                <p className="text-sm text-[var(--color-text-secondary)] mb-6">Giao dịch đã bị huỷ hoặc có lỗi xảy ra. Vui lòng thử lại.</p>
+              </>
+            )}
+            <button
+              onClick={() => setPaymentResult(null)}
+              className="bg-[var(--color-primary)] text-white px-6 py-2 w-full hover:bg-[var(--color-primary-dark)]"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

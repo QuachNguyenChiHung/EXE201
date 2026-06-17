@@ -160,7 +160,7 @@ export default function SharedRequestDetail() {
                       </span>
                     </div>
                     <div className="flex justify-between pt-2 mt-2 border-t border-[var(--color-border)]">
-                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Thành tiền/tháng:</span>
+                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Thành tiền ước tính:</span>
                       <span className="font-bold text-[var(--color-primary)]">
                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((detail.rentedArea || 0) * (detail.priceTierValue || 0))}
                       </span>
@@ -179,7 +179,7 @@ export default function SharedRequestDetail() {
               return (
                 <div className="mt-6 pt-4 border-t border-[var(--color-border)] flex flex-col items-end gap-2">
                   <div className="flex justify-between w-full max-w-sm">
-                    <span className="text-[var(--color-text-muted)] font-medium">Tổng phí thuê hàng tháng:</span>
+                    <span className="text-[var(--color-text-muted)] font-medium">Tổng phí thuê dự kiến:</span>
                     <span className="font-semibold">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</span>
                   </div>
                   <div className="flex justify-between w-full max-w-sm">
@@ -187,14 +187,17 @@ export default function SharedRequestDetail() {
                     <span className="font-semibold">{request.duration} {unitLabel}</span>
                   </div>
                   <div className="flex justify-between w-full max-w-sm pt-2 mt-1 border-t border-[var(--color-border)]">
-                    <span className="font-bold text-lg" style={{ color: "var(--color-text)" }}>Dự toán chi phí gốc:</span>
+                    <span className="font-bold text-lg" style={{ color: "var(--color-text)" }}>
+                      Dự toán chi phí gốc:
+                      <br /><span className="text-xs font-normal text-gray-500 italic">*(Ước tính dựa trên đơn giá tháng)</span>
+                    </span>
                     <span className="font-bold text-xl text-[var(--color-text)]">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}
                     </span>
                   </div>
                   {request.renterOfferedPrice && (
                     <div className="flex justify-between w-full max-w-sm pt-2">
-                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Khách hàng đề xuất:</span>
+                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Tổng khách hàng đề xuất:</span>
                       <span className="font-bold text-lg text-[var(--color-warning, #f59e0b)]">
                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.renterOfferedPrice)}
                       </span>
@@ -202,7 +205,7 @@ export default function SharedRequestDetail() {
                   )}
                   {request.offeredPrice && (
                     <div className="flex justify-between w-full max-w-sm pt-2">
-                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Chủ kho chốt giá:</span>
+                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Tổng chủ kho chốt giá:</span>
                       <span className="font-bold text-lg text-[var(--color-success, #22c55e)]">
                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.offeredPrice)}
                       </span>

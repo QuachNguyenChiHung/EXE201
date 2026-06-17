@@ -172,4 +172,5 @@ export interface SponsorTierDTO {
   yearPackSale: number;
   label: string;
   activeWarehousesCount?: number;
+  isActive?: boolean;
 }

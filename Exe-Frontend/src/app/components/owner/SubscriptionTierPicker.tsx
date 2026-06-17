@@ -1,21 +1,31 @@
 import React from 'react';
-import { SUBSCRIPTION_TIERS, SubscriptionTierLevel, CompositeWarehouse } from '../../../types';
+import { SponsorTierDTO, CompositeWarehouse } from '../../../types';
 import { X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { fmtVnd, TIER_ICONS, currentTier, tierIdx } from './SubscriptionUtils';
+import { fmtVnd, getSponsorTierVisuals } from './SubscriptionUtils';
 
 interface SubscriptionTierPickerProps {
+  sponsorTiers: SponsorTierDTO[];
   selectedWarehouse: CompositeWarehouse | null;
   onClose: () => void;
-  onSelectTier: (warehouse: CompositeWarehouse, tier: SubscriptionTierLevel) => void;
+  onSelectTier: (warehouse: CompositeWarehouse, tier: SponsorTierDTO) => void;
 }
 
 export function SubscriptionTierPicker({
+  sponsorTiers,
   selectedWarehouse,
   onClose,
   onSelectTier,
 }: SubscriptionTierPickerProps) {
   if (!selectedWarehouse) return null;
+
+  const currentTierId = selectedWarehouse?.isSponsor ? (selectedWarehouse?.sponsor_type || 0) : 0;
+  const currentTierObj = sponsorTiers.find(t => t.id === currentTierId) || sponsorTiers[0];
+  const currentVisuals = currentTierObj ? getSponsorTierVisuals(currentTierObj.priorityLevel) : getSponsorTierVisuals(0);
+
+  let gridColsClass = "lg:grid-cols-4";
+  if (sponsorTiers.length === 2) gridColsClass = "lg:grid-cols-2";
+  if (sponsorTiers.length === 3) gridColsClass = "lg:grid-cols-3";
 
   return (
     <div className="mt-8 bg-[var(--color-surface)] border border-[var(--color-border)]">
@@ -24,9 +34,9 @@ export function SubscriptionTierPicker({
           <h3 className="font-bold text-sm">Chọn gói cho: {selectedWarehouse.name}</h3>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             Gói hiện tại:{' '}
-            <strong style={{ color: SUBSCRIPTION_TIERS[currentTier(selectedWarehouse)].color }}>
-              {SUBSCRIPTION_TIERS[currentTier(selectedWarehouse)].icon}{' '}
-              {SUBSCRIPTION_TIERS[currentTier(selectedWarehouse)].label}
+            <strong style={{ color: currentVisuals.color }}>
+              {currentVisuals.icon}{' '}
+              {currentTierObj ? currentTierObj.label.replace(/\s*\(Top\s*\d+\)/i, '') : 'Miễn phí'}
             </strong>
           </p>
         </div>
@@ -38,39 +48,39 @@ export function SubscriptionTierPicker({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--color-border)]">
-        {Object.keys(SUBSCRIPTION_TIERS).map(level => {
-          const config = SUBSCRIPTION_TIERS[level as keyof typeof SUBSCRIPTION_TIERS];
-          const isCurrent = currentTier(selectedWarehouse) === level;
-          const isDowngrade = tierIdx(level as SubscriptionTierLevel) < tierIdx(currentTier(selectedWarehouse));
-          const isUpgrade = tierIdx(level as SubscriptionTierLevel) > tierIdx(currentTier(selectedWarehouse));
+      <div className={`grid grid-cols-2 ${gridColsClass} gap-px bg-[var(--color-border)]`}>
+        {sponsorTiers.map(tier => {
+          const visuals = getSponsorTierVisuals(tier.priorityLevel);
+          const isCurrent = currentTierId === tier.id;
+          const isDowngrade = tier.priorityLevel < (currentTierObj?.priorityLevel || 0);
+          const isUpgrade = tier.priorityLevel > (currentTierObj?.priorityLevel || 0);
 
           return (
             <div
-              key={level}
+              key={tier.id}
               className="bg-[var(--color-surface)] p-4 flex flex-col items-center text-center gap-2"
-              style={isCurrent ? { boxShadow: `inset 0 0 0 2px ${config.color}` } : {}}
+              style={isCurrent ? { boxShadow: `inset 0 0 0 2px ${visuals.color}` } : {}}
             >
               <div
-                className="w-10 h-10 flex items-center justify-center mb-1"
-                style={{ background: config.bgColor, color: config.color }}
+                className="w-10 h-10 flex items-center justify-center mb-1 rounded"
+                style={{ background: visuals.bgColor, color: visuals.color }}
               >
-                {TIER_ICONS[level as keyof typeof TIER_ICONS]}
+                {visuals.icon}
               </div>
               <div className="text-sm font-bold">
-                {config.icon} {config.label}
+                {tier.label.replace(/\s*\(Top\s*\d+\)/i, '')}
               </div>
-              <div className="text-lg font-extrabold" style={{ color: config.color }}>
-                {config.monthlyPrice === 0 ? 'Free' : fmtVnd(config.monthlyPrice)}
+              <div className="text-lg font-extrabold" style={{ color: visuals.color }}>
+                {tier.pricingPerMonth === 0 ? 'Free' : fmtVnd(tier.pricingPerMonth)}
               </div>
               <div className="text-xs text-[var(--color-text-muted)]">
-                ×{config.boostFactor} boost
+                {tier.priorityLevel === 0 ? 'Xếp hạng cơ bản' : `Ưu tiên hiển thị`}
               </div>
 
               {isCurrent ? (
                 <div
                   className="mt-auto text-xs font-semibold px-3 py-1.5"
-                  style={{ background: config.bgColor, color: config.color }}
+                  style={{ background: visuals.bgColor, color: visuals.color }}
                 >
                   Gói hiện tại
                 </div>
@@ -78,8 +88,8 @@ export function SubscriptionTierPicker({
                 <Button
                   size="sm"
                   className="mt-auto rounded-none text-xs w-full"
-                  style={{ background: config.color, color: '#fff' }}
-                  onClick={() => onSelectTier(selectedWarehouse, level as SubscriptionTierLevel)}
+                  style={{ background: visuals.color, color: '#fff' }}
+                  onClick={() => onSelectTier(selectedWarehouse, tier)}
                 >
                   Nâng cấp
                 </Button>
@@ -88,7 +98,7 @@ export function SubscriptionTierPicker({
                   size="sm"
                   variant="outline"
                   className="mt-auto rounded-none text-xs w-full border-[var(--color-border)]"
-                  onClick={() => onSelectTier(selectedWarehouse, level as SubscriptionTierLevel)}
+                  onClick={() => onSelectTier(selectedWarehouse, tier)}
                 >
                   Hạ xuống
                 </Button>

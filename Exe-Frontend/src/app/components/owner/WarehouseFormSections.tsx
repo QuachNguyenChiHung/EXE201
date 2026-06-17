@@ -176,11 +176,13 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                     <div>
                       <Label>Tổng sức chứa (m³)</Label>
                       <Input
-                        type="number"
-                        min="0"
+                        type="text"
                         placeholder="VD: 500"
-                        value={s.total_capacity !== undefined ? s.total_capacity : ""}
-                        onChange={(e) => updateSection(s.id_section, "total_capacity", parseFloat(e.target.value) || 0)}
+                        value={s.total_capacity ? s.total_capacity.toLocaleString('vi-VN') : ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/\D/g, '');
+                          updateSection(s.id_section, "total_capacity", rawValue ? parseInt(rawValue, 10) : 0);
+                        }}
                         className="mt-1"
                       />
                     </div>
@@ -262,13 +264,15 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="w-full sm:w-32 flex items-center relative">
+                            <div className="w-full sm:w-48 flex items-center relative">
                               <Input
-                                type="number"
-                                min="0"
+                                type="text"
                                 placeholder="Nhập giá"
-                                value={tier.value !== undefined ? tier.value : ""}
-                                onChange={(e) => updatePriceTier(s.id_section, tier.id_price_tier, { value: parseInt(e.target.value) || 0 })}
+                                value={tier.value ? tier.value.toLocaleString('vi-VN') : ""}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value.replace(/\D/g, '');
+                                  updatePriceTier(s.id_section, tier.id_price_tier, { value: rawValue ? parseInt(rawValue, 10) : 0 });
+                                }}
                                 className="h-9 pr-6"
                               />
                               <span className="absolute right-2 text-xs font-semibold text-gray-500 pointer-events-none">₫</span>

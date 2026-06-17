@@ -97,7 +97,7 @@ export default function WarehouseRequests() {
         fetchPage(page + 1, tab, true);
       }
     });
-  }, [page, tab, user?.id_user, appLoading.warehouses]);
+  }, [page, tab, user?.email, appLoading.warehouses]);
 
   const invalidateAndRefetch = () => {
     setCache({});

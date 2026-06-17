@@ -60,7 +60,7 @@ export function MyWarehouseCertsModal({
           ? { ...s, uploading: false, uploaded: true, file: null, existingUrl: url, cert: { ...s.cert, link: url } }
           : s,
       ));
-      toast.success(`Tải lên "${slot.cert.label || 'Chứng nhận'}" thành công!`);
+      toast.success(`Tải lên "${slot.cert.link ? decodeURIComponent(slot.cert.link.split('/').pop() || '') : (slot.cert.label || 'Chứng nhận')}" thành công!`);
     } catch (err: any) {
       console.error(`[ReuploadCerts] Upload failed for ${certId}:`, err);
       setSlots(prev => prev.map(s =>
@@ -195,7 +195,7 @@ export function MyWarehouseCertsModal({
               {/* Cert info */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
-                  {slot.cert.label || 'Chứng nhận hệ thống'}
+                  {slot.cert.link ? decodeURIComponent(slot.cert.link.split('/').pop() || '') : (slot.cert.label || 'Chứng nhận hệ thống')}
                 </p>
                 <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
                   {slot.uploaded

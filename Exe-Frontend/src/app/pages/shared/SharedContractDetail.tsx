@@ -211,10 +211,10 @@ export default function SharedContractDetail() {
                           <p className="font-semibold">- Phân khu yêu cầu thuê:</p>
                           <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
                              {requestDetail.details.map((d: any, i: number) => {
-                               const lineMonthly = d.rentedArea * d.priceTierValue;
+                               const lineCost = d.rentedArea * d.priceTierValue;
                                return (
                                  <li key={i}>
-                                   Khu vực {d.sector}: {d.rentedArea} {d.areaUnit} x {new Intl.NumberFormat('vi-VN').format(d.priceTierValue)} đ/{d.areaUnit}/tháng = <strong>{new Intl.NumberFormat('vi-VN').format(lineMonthly)} đ/tháng</strong>
+                                   Khu vực {d.sector}: {d.rentedArea} {d.areaUnit} x {new Intl.NumberFormat('vi-VN').format(d.priceTierValue)} đ/{d.areaUnit} = <strong>{new Intl.NumberFormat('vi-VN').format(lineCost)} đ</strong>
                                  </li>
                                );
                              })}
@@ -227,13 +227,13 @@ export default function SharedContractDetail() {
                              const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
                              return (
                                <div className="mt-3 text-sm space-y-1">
-                                 <p>- Phí thuê hàng tháng dự kiến gốc: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
-                                 <p>- Tổng chi phí dự kiến gốc ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong></p>
+                                 <p>- Phí thuê dự kiến gốc cho phân khu: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
+                                 <p>- Tổng chi phí dự kiến gốc ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong> <span className="text-xs italic text-gray-500 print:text-black">*(Ước tính dựa trên đơn giá tháng)</span></p>
                                  {requestDetail.renterOfferedPrice && (
-                                    <p>- Khách hàng đề xuất: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.renterOfferedPrice)}</strong></p>
+                                    <p>- Tổng khách hàng đề xuất: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.renterOfferedPrice)}</strong></p>
                                  )}
                                  {requestDetail.offeredPrice && (
-                                    <p>- Chủ kho chốt giá: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.offeredPrice)}</strong></p>
+                                    <p>- Tổng chủ kho chốt giá: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.offeredPrice)}</strong></p>
                                  )}
                                </div>
                              );
@@ -272,9 +272,6 @@ export default function SharedContractDetail() {
               <p>{contract.specialTerm || 'Chưa có các cam kết hoặc điều khoản đặc biệt nào khác.'}</p>
 
               <h3 className="font-bold text-lg">ĐIỀU 4: TÌNH TRẠNG PHÁP LÝ & HIỆU LỰC</h3>
-              <p>
-                Tình trạng hiện tại của hợp đồng: <strong className="uppercase">{contract.status}</strong>.
-              </p>
               {contract.cancelReason && (
                 <p>
                   <strong>Lý do hủy/chấm dứt:</strong> {contract.cancelReason}

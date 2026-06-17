@@ -103,6 +103,8 @@ export interface CompositeWarehouse extends Warehouse {
 
 export type SubscriptionTierLevel = 'free' | 'silver' | 'gold' | 'platinum';
 
+
+
 export interface SubscriptionTierConfig {
     level: SubscriptionTierLevel;
     label: string;

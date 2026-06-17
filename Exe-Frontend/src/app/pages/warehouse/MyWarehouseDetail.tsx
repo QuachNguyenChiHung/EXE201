@@ -363,7 +363,7 @@ export default function MyWarehouseDetail() {
                          <div className="flex items-center gap-3">
                             <ShieldCheck className={`h-5 w-5 ${cert.status === 'VERIFIED' ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}`} />
                             <div>
-                               <p className="font-medium">{cert.label}</p>
+                               <p className="font-medium">{cert.link ? decodeURIComponent(cert.link.split('/').pop() || '') : cert.label}</p>
                                {cert.documentUrl && (
                                   <a href={cert.documentUrl} target="_blank" rel="noreferrer" className="text-xs text-[var(--color-primary)] hover:underline">
                                      Xem tài liệu đính kèm

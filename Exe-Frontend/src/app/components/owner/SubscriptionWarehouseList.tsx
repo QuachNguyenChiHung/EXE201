@@ -1,16 +1,18 @@
 import React from 'react';
-import { SUBSCRIPTION_TIERS, CompositeWarehouse } from '../../../types';
+import { SponsorTierDTO, CompositeWarehouse } from '../../../types';
 import { Warehouse, Search, Zap, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { currentTier } from './SubscriptionUtils';
+import { getSponsorTierVisuals } from './SubscriptionUtils';
 
 interface SubscriptionWarehouseListProps {
   warehouses: CompositeWarehouse[];
+  sponsorTiers: SponsorTierDTO[];
   onSelectWarehouse: (wh: CompositeWarehouse) => void;
 }
 
 export function SubscriptionWarehouseList({
   warehouses,
+  sponsorTiers,
   onSelectWarehouse,
 }: SubscriptionWarehouseListProps) {
   if (warehouses.length === 0) {
@@ -27,8 +29,13 @@ export function SubscriptionWarehouseList({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--color-border)] border border-[var(--color-border)]">
       {warehouses.map(wh => {
-        const tier = currentTier(wh);
-        const config = SUBSCRIPTION_TIERS[tier];
+        const currentTierId = wh.isSponsor ? (wh.sponsor_type || 0) : 0;
+        const currentTierObj = sponsorTiers.find(t => t.id === currentTierId) || sponsorTiers[0];
+        const visuals = currentTierObj ? getSponsorTierVisuals(currentTierObj.priorityLevel) : getSponsorTierVisuals(0);
+        
+        // Find highest tier priority to know if it's "Platinum" equivalent
+        const maxPriority = Math.max(...sponsorTiers.map(t => t.priorityLevel));
+
         return (
           <div
             key={wh.id_warehouse}
@@ -44,26 +51,27 @@ export function SubscriptionWarehouseList({
                 </p>
               </div>
               <span
-                className="shrink-0 inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1"
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded"
                 style={{
-                  background: config.bgColor,
-                  color: config.color,
-                  border: `1px solid ${config.color}30`,
+                  background: visuals.bgColor,
+                  color: visuals.color,
+                  border: `1px solid ${visuals.color}30`,
                 }}
               >
-                {config.icon} {config.label}
+                {visuals.icon} {currentTierObj ? currentTierObj.label.replace(/\s*\(Top\s*\d+\)/i, '') : 'Miễn phí'}
               </span>
             </div>
 
             {/* Boost info */}
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
               <Search className="h-3.5 w-3.5 shrink-0" />
-              Boost:
-              <strong style={{ color: config.color }}>×{config.boostFactor}</strong>
+              <strong style={{ color: visuals.color }}>
+                {(currentTierObj?.priorityLevel || 0) === 0 ? 'Xếp hạng cơ bản' : 'Ưu tiên hiển thị'}
+              </strong>
             </div>
 
             {/* Upgrade CTA */}
-            {tier !== 'platinum' && (
+            {currentTierObj?.priorityLevel !== maxPriority && (
               <Button
                 size="sm"
                 className="rounded-none mt-auto bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] text-xs"
@@ -73,12 +81,12 @@ export function SubscriptionWarehouseList({
                 }}
               >
                 <Zap className="h-3.5 w-3.5 mr-1" />
-                Nâng cấp
+                Thay đổi gói
                 <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Button>
             )}
-            {tier === 'platinum' && (
-              <div className="mt-auto flex items-center gap-1 text-xs font-semibold" style={{ color: SUBSCRIPTION_TIERS.platinum.color }}>
+            {currentTierObj?.priorityLevel === maxPriority && (
+              <div className="mt-auto flex items-center gap-1 text-xs font-semibold" style={{ color: visuals.color }}>
                 <CheckCircle className="h-3.5 w-3.5" />
                 Gói cao nhất
               </div>

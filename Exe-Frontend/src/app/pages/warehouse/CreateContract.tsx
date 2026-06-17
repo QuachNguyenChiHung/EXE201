@@ -9,7 +9,7 @@ import { CreateContractTerms } from '../../components/owner/CreateContractTerms'
 import { CreateContractPDFUpload } from '../../components/owner/CreateContractPDFUpload';
 import { CreateContractPreviewModal } from '../../components/owner/CreateContractPreviewModal';
 import {
-  ArrowLeft, ClipboardList, Save, Send, CheckCircle, Hash, LayoutGrid, Globe, Snowflake, Edit3, Upload, FileText, AlertCircle
+  ArrowLeft, ClipboardList, Save, Send, CheckCircle, Hash, LayoutGrid, Globe, Snowflake, Edit3, Upload, FileText, AlertCircle, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +26,7 @@ export default function CreateContract() {
   const [request, setRequest] = useState<any | undefined>(undefined);
   const [warehouse, setWarehouse] = useState<any | undefined>(undefined);
   const [existingDraft, setExistingDraft] = useState<CompositeContract | undefined>(undefined);
+  const [metaData, setMetaData] = useState<any | undefined>(undefined);
 
   const [showPreview, setShowPreview] = useState(false);
 
@@ -50,8 +51,8 @@ export default function CreateContract() {
     rentedCapacity: 0,
     monthlyRate: 0,
     cargo_description: '',
-    payment_term: 'Thanh toán trước ngày 05 hàng tháng. Hình thức: chuyển khoản ngân hàng.',
-    penalty_clause: 'Phạt 5% tổng giá trị hợp đồng còn lại nếu một bên huỷ trước thời hạn mà không thông báo trước 30 ngày.',
+    payment_term: '',
+    penalty_clause: '',
     special_term: '',
     notes: '',
   });
@@ -61,7 +62,7 @@ export default function CreateContract() {
     let mounted = true;
     const load = async () => {
       try {
-        const req = await requestsAPI.getById(requestId);
+        const req = await ownerService.getRequestDetail(Number(requestId));
         if (!mounted) return;
         setRequest(req);
         try {
@@ -69,6 +70,12 @@ export default function CreateContract() {
           if (mounted) setWarehouse(wh);
         } catch (e) {
           // ignore
+        }
+        try {
+          const meta = await ownerService.getContractMetaData(requestId);
+          if (mounted) setMetaData(meta);
+        } catch (e) {
+          console.warn('[CreateContract] failed to fetch metadata', e);
         }
         const allContracts = await contractsAPI.getAll();
         const draft = allContracts.find(c => c.id_rent_request?.toString() === requestId && (c.status === 'draft' || c.status === 'pending_renter')) as CompositeContract | undefined;
@@ -83,28 +90,33 @@ export default function CreateContract() {
 
   // Prefill form
   useEffect(() => {
-    if (!user && !request && !existingDraft) return;
+    if (!user && !request && !existingDraft && !metaData) return;
 
     if (existingDraft) {
       setContract(existingDraft);
     } else {
       setContract(prev => ({
         ...prev,
-        owner_legal_name: user?.name ?? prev.owner_legal_name,
-        owner_phone: user?.phone ?? prev.owner_phone,
-        owner_email: user?.email ?? prev.owner_email,
-        renter_legal_name: request?.renterName ?? prev.renter_legal_name,
-        renter_phone: request?.renterPhone ?? prev.renter_phone,
-        renter_email: request?.renterEmail ?? prev.renter_email,
-        renterCompany: request?.renterCompany ?? prev.renterCompany,
-        start_at: request?.startDate ?? prev.start_at,
-        rentedCapacity: request?.requestedCapacity ?? prev.rentedCapacity,
-        monthlyRate: request?.offeredPrice ?? request?.priceTierValue ?? prev.monthlyRate,
-        cargo_description: request?.cargoType ?? prev.cargo_description,
-        notes: request?.message ?? prev.notes,
+        owner_legal_name: metaData?.owner?.legalName ?? user?.name ?? prev.owner_legal_name,
+        owner_phone: metaData?.owner?.phone ?? user?.phone ?? prev.owner_phone,
+        owner_email: metaData?.owner?.email ?? user?.email ?? prev.owner_email,
+        owner_tax_code: metaData?.owner?.taxCode ?? prev.owner_tax_code,
+        owner_address: metaData?.owner?.address ?? prev.owner_address,
+
+        renter_legal_name: metaData?.renter?.legalName ?? request?.renterName ?? prev.renter_legal_name,
+        renter_phone: metaData?.renter?.phone ?? prev.renter_phone,
+        renter_email: metaData?.renter?.email ?? prev.renter_email,
+        renter_tax_code: metaData?.renter?.taxCode ?? prev.renter_tax_code,
+        renter_address: metaData?.renter?.address ?? prev.renter_address,
+
+        start_at: prev.start_at,
+        rentedCapacity: request?.details?.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) ?? prev.rentedCapacity,
+        monthlyRate: request?.offeredPrice ?? prev.monthlyRate,
+        cargo_description: request?.cargoDescription ?? prev.cargo_description,
+        notes: request?.ownerNote ?? request?.otherDetail ?? prev.notes,
       }));
     }
-  }, [user, request, existingDraft]);
+  }, [user, request, existingDraft, metaData]);
 
   const onChange = (key: keyof CompositeContract, val: any) => {
     setContract(prev => ({ ...prev, [key]: val }));
@@ -133,7 +145,7 @@ export default function CreateContract() {
     contractRef,
     status,
     contractTitle: contract.contractTitle || `Hợp đồng thuê kho lạnh${warehouse ? ` – ${warehouse.name}` : ''}`,
-    
+
     // Core ERD
     owner_legal_name: contract.owner_legal_name || '',
     owner_tax_code: contract.owner_tax_code || '',
@@ -154,18 +166,18 @@ export default function CreateContract() {
     create_at: contract.create_at || new Date().toISOString(),
     update_at: new Date().toISOString(),
     cancel_reason: contract.cancel_reason || '',
-    
+
     // Extensions
     renterCompany: contract.renterCompany,
     rentedCapacity: Number(contract.rentedCapacity) || 0,
     monthlyRate: Number(contract.monthlyRate) || 0,
     notes: contract.notes,
     sentAt: status === 'pending_renter' ? new Date().toISOString() : undefined,
-    
+
     // camelCase aliases to match backend API expectations and SharedContractDetail.tsx
     requestId: request?.id_rentRequest,
     warehouseName: warehouse?.name || '',
-    totalPrice: Number(contract.monthlyRate) * (request?.duration || 1) || 0,
+    totalPrice: Number(contract.monthlyRate) || 0,
     ownerLegalName: contract.owner_legal_name || '',
     ownerTaxCode: contract.owner_tax_code || '',
     ownerAddress: contract.owner_address || '',
@@ -194,10 +206,10 @@ export default function CreateContract() {
       durationMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
       if (durationMonths <= 0) durationMonths = 1;
     }
-    const totalPrice = (Number(contract.monthlyRate) || 0) * durationMonths;
+    const totalPrice = Number(contract.monthlyRate) || 0;
 
     return {
-      requestId: request?.id_rentRequest,
+      requestId: request?.id ?? Number(requestId),
       totalPrice: totalPrice,
       startAt: contract.start_at || '',
       endAt: contract.end_at || '',
@@ -217,7 +229,7 @@ export default function CreateContract() {
       warehouseName: warehouse?.name || '',
       cargoDescription: contract.cargo_description || '',
       cancelReason: contract.cancel_reason || '',
-      status: status
+      status: status === 'draft' ? 'DRAFT' : 'PENDING'
     };
   };
 
@@ -238,13 +250,6 @@ export default function CreateContract() {
     if (!validateForm()) return;
     try {
       await ownerService.createContract(buildApiPayload('pending_renter'));
-      if (requestId) {
-        try {
-          await requestsAPI.update(requestId, { status: 'contracted' });
-        } catch (err: any) {
-          console.error('[CreateContract] requestsAPI.update failed:', err);
-        }
-      }
       toast.success('Đã gửi hợp đồng cho người thuê ký xác nhận!');
       navigate('/warehouse/contracts');
     } catch (err: any) {
@@ -257,7 +262,7 @@ export default function CreateContract() {
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Navbar />
 
-      {showPreview && <CreateContractPreviewModal contract={contract} onClose={() => setShowPreview(false)} />}
+      {showPreview && <CreateContractPreviewModal contract={contract} request={request} onClose={() => setShowPreview(false)} />}
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <button
@@ -277,7 +282,7 @@ export default function CreateContract() {
             {request && (
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 Từ yêu cầu #{requestId?.toUpperCase()} · {request.renterName}
-                {warehouse && ` · Kho: ${warehouse.name}`}
+                {request.warehouseName && ` · Kho: ${request.warehouseName}`}
               </p>
             )}
           </div>
@@ -302,49 +307,7 @@ export default function CreateContract() {
           </div>
         )}
 
-        {/* Request scope info */}
-        {request && (request.sectionIds?.length || request.isWholeWarehouse || request.sectionId) && (() => {
-          const sections = warehouse?.sections ?? [];
-          const isWhole = request.isWholeWarehouse;
-          const ids = request.sectionIds ?? (request.sectionId ? [request.sectionId] : []);
-          const selectedSections = sections.filter((s: any) => ids.includes(s.id));
-          return (
-            <div className="mb-5 border border-[var(--color-border)] overflow-hidden"
-              style={{ background: 'var(--color-surface)' }}>
-              <div className="px-4 py-2.5 border-b border-[var(--color-border)] flex items-center gap-2"
-                style={{ background: 'rgba(37,99,235,0.05)' }}>
-                {isWhole
-                  ? <Globe className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
-                  : <LayoutGrid className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--color-primary)' }} />}
-                <span className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                  {isWhole ? 'Người thuê yêu cầu thuê toàn bộ kho' : `Phân khu được yêu cầu (${ids.length} khu)`}
-                </span>
-              </div>
-              <div className="px-4 py-3">
-                {isWhole ? (
-                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    Người thuê muốn thuê toàn bộ kho <strong>{warehouse?.name}</strong>. Chủ kho cần thương lượng và điền đơn giá vào hợp đồng.
-                  </p>
-                ) : selectedSections.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedSections.map((sec: any) => (
-                      <div key={sec.id} className="flex items-center gap-2 px-3 py-1.5 border border-[var(--color-border)] text-xs"
-                        style={{ background: 'var(--color-bg-secondary)' }}>
-                        <Snowflake className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--color-info, #3b82f6)' }} />
-                        <span style={{ color: 'var(--color-text)' }}>{sec.name}</span>
-                        <span className="font-mono" style={{ color: 'var(--color-text-muted)' }}>{sec.capacity.toLocaleString()} m³</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {ids.length} phân khu (ID: {ids.join(', ')})
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+
 
         <div className="space-y-6">
 
@@ -364,8 +327,89 @@ export default function CreateContract() {
           </div>
 
           <CreateContractParties contract={contract} onChange={onChange} />
-          
-          <CreateContractTerms contract={contract} onChange={onChange} />
+
+          {/* Request Details (Collapsible) */}
+          {request && (
+            <details className="border border-[var(--color-border)] bg-[var(--color-surface)] group">
+              <summary className="px-5 py-3 flex items-center justify-between cursor-pointer list-none border-b border-transparent group-open:border-[var(--color-border)]"
+                style={{ background: 'rgba(37,99,235,0.05)' }}>
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
+                  <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                    Chi tiết yêu cầu thuê
+                  </span>
+                </div>
+                <ChevronDown className="h-5 w-5 group-open:rotate-180 transition-transform" style={{ color: 'var(--color-primary)' }} />
+              </summary>
+              <div className="p-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
+                    <p className="text-sm font-medium">{request.renterName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Kho được yêu cầu</p>
+                    <p className="text-sm font-medium">{request.warehouseName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Thời gian thuê</p>
+                    <p className="text-sm font-medium">{request.duration} {request.durationUnit}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Loại hàng hoá</p>
+                    <p className="text-sm font-medium">{request.cargoDescription || 'Không có'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Tổng giá chủ kho đưa ra</p>
+                    <p className="text-sm font-medium text-blue-600">
+                      {request.offeredPrice ? `${request.offeredPrice.toLocaleString()} VNĐ` : 'Chưa có'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Tổng giá khách đề xuất</p>
+                    <p className="text-sm font-medium text-green-600">
+                      {request.renterOfferedPrice ? `${request.renterOfferedPrice.toLocaleString()} VNĐ` : 'Không có'}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">Ghi chú của khách hàng</p>
+                    <p className="text-sm bg-gray-50 p-2 rounded border border-gray-100">{request.otherDetail || 'Không có ghi chú'}</p>
+                  </div>
+                  {request.ownerNote && (
+                    <div className="md:col-span-2">
+                      <p className="text-xs text-gray-500 mb-1">Ghi chú của bạn (Chủ kho)</p>
+                      <p className="text-sm bg-blue-50 p-2 rounded border border-blue-100 text-blue-800">{request.ownerNote}</p>
+                    </div>
+                  )}
+                </div>
+
+                {request.details?.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                    <p className="text-xs text-gray-500 mb-2">Phân khu được yêu cầu ({request.details.length} khu)</p>
+                    <div className="flex flex-col gap-2">
+                      {request.details.map((detail: any, idx: number) => (
+                        <div key={idx} className="flex items-center flex-wrap gap-2 px-3 py-2 border border-[var(--color-border)] text-xs rounded"
+                          style={{ background: 'var(--color-bg-secondary)' }}>
+                          <Snowflake className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--color-info, #3b82f6)' }} />
+                          <span className="font-medium" style={{ color: 'var(--color-text)' }}>Phòng số {detail.sector}</span>
+                          <span className="font-mono bg-white border border-gray-100 px-1.5 py-0.5 rounded" style={{ color: 'var(--color-text-muted)' }}>
+                            {detail.rentedArea} {detail.areaUnit}
+                          </span>
+                          {detail.priceTierValue != null && (
+                            <span className="ml-auto font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                              Đơn giá gốc: {detail.priceTierValue.toLocaleString()} VNĐ / {detail.areaUnit} / tháng
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
+          <CreateContractTerms contract={contract} onChange={onChange} request={request} />
 
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex flex-wrap items-center gap-3">
             <button

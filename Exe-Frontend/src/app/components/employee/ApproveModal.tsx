@@ -52,7 +52,7 @@ export default function ApproveModal({
                 <div className="border border-[var(--color-border)] rounded-md p-4 bg-[var(--color-bg-secondary)] flex flex-col items-center justify-center gap-2">
                     <FileText className="h-8 w-8" style={{ color: 'var(--color-primary)' }} />
                     <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                        {cert.label || `Chứng nhận #${cert.id || cert.id_cerfSubmit}`}
+                        {cert.link ? decodeURIComponent(cert.link.split('/').pop() || '') : (cert.label || `Chứng nhận #${cert.id || cert.id_cerfSubmit}`)}
                     </p>
                     {cert.link && cert.link !== '#' ? (
                         <a 

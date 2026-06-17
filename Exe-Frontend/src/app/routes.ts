@@ -43,6 +43,7 @@ import ManageSponsorTiers from './pages/employee/ManageSponsorTiers';
 import NotFound from './pages/NotFound';
 import SharedRequestDetail from './pages/shared/SharedRequestDetail';
 import SharedContractDetail from './pages/shared/SharedContractDetail';
+import PaymentResult from './pages/PaymentResult';
 
 export const router = createBrowserRouter([
   // ── Public routes ──────────────────────────────────────────────────────────
@@ -126,6 +127,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/shared/requests/:id', Component: SharedRequestDetail },
       { path: '/shared/contracts/:id', Component: SharedContractDetail },
+      { path: '/payment-success', Component: PaymentResult },
+      { path: '/payment-fail', Component: PaymentResult },
     ],
   },
 

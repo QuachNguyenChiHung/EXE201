@@ -340,7 +340,9 @@ export default function WarehouseRow({
                                                         <Shield className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
                                                     </div>
                                                     <div className="flex flex-col min-w-0 flex-1">
-                                                        <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text)' }}>{cert.label || `Chứng nhận #${cert.id || cert.id_cerfSubmit}`}</span>
+                                                        <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text)' }}>
+                                                          {cert.link ? decodeURIComponent(cert.link.split('/').pop() || '') : (cert.label || `Chứng nhận #${cert.id || cert.id_cerfSubmit}`)}
+                                                        </span>
                                                         <div className="flex items-center gap-2 mt-1">
                                                             {cert.status === 'VERIFIED' ? (
                                                                 <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--color-success, #22c55e)' }}>

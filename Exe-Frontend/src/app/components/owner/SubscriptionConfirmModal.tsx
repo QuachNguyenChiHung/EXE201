@@ -1,23 +1,31 @@
 import React from 'react';
-import { SUBSCRIPTION_TIERS, SubscriptionTierLevel, CompositeWarehouse } from '../../../types';
+import { SponsorTierDTO, CompositeWarehouse } from '../../../types';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { fmtVnd, TIER_ICONS, currentTier } from './SubscriptionUtils';
+import { fmtVnd, getSponsorTierVisuals } from './SubscriptionUtils';
 
 interface SubscriptionConfirmModalProps {
-  showConfirm: { warehouse: CompositeWarehouse; tier: SubscriptionTierLevel } | null;
+  sponsorTiers: SponsorTierDTO[];
+  showConfirm: { warehouse: CompositeWarehouse; tier: SponsorTierDTO } | null;
   upgrading: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
 export function SubscriptionConfirmModal({
+  sponsorTiers,
   showConfirm,
   upgrading,
   onClose,
   onConfirm,
 }: SubscriptionConfirmModalProps) {
   if (!showConfirm) return null;
+
+  const currentTierId = showConfirm.warehouse?.isSponsor ? (showConfirm.warehouse?.sponsor_type || 0) : 0;
+  const currentTierObj = sponsorTiers.find(t => t.id === currentTierId) || sponsorTiers[0];
+  
+  const currentVisuals = currentTierObj ? getSponsorTierVisuals(currentTierObj.priorityLevel) : getSponsorTierVisuals(0);
+  const selectedVisuals = getSponsorTierVisuals(showConfirm.tier.priorityLevel);
 
   return (
     <div
@@ -37,31 +45,31 @@ export function SubscriptionConfirmModal({
           <div className="flex items-center justify-center gap-4">
             <div className="text-center">
               <div
-                className="w-12 h-12 mx-auto flex items-center justify-center mb-1"
+                className="w-12 h-12 mx-auto flex items-center justify-center mb-1 rounded"
                 style={{
-                  background: SUBSCRIPTION_TIERS[currentTier(showConfirm.warehouse)].bgColor,
-                  color: SUBSCRIPTION_TIERS[currentTier(showConfirm.warehouse)].color,
+                  background: currentVisuals.bgColor,
+                  color: currentVisuals.color,
                 }}
               >
-                {TIER_ICONS[currentTier(showConfirm.warehouse)]}
+                {currentVisuals.icon}
               </div>
               <div className="text-xs font-semibold">
-                {SUBSCRIPTION_TIERS[currentTier(showConfirm.warehouse)].label}
+                {currentTierObj ? currentTierObj.label.replace(/\s*\(Top\s*\d+\)/i, '') : 'Miễn phí'}
               </div>
             </div>
             <ArrowRight className="h-5 w-5 text-[var(--color-text-muted)]" />
             <div className="text-center">
               <div
-                className="w-12 h-12 mx-auto flex items-center justify-center mb-1"
+                className="w-12 h-12 mx-auto flex items-center justify-center mb-1 rounded"
                 style={{
-                  background: SUBSCRIPTION_TIERS[showConfirm.tier].bgColor,
-                  color: SUBSCRIPTION_TIERS[showConfirm.tier].color,
+                  background: selectedVisuals.bgColor,
+                  color: selectedVisuals.color,
                 }}
               >
-                {TIER_ICONS[showConfirm.tier]}
+                {selectedVisuals.icon}
               </div>
               <div className="text-xs font-semibold">
-                {SUBSCRIPTION_TIERS[showConfirm.tier].label}
+                {showConfirm.tier.label.replace(/\s*\(Top\s*\d+\)/i, '')}
               </div>
             </div>
           </div>
@@ -72,15 +80,15 @@ export function SubscriptionConfirmModal({
             </p>
             <p className="mt-1">
               Phí hàng tháng:{' '}
-              <strong style={{ color: SUBSCRIPTION_TIERS[showConfirm.tier].color }}>
-                {SUBSCRIPTION_TIERS[showConfirm.tier].monthlyPrice === 0
+              <strong style={{ color: selectedVisuals.color }}>
+                {showConfirm.tier.pricingPerMonth === 0
                   ? 'Miễn phí'
-                  : fmtVnd(SUBSCRIPTION_TIERS[showConfirm.tier].monthlyPrice)}
+                  : fmtVnd(showConfirm.tier.pricingPerMonth)}
               </strong>
             </p>
             <p className="mt-1">
-              Search boost:{' '}
-              <strong>×{SUBSCRIPTION_TIERS[showConfirm.tier].boostFactor}</strong>
+              Ưu tiên hiển thị:{' '}
+              <strong>Mức {showConfirm.tier.priorityLevel}</strong>
             </p>
           </div>
 

@@ -4,6 +4,7 @@ import { ClipboardList, Calendar, Package, DollarSign, Edit3 } from "lucide-reac
 interface Props {
   contract: Partial<CompositeContract>;
   onChange: (key: keyof CompositeContract, val: any) => void;
+  request?: any;
 }
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
@@ -33,11 +34,12 @@ const INPUT_CLS = "w-full h-9 px-3 text-sm border focus:outline-none focus:borde
 const INPUT_STYLE = { borderColor: "var(--color-border)", background: "var(--color-surface)", color: "var(--color-text)" };
 const TEXTAREA_CLS = "w-full px-3 py-2 text-sm border resize-none focus:outline-none focus:border-[var(--color-primary)] transition-colors";
 
-export function CreateContractTerms({ contract, onChange }: Props) {
+export function CreateContractTerms({ contract, onChange, request }: Props) {
   return (
-    <div className="p-6 border border-[var(--color-border)] bg-[var(--color-surface)]">
-      <SectionHeader icon={<ClipboardList className="h-5 w-5" />} title="Chi tiết thuê & Điều khoản" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="space-y-6">
+      {/* ── Details ── */}
+      <div className="p-6 border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <SectionHeader icon={<ClipboardList className="h-5 w-5" />} title="Chi tiết thuê" />
         {/* ── Details ── */}
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -69,6 +71,32 @@ export function CreateContractTerms({ contract, onChange }: Props) {
                   min={contract.start_at}
                 />
               </div>
+              {request && contract.start_at && (
+                <div className="mt-2 flex">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const start = new Date(contract.start_at!);
+                      if (isNaN(start.getTime())) return;
+                      const duration = request.duration || 1;
+                      const unit = (request.durationUnit || '').toUpperCase();
+                      if (unit.includes('YEAR') || unit === 'NĂM') {
+                        start.setFullYear(start.getFullYear() + duration);
+                      } else {
+                        start.setMonth(start.getMonth() + duration);
+                      }
+                      const yyyy = start.getFullYear();
+                      const mm = String(start.getMonth() + 1).padStart(2, '0');
+                      const dd = String(start.getDate()).padStart(2, '0');
+                      onChange("end_at", `${yyyy}-${mm}-${dd}`);
+                    }}
+                    className="text-[11px] px-2 py-1 rounded transition-colors text-left"
+                    style={{ border: '1px solid var(--color-border)', color: 'var(--color-primary)', background: 'rgba(37,99,235,0.05)' }}
+                  >
+                    + Tự động tính ({request.duration} {request.durationUnit === 'MONTHS' || request.durationUnit === 'MONTH' ? 'tháng' : request.durationUnit === 'YEARS' || request.durationUnit === 'YEAR' ? 'năm' : request.durationUnit})
+                  </button>
+                </div>
+              )}
             </Field>
           </div>
           <Field label="Loại hàng hóa lưu trữ">
@@ -102,26 +130,64 @@ export function CreateContractTerms({ contract, onChange }: Props) {
                 />
               </div>
             </Field>
-            <Field label="Đơn giá (VNĐ/tháng)" required>
+            <Field label="Tổng giá trị hợp đồng (VNĐ)" required>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <DollarSign className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
-                  type="number"
+                  type="text"
                   className={`${INPUT_CLS} pl-9`}
                   style={INPUT_STYLE}
-                  placeholder="VD: 5000000"
-                  value={contract.monthlyRate || ""}
-                  onChange={(e) => onChange("monthlyRate", e.target.value)}
+                  placeholder="VD: 5,000,000"
+                  value={contract.monthlyRate ? Number(contract.monthlyRate).toLocaleString('en-US') : ""}
+                  onChange={(e) => {
+                    const rawValue = e.target.value.replace(/,/g, '');
+                    const numValue = parseInt(rawValue, 10);
+                    onChange("monthlyRate", isNaN(numValue) ? "" : numValue);
+                  }}
                 />
               </div>
+              {(() => {
+                if (!request) return null;
+                const ownerOffer = request.offeredPrice;
+                const renterOffer = request.renterOfferedPrice;
+                
+                if (!ownerOffer && !renterOffer) return null;
+                return (
+                  <div className="mt-2 flex flex-col gap-2 text-xs">
+                    {ownerOffer != null && (
+                      <button
+                        type="button"
+                        onClick={() => onChange("monthlyRate", ownerOffer)}
+                        className="px-2 py-1.5 rounded border transition-colors cursor-pointer text-left"
+                        style={{ borderColor: 'rgba(37, 99, 235, 0.3)', background: 'rgba(37, 99, 235, 0.05)', color: 'var(--color-primary)' }}
+                      >
+                        <span className="font-semibold block">Chọn giá của bạn: {ownerOffer.toLocaleString()} VNĐ</span>
+                      </button>
+                    )}
+                    {renterOffer != null && (
+                      <button
+                        type="button"
+                        onClick={() => onChange("monthlyRate", renterOffer)}
+                        className="px-2 py-1.5 rounded border transition-colors cursor-pointer text-left"
+                        style={{ borderColor: 'rgba(34, 197, 94, 0.3)', background: 'rgba(34, 197, 94, 0.05)', color: 'var(--color-success, #22c55e)' }}
+                      >
+                        <span className="font-semibold block">Chọn giá khách đề xuất: {renterOffer.toLocaleString()} VNĐ</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </Field>
           </div>
         </div>
+      </div>
 
-        {/* ── Terms ── */}
-        <div className="space-y-4">
+      {/* ── Terms ── */}
+      <div className="p-6 border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <SectionHeader icon={<Edit3 className="h-5 w-5" />} title="Điều khoản hợp đồng" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Field label="Điều khoản thanh toán">
             <textarea
               className={TEXTAREA_CLS}

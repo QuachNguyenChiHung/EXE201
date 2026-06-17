@@ -275,8 +275,8 @@ export function WarehouseRequestCard({
                     </div>
                     {req.offered_price && (
                       <div className="px-3 py-2 flex justify-between items-center rounded-sm" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
-                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Mức giá đề xuất mới</span>
-                        <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>{fmtCurrency(req.offered_price)} <span className="text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>/ tháng</span></span>
+                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Tổng mức giá đề xuất mới</span>
+                        <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>{fmtCurrency(req.offered_price)}</span>
                       </div>
                     )}
                     <div
@@ -343,10 +343,9 @@ export function WarehouseRequestCard({
                       className="flex items-center justify-between px-3 py-2 border border-[var(--color-border)]"
                       style={{ background: 'var(--color-bg-secondary)' }}
                     >
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Giá đề xuất</span>
+                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Tổng giá đề xuất</span>
                       <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
                         {fmtCurrency(req.offered_price)}
-                        <span className="text-xs font-normal ml-1" style={{ color: 'var(--color-text-muted)' }}>/m³/tháng</span>
                       </span>
                     </div>
                   )}

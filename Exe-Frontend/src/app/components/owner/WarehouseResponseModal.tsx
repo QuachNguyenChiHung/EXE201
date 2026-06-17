@@ -20,15 +20,16 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
   const [reason, setReason] = useState('');
 
   const section = warehouse?.sections?.find(s => s.id_section === request.sectionId);
-  const suggestedPrice = section
+  const suggestedBasePrice = section
     ? (section.priceTiers?.find(t => t.unit === 'month')?.value ?? warehouse?.pricePerCubicMeter ?? request.priceTierValue)
     : (warehouse?.pricePerCubicMeter ?? request.priceTierValue);
+  const suggestedTotalPrice = (suggestedBasePrice || 0) * (request.requestedCapacity || 1) * (parseInt(request.durationLabel || '') || 1);
 
   const handleSubmit = () => {
     if (mode === 'accept') {
       onAccept(request.id_rentRequest.toString());
     } else if (mode === 'negotiate') {
-      const price = parseFloat(offeredPrice) || suggestedPrice;
+      const price = parseFloat(offeredPrice) || suggestedTotalPrice;
       if (!note.trim()) { toast.error('Vui lòng nhập lời nhắn cho người thuê'); return; }
       onNegotiate(request.id_rentRequest.toString(), price, note);
     } else {
@@ -129,9 +130,9 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
             <>
               <div>
                 <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
-                  Giá đề xuất (VND/m³/tháng)
+                  Tổng giá đề xuất (VNĐ) cho toàn bộ yêu cầu
                   <span className="ml-2 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                    Giá niêm yết: {fmtCurrency(suggestedPrice || 0)}
+                    Dự kiến theo giá niêm yết: {fmtCurrency(suggestedTotalPrice || 0)}
                   </span>
                 </label>
                 <div className="flex gap-2 items-center">
@@ -139,7 +140,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
                     <input
                       type="number"
-                      placeholder={suggestedPrice?.toString()}
+                      placeholder={suggestedTotalPrice?.toString()}
                       value={offeredPrice}
                       onChange={e => setOfferedPrice(e.target.value)}
                       className="w-full h-9 pl-8 pr-3 text-sm border focus:outline-none focus:border-[var(--color-primary)]"
@@ -147,21 +148,13 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
                     />
                   </div>
                   <button
-                    onClick={() => setOfferedPrice(suggestedPrice?.toString() || '')}
+                    onClick={() => setOfferedPrice(suggestedTotalPrice?.toString() || '')}
                     className="text-xs px-2.5 py-1.5 border hover:border-[var(--color-primary)] transition-colors"
                     style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
                   >
                     Dùng giá niêm yết
                   </button>
                 </div>
-                {offeredPrice && !isNaN(parseFloat(offeredPrice)) && (
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    Tổng ước tính ({request.durationLabel}):&nbsp;
-                    <strong style={{ color: 'var(--color-primary)' }}>
-                      {fmtCurrency(parseFloat(offeredPrice) * (request.requestedCapacity || 1) * (parseInt(request.durationLabel || '') || 1))}
-                    </strong>
-                  </p>
-                )}
               </div>
               <div>
                 <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>

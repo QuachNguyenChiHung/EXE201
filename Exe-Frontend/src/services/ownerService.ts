@@ -43,6 +43,7 @@ export const ownerService = {
         status: w.status?.toLowerCase(),
         availability: avail,
         id_warehouse: w.id,
+        sponsor_type: w.sponsorTier?.id,
         location_province: w.locationProvince,
         location_commune: w.locationCommune,
         location_address_text: w.locationAddressText,
@@ -73,7 +74,8 @@ export const ownerService = {
         ...c,
         id_cerfSubmit: c.id,
         documentUrl: c.link, // Used by MyWarehouseCard
-        isVerified: c.status === 'VERIFIED'
+        isVerified: c.status === 'VERIFIED',
+        label: c.link ? decodeURIComponent(c.link.split('/').pop() || 'Tài liệu tải lên') : 'Tài liệu tải lên'
       }))
     };
     });
@@ -130,6 +132,7 @@ export const ownerService = {
       status: w.status?.toLowerCase(),
       availability: avail,
       id_warehouse: w.id,
+      sponsor_type: w.sponsorTier?.id,
       location_province: w.locationProvince,
       location_commune: w.locationCommune,
       location_address_text: w.locationAddressText,
@@ -160,7 +163,8 @@ export const ownerService = {
         ...c,
         id_cerfSubmit: c.id,
         documentUrl: c.link,
-        isVerified: c.status === 'VERIFIED'
+        isVerified: c.status === 'VERIFIED',
+        label: c.link ? decodeURIComponent(c.link.split('/').pop() || 'Tài liệu tải lên') : 'Tài liệu tải lên'
       }))
     };
   },
@@ -202,20 +206,28 @@ export const ownerService = {
   },
 
   getRequestDetail: async (id: number): Promise<any> => {
+    console.log(`[API CALL] GET /requests/${id}`);
     const response = await api.get(`/requests/${id}`);
+    console.log('[API RESPONSE] getRequestDetail:', response.data);
+    return response.data;
+  },
+  getContractMetaData: async (id: string | number): Promise<any> => {
+    console.log(`[API CALL] GET /requests/${id}/contract-meta`);
+    const response = await api.get(`/requests/${id}/contract-meta`);
+    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getWarehouseRentRequests: async (warehouseId: number, status?: string): Promise<any[]> => {
     console.log(`[API CALL] GET /owners/warehouses/${warehouseId}/requests${status ? `?status=${status}` : ''}`);
     const response = await api.get(`/owners/warehouses/${warehouseId}/requests`, { params: status ? { status } : {} });
     console.log('[API RESPONSE]', response.data);
-    return response.data;
+    return response.data?.content || response.data || [];
   },
   getWarehouseContracts: async (warehouseId: number, status?: string): Promise<any[]> => {
     console.log(`[API CALL] GET /owners/warehouses/${warehouseId}/contracts${status ? `?status=${status}` : ''}`);
     const response = await api.get(`/owners/warehouses/${warehouseId}/contracts`, { params: status ? { status } : {} });
     console.log('[API RESPONSE]', response.data);
-    return response.data;
+    return response.data?.content || response.data || [];
   },
   getContracts: async (status?: string, page: number = 0, size: number = 6): Promise<any> => {
     const queryParams = new URLSearchParams();
@@ -247,6 +259,18 @@ export const ownerService = {
   getWarehouseLocation: async (id: number): Promise<{locationLat: number, locationLong: number}> => {
     console.log(`[API CALL] GET /warehouses/${id}/location`);
     const response = await api.get(`/warehouses/${id}/location`);
+    console.log('[API RESPONSE]', response.data);
+    return response.data;
+  },
+  getSponsorTiers: async (): Promise<any[]> => {
+    console.log('[API CALL] GET /owners/sponsor-tiers');
+    const response = await api.get('/owners/sponsor-tiers');
+    console.log('[API RESPONSE]', response.data);
+    return response.data;
+  },
+  buySponsorTier: async (warehouseId: number | string, sponsorTierId: number): Promise<{ paymentUrl?: string }> => {
+    console.log(`[API CALL] POST /owners/warehouses/${warehouseId}/sponsor`, { sponsorTierId });
+    const response = await api.post(`/owners/warehouses/${warehouseId}/sponsor`, { sponsorTierId });
     console.log('[API RESPONSE]', response.data);
     return response.data;
   }
