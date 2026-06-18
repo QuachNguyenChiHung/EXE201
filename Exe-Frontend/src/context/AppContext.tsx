@@ -16,7 +16,6 @@ import {
 
 interface AppState {
   // Auth
-  user: User | null;
   isAuthenticated: boolean;
 
   // Data
@@ -41,9 +40,7 @@ interface AppState {
 
 interface AppContextValue extends AppState {
   // Auth actions
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  setUser: (user: User | null) => void;
+
 
   // Data actions
   refreshUsers: () => Promise<void>;
@@ -85,7 +82,6 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>({
-    user: null,
     isAuthenticated: false,
     users: [],
     warehouses: [],
@@ -115,38 +111,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Load bookmarks when user changes
-  useEffect(() => {
-    if (!state.user) {
-      setState(prev => ({ ...prev, compareWarehouses: [] }));
-    }
-  }, [state.user?.id_user]);
 
-  // Auth actions
-  const login = async (email: string, password: string) => {
-    const user = await authAPI.login(email, password);
-    localStorage.setItem('user', JSON.stringify(user));
-    setState(prev => ({ ...prev, user, isAuthenticated: true }));
-  };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    setState(prev => ({
-      ...prev,
-      user: null,
-      isAuthenticated: false,
-      compareWarehouses: [],
-    }));
-  };
 
-  const setUser = (user: User | null) => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-      setState(prev => ({ ...prev, user, isAuthenticated: true }));
-    } else {
-      logout();
-    }
-  };
 
   // Data refresh actions
   const refreshUsers = async () => {
@@ -292,9 +259,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppContextValue = {
     ...state,
     compareIds: state.compareWarehouses.map(w => w.id_warehouse),
-    login,
-    logout,
-    setUser,
     refreshUsers,
     refreshWarehouses,
     refreshRequests,

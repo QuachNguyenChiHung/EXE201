@@ -21,23 +21,7 @@ export const employeeService = {
             totalElements: Array.isArray(response.data) ? response.data.length : 0,
         };
     },
-    getPendingWarehouses: async (page: number = 0, size: number = 10): Promise<{ content: WarehouseEmployeeDTO[], totalPages: number, totalElements: number }> => {
-        console.log('[API CALL] GET /employees/warehouses/pending', { page, size });
-        const response = await api.get('/employees/warehouses/pending', { params: { page, size } });
-        console.log('[API RESPONSE]', response.data);
-        if (response.data && !Array.isArray(response.data)) {
-            return {
-                content: response.data.content || [],
-                totalPages: response.data.totalPages || 0,
-                totalElements: response.data.totalElements || 0,
-            };
-        }
-        return {
-            content: Array.isArray(response.data) ? response.data : [],
-            totalPages: 1,
-            totalElements: Array.isArray(response.data) ? response.data.length : 0,
-        };
-    },
+
     // getAcceptedWarehouses: async (): Promise<WarehouseEmployeeDTO[]> => {
     //     const response = await api.get('/employees/warehouses/accepted');
     //     return response.data;

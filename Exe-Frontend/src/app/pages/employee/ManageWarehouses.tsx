@@ -78,19 +78,16 @@ export default function ManageWarehouses() {
 
     if (!isPreload) setLoading(true);
     try {
-      let dataRes;
-      if (t === 'pending') {
-        dataRes = await employeeService.getPendingWarehouses(p, 10);
-      } else {
-        dataRes = await employeeService.getAllWarehouses(p, 10, t === 'all' ? undefined : t);
-      }
+      // Map frontend tab key → backend WarehouseStatus enum (must be UPPERCASE)
+      const statusParam = t === 'all' ? undefined : t.toUpperCase();
+      const dataRes = await employeeService.getAllWarehouses(p, 10, statusParam);
 
       const mappedData = (dataRes.content || []).map((w: WarehouseEmployeeDTO) => {
         let st: string = w.status;
-        if (st === 'PENDING') st = 'pending';
-        if (st === 'APPROVED' || st === 'ACTIVE') st = 'active';
-        if (st === 'HIDDEN' || st === 'INACTIVE') st = 'inactive';
-        if (st === 'REJECTED') st = 'rejected';
+        if (st === 'PENDING' || st === 'pending') st = 'pending';
+        if (st === 'APPROVED' || st === 'ACTIVE' || st === 'active') st = 'active';
+        if (st === 'HIDDEN' || st === 'INACTIVE' || st === 'inactive') st = 'inactive';
+        if (st === 'REJECTED' || st === 'rejected') st = 'rejected';
         return { ...w, status: st } as unknown as CompositeWarehouse;
       });
 
@@ -110,6 +107,7 @@ export default function ManageWarehouses() {
       if (!isPreload) setLoading(false);
     }
   }, [cache]);
+
 
   // Preload tab counts
   useEffect(() => {
