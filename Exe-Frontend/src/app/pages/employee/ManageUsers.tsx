@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
@@ -198,7 +198,7 @@ export default function ManageUsers() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [cache, setCache] = useState<Record<string, { list: any[], totalPages: number, totalElements: number }>>({});
+  const cacheRef = useRef<Record<string, { list: any[], totalPages: number, totalElements: number }>>({}); 
   const [counts, setCounts] = useState<Record<string, number>>({ all: 0, RENTER: 0, OWNER: 0, EMPLOYEE: 0 });
   const [refetchKey, setRefetchKey] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -265,8 +265,8 @@ export default function ManageUsers() {
       await employeeService.createUser(data);
       toast.success('Đã tạo tài khoản nhân viên thành công!');
       setCreatingEmployee(false);
-      // Invalidate cache and force refetch (even if page is already 0)
-      setCache({});
+      // Invalidate cache and force refetch
+      cacheRef.current = {};
       setPage(0);
       setRefetchKey(k => k + 1);
     } catch (err: any) {
@@ -278,14 +278,15 @@ export default function ManageUsers() {
 
   const fetchPage = useCallback(async (p: number, t: RoleFilter, s: string, isPreload: boolean = false) => {
     const cacheKey = `${t}_${p}_${s}`;
-    if (cache[cacheKey]) {
+    const cached = cacheRef.current[cacheKey];
+    if (cached) {
       if (!isPreload) {
-        setListUsers(cache[cacheKey].list);
-        setTotalPages(cache[cacheKey].totalPages);
-        setTotalElements(cache[cacheKey].totalElements);
+        setListUsers(cached.list);
+        setTotalPages(cached.totalPages);
+        setTotalElements(cached.totalElements);
         setLoading(false);
       }
-      return cache[cacheKey];
+      return cached;
     }
 
     if (!isPreload) setLoading(true);
@@ -301,7 +302,7 @@ export default function ManageUsers() {
       }));
       
       const newData = { list: mapped, totalPages: res.totalPages, totalElements: res.totalElements };
-      setCache(prev => ({ ...prev, [cacheKey]: newData }));
+      cacheRef.current[cacheKey] = newData;
       
       if (!isPreload) {
         setListUsers(mapped);
@@ -314,7 +315,7 @@ export default function ManageUsers() {
     } finally {
       if (!isPreload) setLoading(false);
     }
-  }, [cache]);
+  }, []);
 
   // Preload tab counts on mount
   useEffect(() => {
