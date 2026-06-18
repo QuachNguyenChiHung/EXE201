@@ -200,6 +200,7 @@ export default function ManageUsers() {
   const [loading, setLoading] = useState(true);
   const [cache, setCache] = useState<Record<string, { list: any[], totalPages: number, totalElements: number }>>({});
   const [counts, setCounts] = useState<Record<string, number>>({ all: 0, RENTER: 0, OWNER: 0, EMPLOYEE: 0 });
+  const [refetchKey, setRefetchKey] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
   useEffect(() => {
@@ -264,9 +265,10 @@ export default function ManageUsers() {
       await employeeService.createUser(data);
       toast.success('Đã tạo tài khoản nhân viên thành công!');
       setCreatingEmployee(false);
-      // Invalidate cache and refetch
+      // Invalidate cache and force refetch (even if page is already 0)
       setCache({});
       setPage(0);
+      setRefetchKey(k => k + 1);
     } catch (err: any) {
       console.error(err);
       const errMsg = err.response?.data || err.message || 'Lỗi không xác định';
@@ -337,7 +339,7 @@ export default function ManageUsers() {
         fetchPage(page + 1, tab, debouncedSearch, true);
       }
     });
-  }, [page, tab, debouncedSearch]);
+  }, [page, tab, debouncedSearch, refetchKey]);
 
   // Fetch stats when viewMode or dates change
   useEffect(() => {
