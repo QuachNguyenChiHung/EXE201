@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { FilterOptions } from "../../../types";
 import { Input } from "../ui/input";
-import { Search, X, MapPin, ChevronDown, ChevronUp, Filter as FilterIcon } from "lucide-react";
-import { vietnamProvinces } from "../../../data/mockWarehouses";
-
-type CollapsibleSection = "availability";
+import { Search, X, MapPin, ChevronDown, ChevronUp, Filter as FilterIcon, ShieldCheck } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 interface SearchSidebarProps {
   sidebarOpen: boolean;
@@ -14,25 +12,19 @@ interface SearchSidebarProps {
   handleSearch: () => void;
   clearFilters: () => void;
   loading: boolean;
+  locations: string[];
+  certifications?: any[];
 }
 
 export function SearchSidebar({
-  sidebarOpen,
-  setSidebarOpen,
   filters,
   setLocalFilters,
   handleSearch,
   clearFilters,
   loading,
+  locations,
+  certifications = [],
 }: SearchSidebarProps) {
-  const [collapsed, setCollapsed] = useState<Record<CollapsibleSection, boolean>>({
-    availability: true,
-  });
-
-  const toggleSection = (section: CollapsibleSection) => {
-    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
   const toggleProvince = (province: string) => {
     setLocalFilters((prev) => ({
       ...prev,
@@ -42,93 +34,69 @@ export function SearchSidebar({
     }));
   };
 
-  const toggleAvailability = (availability: "available" | "partially") => {
-    setLocalFilters((prev) => ({
-      ...prev,
-      availability: prev.availability?.includes(availability)
-        ? prev.availability.filter((a) => a !== availability)
-        : [...(prev.availability || []), availability],
-    }));
+  const toggleCertification = (certID: string) => {
+    setLocalFilters((prev) => {
+      const current = prev.certifications || [];
+      return {
+        ...prev,
+        certifications: current.includes(certID)
+          ? current.filter((c) => c !== certID)
+          : [...current, certID],
+      };
+    });
   };
 
+  // Helper to count active filters
+  const activeCount = 
+    (filters.provinces?.length || 0) +
+    (filters.certifications?.length || 0) +
+    (filters.minCapacity ? 1 : 0) +
+    (filters.maxCapacity ? 1 : 0) +
+    (filters.minPrice ? 1 : 0) +
+    (filters.maxPrice ? 1 : 0);
+
   return (
-    <aside
-      className={`
-        bg-white border-r border-gray-200 flex flex-col z-40
-        transition-all duration-300 ease-in-out
-        fixed inset-y-0 left-0 w-[85vw] max-w-[320px]
-        md:relative md:inset-auto md:max-w-none md:shrink-0
-        ${sidebarOpen
-          ? "translate-x-0 md:translate-x-0 md:w-[280px]"
-          : "-translate-x-full md:translate-x-0 md:w-0 md:border-r-0 md:overflow-hidden"
-        }
-      `}
-    >
-      <div className="w-[85vw] max-w-[320px] md:w-[280px] md:max-w-none h-full flex flex-col shrink-0">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <FilterIcon size={15} className="text-gray-500" />
-            <span className="text-[13px] font-bold text-gray-800 tracking-wide">Bộ lọc</span>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600"
-          >
-            <X size={15} />
-          </button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto">
-          {/* ── Address search ── */}
-          <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Vị trí hiện tại
-            </label>
-            <Input
-              placeholder="Nhập địa chỉ của bạn..."
-              value={filters.keyword ?? ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setLocalFilters((prev) => ({ ...prev, keyword: (e.target as HTMLInputElement).value }))
-              }
-              onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && handleSearch()}
-              className="w-full h-8 text-[13px] border-gray-300 bg-gray-50 rounded"
-            />
-            <p className="text-[10px] text-gray-400 mt-1.5 leading-tight">
-              Tìm kho lạnh gần vị trí của bạn nhất
-            </p>
-          </div>
-
-          {/* ── Địa điểm (Provinces) ── */}
-          <div className="px-4 pt-3 pb-3 border-b border-gray-100">
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2.5">
-              <MapPin size={11} /> Địa điểm
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {vietnamProvinces.map((province) => (
+    <div className="w-full flex flex-col md:flex-row items-start md:items-center justify-between px-3 sm:px-5 py-3 gap-3 bg-white">
+      <div className="flex flex-wrap items-center gap-2 flex-1">
+        
+        {/* Địa điểm */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${filters.provinces && filters.provinces.length > 0 ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              <MapPin size={14} /> Địa điểm {filters.provinces && filters.provinces.length > 0 && `(${filters.provinces.length})`} <ChevronDown size={14} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-4 bg-white" align="start">
+            <h4 className="font-semibold text-sm mb-3 text-gray-800">Chọn tỉnh / thành phố</h4>
+            <div className="flex flex-wrap gap-2">
+              {locations.map((province) => (
                 <button
                   key={province}
                   onClick={() => toggleProvince(province)}
-                  className={`px-2.5 py-[3px] rounded-full text-[11px] border transition-colors ${filters.provinces?.includes(province)
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                  className={`px-3 py-1 rounded-full text-[12px] border transition-colors ${filters.provinces?.includes(province)
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50"
                     }`}
                 >
                   {province}
                 </button>
               ))}
             </div>
-          </div>
+          </PopoverContent>
+        </Popover>
 
-          {/* ── Công suất (m²) ── */}
-          <div className="px-4 pt-3 pb-3 border-b border-gray-100">
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2.5">
-              Công suất (m²)
-            </label>
-            <div className="space-y-2">
+        {/* Công suất */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${(filters.minCapacity || filters.maxCapacity) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              Công suất (m²) <ChevronDown size={14} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-4 bg-white" align="start">
+            <h4 className="font-semibold text-sm mb-3 text-gray-800">Khoảng công suất</h4>
+            <div className="flex flex-col gap-3">
               <div>
-                <span className="text-[10px] text-gray-400 mb-0.5 block">Tối thiểu</span>
+                <label className="text-xs text-gray-500 mb-1 block">Tối thiểu</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -136,32 +104,37 @@ export function SearchSidebar({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setLocalFilters((prev) => ({ ...prev, minCapacity: Number((e.target as HTMLInputElement).value) || undefined }))
                   }
-                  className="w-full h-8 text-[13px] border-gray-300 bg-gray-50 rounded"
+                  className="h-8 text-sm"
                 />
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 mb-0.5 block">Tối đa</span>
+                <label className="text-xs text-gray-500 mb-1 block">Tối đa</label>
                 <Input
                   type="number"
-                  placeholder="100000"
+                  placeholder="Không giới hạn"
                   value={filters.maxCapacity ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setLocalFilters((prev) => ({ ...prev, maxCapacity: Number((e.target as HTMLInputElement).value) || undefined }))
                   }
-                  className="w-full h-8 text-[13px] border-gray-300 bg-gray-50 rounded"
+                  className="h-8 text-sm"
                 />
               </div>
             </div>
-          </div>
+          </PopoverContent>
+        </Popover>
 
-          {/* ── Giá (VNĐ/m²/tháng) ── */}
-          <div className="px-4 pt-3 pb-3 border-b border-gray-100">
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2.5">
-              Giá (VNĐ/m²/tháng)
-            </label>
-            <div className="space-y-2">
+        {/* Giá */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${(filters.minPrice || filters.maxPrice) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              Mức giá <ChevronDown size={14} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-4 bg-white" align="start">
+            <h4 className="font-semibold text-sm mb-3 text-gray-800">Giá (VNĐ/m²/tháng)</h4>
+            <div className="flex flex-col gap-3">
               <div>
-                <span className="text-[10px] text-gray-400 mb-0.5 block">Tối thiểu</span>
+                <label className="text-xs text-gray-500 mb-1 block">Tối thiểu</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -169,76 +142,71 @@ export function SearchSidebar({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setLocalFilters((prev) => ({ ...prev, minPrice: Number((e.target as HTMLInputElement).value) || undefined }))
                   }
-                  className="w-full h-8 text-[13px] border-gray-300 bg-gray-50 rounded"
+                  className="h-8 text-sm"
                 />
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 mb-0.5 block">Tối đa</span>
+                <label className="text-xs text-gray-500 mb-1 block">Tối đa</label>
                 <Input
                   type="number"
-                  placeholder="5000000"
+                  placeholder="Không giới hạn"
                   value={filters.maxPrice ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setLocalFilters((prev) => ({ ...prev, maxPrice: Number((e.target as HTMLInputElement).value) || undefined }))
                   }
-                  className="w-full h-8 text-[13px] border-gray-300 bg-gray-50 rounded"
+                  className="h-8 text-sm"
                 />
               </div>
             </div>
-          </div>
+          </PopoverContent>
+        </Popover>
 
-          {/* ── Tình trạng (collapsible) ── */}
-          <div className="border-b border-gray-100">
-            <button
-              onClick={() => toggleSection("availability")}
-              className="w-full flex items-center justify-between px-4 py-3 text-left"
-            >
-              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Tình trạng</span>
-              {collapsed.availability ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronUp size={14} className="text-gray-400" />}
-            </button>
-            {!collapsed.availability && (
-              <div className="px-4 pb-3 space-y-2">
-                <label className="flex items-center gap-2.5 text-[13px] text-gray-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={filters.availability?.includes("available") ?? false}
-                    onChange={() => toggleAvailability("available")}
-                    className="w-3.5 h-3.5 rounded border-gray-300 accent-blue-600"
-                  />
-                  Còn trống
-                </label>
-                <label className="flex items-center gap-2.5 text-[13px] text-gray-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={filters.availability?.includes("partially") ?? false}
-                    onChange={() => toggleAvailability("partially")}
-                    className="w-3.5 h-3.5 rounded border-gray-300 accent-blue-600"
-                  />
-                  Còn một phần
-                </label>
-                  </div>
-                )}
+        {/* Chứng chỉ */}
+        {certifications && certifications.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${filters.certifications && filters.certifications.length > 0 ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+                <ShieldCheck size={14} /> Chứng chỉ {filters.certifications && filters.certifications.length > 0 && `(${filters.certifications.length})`} <ChevronDown size={14} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4 max-h-80 overflow-y-auto bg-white" align="start">
+              <h4 className="font-semibold text-sm mb-3 text-gray-800">Chứng nhận yêu cầu</h4>
+              <div className="space-y-3">
+                {certifications.map((cert) => (
+                  <label key={cert.certID} className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={filters.certifications?.includes(cert.certID.toString()) ?? false}
+                      onChange={() => toggleCertification(cert.certID.toString())}
+                      className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-blue-600 shrink-0"
+                    />
+                    <span className="leading-snug">{cert.label}</span>
+                  </label>
+                ))}
               </div>
-            </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
 
-        {/* Footer — search button */}
-        <div className="border-t border-gray-200 px-4 py-3">
+      <div className="flex items-center gap-2 shrink-0 w-full md:w-auto mt-3 md:mt-0 pt-3 md:pt-0 border-t md:border-0 border-gray-100">
+        {activeCount > 0 && (
           <button
             onClick={() => { handleSearch(); clearFilters(); }}
-            className="w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-600 mb-2 transition-colors"
+            className="text-[12px] text-gray-500 hover:text-gray-800 px-2"
           >
-            <X size={12} /> Xóa tất cả bộ lọc
+            Xóa ({activeCount})
           </button>
-          <button
-            onClick={handleSearch}
-            disabled={loading}
-            className="w-full h-9 flex items-center justify-center gap-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors disabled:opacity-50"
-          >
-            <Search size={14} />
-            {loading ? "Đang tìm..." : "Tìm kiếm"}
-          </button>
-        </div>
+        )}
+        <button
+          onClick={handleSearch}
+          disabled={loading}
+          className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 h-8 text-[13px] font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors disabled:opacity-50"
+        >
+          <Search size={14} />
+          {loading ? "Đang tìm..." : "Áp dụng"}
+        </button>
       </div>
-    </aside>
+    </div>
   );
 }

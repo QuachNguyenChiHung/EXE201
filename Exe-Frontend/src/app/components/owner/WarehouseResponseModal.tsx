@@ -139,10 +139,10 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
                   <div className="relative flex-1">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
                     <input
-                      type="number"
-                      placeholder={suggestedTotalPrice?.toString()}
-                      value={offeredPrice}
-                      onChange={e => setOfferedPrice(e.target.value)}
+                      type="text"
+                      placeholder={suggestedTotalPrice ? suggestedTotalPrice.toLocaleString('en-US') : ''}
+                      value={offeredPrice ? Number(offeredPrice).toLocaleString('en-US') : ''}
+                      onChange={e => setOfferedPrice(e.target.value.replace(/\D/g, ''))}
                       className="w-full h-9 pl-8 pr-3 text-sm border focus:outline-none focus:border-[var(--color-primary)]"
                       style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                     />

@@ -3,23 +3,19 @@ import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
 import { getUser } from "../../../utils/auth";
-import { warehousesAPI, aiAPI } from "../../../services/apiClient";
+import { aiAPI } from "../../../services/apiClient";
 import type { CompositeWarehouse } from "../../../types";
 import { RenterQuickActions } from "../../components/renter/RenterQuickActions";
 import { RenterStats } from "../../components/renter/RenterStats";
 import { FeaturedWarehouses } from "../../components/renter/FeaturedWarehouses";
+import { renterService, RenterStatisticResponseDTO } from "../../../services/renterService";
 
 export default function RenterDashboard() {
   const navigate = useNavigate();
   const user = getUser();
   const [warehouses, setWarehouses] = useState<CompositeWarehouse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tokenStats, setTokenStats] = useState<{
-    totalConversations: number;
-    totalInputTokens: number;
-    totalOutputTokens: number;
-    totalMessages: number;
-  }>({ totalConversations: 0, totalInputTokens: 0, totalOutputTokens: 0, totalMessages: 0 });
+  const [stats, setStats] = useState<RenterStatisticResponseDTO | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "RENTER") {
@@ -28,26 +24,17 @@ export default function RenterDashboard() {
     }
 
     Promise.all([
-      warehousesAPI.getAll(),
-      user?.id_user ? aiAPI.getConversationsByUser(user.id_user) : Promise.resolve([])
-    ]).then(([whs, convs]) => {
-      setWarehouses(whs);
-      const stats = convs.reduce(
-        (acc, c) => ({
-          totalConversations: acc.totalConversations + 1,
-          totalInputTokens: acc.totalInputTokens + (c.total_input_tokens ?? 0),
-          totalOutputTokens: acc.totalOutputTokens + (c.total_output_tokens ?? 0),
-          totalMessages: acc.totalMessages + (Array.isArray(c.message) ? c.message.length : 0),
-        }),
-        { totalConversations: 0, totalInputTokens: 0, totalOutputTokens: 0, totalMessages: 0 },
-      );
-      setTokenStats(stats);
+      renterService.getPopularWarehouses(0, 4),
+      renterService.getDashboardStatistics(30)
+    ]).then(([activeWhsData, fetchedStats]) => {
+      setWarehouses(activeWhsData.content);
+      setStats(fetchedStats);
       setLoading(false);
     }).catch(err => {
       console.error('Failed to load dashboard:', err);
       setLoading(false);
     });
-  }, [user, navigate]);
+  }, [user?.email, user?.role, navigate]);
 
   if (loading) {
     return (
@@ -65,7 +52,8 @@ export default function RenterDashboard() {
     );
   }
 
-  const activeWarehouseCount = warehouses.filter(w => w.status === 'active').length;
+  // Stats are now fully fetched from backend, so we don't need activeWarehouseCount manually here
+  // We can pass the array directly since the endpoint already filters active warehouses.
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -84,10 +72,7 @@ export default function RenterDashboard() {
         <RenterQuickActions />
 
         {/* Stats */}
-        <RenterStats 
-          activeWarehouseCount={activeWarehouseCount} 
-          tokenStats={tokenStats} 
-        />
+        {stats && <RenterStats stats={stats} />}
 
         {/* Featured warehouses */}
         <FeaturedWarehouses warehouses={warehouses} />

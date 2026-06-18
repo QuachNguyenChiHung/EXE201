@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Sparkles, RotateCcw, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Button } from "../ui/button";
-import { ATTRIBUTES, Attribute, AttrOption, SelectMode } from "../../pages/renter/aiSearchData";
+import { Input } from "../ui/input";
+import { Attribute, AttrOption, SelectMode, getAttributes } from "../../pages/renter/aiSearchData";
+import { FilterMetaResponseDTO } from "../../../services/renterService";
 
 function OptionChip({ option, selected, onClick }: { option: AttrOption; selected: boolean; onClick: () => void }) {
     const [hovered, setHovered] = useState(false);
@@ -74,16 +76,84 @@ function AttrSection({ attr, selections, onToggle }: { attr: Attribute; selectio
     );
 }
 
+function RangeAttrSection({ attr, selections, onSetSelection }: { attr: Attribute; selections: Record<string, string[]>; onSetSelection: (id: string, v: string[]) => void }) {
+    const [collapsed, setCollapsed] = useState(false);
+    
+    if (!attr.rangeIds) return null;
+    const minId = attr.rangeIds[0];
+    const maxId = attr.rangeIds[1];
+
+    const minVal = selections[minId]?.[0] || "";
+    const maxVal = selections[maxId]?.[0] || "";
+    
+    const hasValue = minVal !== "" || maxVal !== "";
+
+    return (
+        <div className="border-b border-[var(--color-border)] last:border-b-0">
+            <button
+                type="button"
+                onClick={() => setCollapsed((c) => !c)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left bg-[var(--color-surface)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className={`w-7 h-7 flex items-center justify-center text-white shrink-0 ${hasValue ? "bg-[var(--color-primary)]" : "bg-[var(--color-text-muted)]"}`}>
+                        {attr.icon}
+                    </div>
+                    <span className="text-sm font-semibold">{attr.label}</span>
+                    {hasValue && (
+                        <span className="bg-[var(--color-primary)] text-white text-xs px-1.5 py-0.5 leading-none">✓</span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 text-[var(--color-text-muted)] shrink-0">
+                    <span className="text-xs hidden sm:inline">Nhập khoảng</span>
+                    {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </div>
+            </button>
+            {!collapsed && (
+                <div className="px-5 pb-5 bg-[var(--color-surface)]">
+                    <div className="flex items-start gap-2 mt-0 mb-4 bg-[var(--color-bg-secondary)] px-3 py-2.5">
+                        <Info className="h-3.5 w-3.5 text-[var(--color-info)] shrink-0 mt-0.5" />
+                        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">{attr.explanation}</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+                        <div>
+                            <label className="text-xs text-[var(--color-text-muted)] block mb-1">Tối thiểu</label>
+                            <Input 
+                                type="number" 
+                                placeholder="0" 
+                                value={minVal}
+                                onChange={(e) => onSetSelection(minId, e.target.value ? [e.target.value] : [])}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs text-[var(--color-text-muted)] block mb-1">Tối đa</label>
+                            <Input 
+                                type="number" 
+                                placeholder="Không giới hạn" 
+                                value={maxVal}
+                                onChange={(e) => onSetSelection(maxId, e.target.value ? [e.target.value] : [])}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 interface AISearchCriteriaProps {
     selections: Record<string, string[]>;
     usage: { monthlyQueries: number; monthlyCost: number } | null;
     totalSelected: number;
     onToggle: (id: string, v: string, m: SelectMode) => void;
+    onSetSelection?: (id: string, v: string[]) => void;
     onReset: () => void;
     onSearch: () => void;
+    filterMeta: FilterMetaResponseDTO | null;
 }
 
-export function AISearchCriteria({ selections, usage, totalSelected, onToggle, onReset, onSearch }: AISearchCriteriaProps) {
+export function AISearchCriteria({ selections, usage, totalSelected, onToggle, onSetSelection, onReset, onSearch, filterMeta }: AISearchCriteriaProps) {
+    const attributes = filterMeta ? getAttributes(filterMeta) : [];
     const fmtCurrency = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
     return (
@@ -145,9 +215,12 @@ export function AISearchCriteria({ selections, usage, totalSelected, onToggle, o
 
             {/* Attributes */}
             <div className="border border-[var(--color-border)] bg-[var(--color-surface)] mb-6">
-                {ATTRIBUTES.map((attr) => (
-                    <AttrSection key={attr.id} attr={attr} selections={selections} onToggle={onToggle} />
-                ))}
+                {attributes.map((attr) => {
+                    if (attr.mode === "range" && onSetSelection) {
+                        return <RangeAttrSection key={attr.id} attr={attr} selections={selections} onSetSelection={onSetSelection} />;
+                    }
+                    return <AttrSection key={attr.id} attr={attr} selections={selections} onToggle={onToggle} />;
+                })}
             </div>
 
             {/* Action bar */}

@@ -82,6 +82,8 @@ export interface CompositeRentRequest extends RentRequest {
   sectionName?: string;
   sectionIds?: string[] | number[];
   isWholeWarehouse?: boolean;
+  ownerName?: string;
+  details?: any[];
 }
 
 export interface CompositeContract extends Contract {

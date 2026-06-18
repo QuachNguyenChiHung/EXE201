@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Loader2 } from "lucide-react";
@@ -9,6 +9,7 @@ interface Props {
   lat: number;
   long: number;
   addressText?: string;
+  obfuscateLocation?: boolean;
 }
 
 function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -19,8 +20,14 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
   return null;
 }
 
-export function WarehouseMapDisplay({ lat, long, addressText }: Props) {
-  const center: [number, number] = [lat, long];
+export function WarehouseMapDisplay({ lat, long, addressText, obfuscateLocation = false }: Props) {
+  const [mapCenter] = useState<[number, number]>(() => {
+    if (!obfuscateLocation) return [lat, long];
+    // Offset by up to ~500m-1km
+    const offsetLat = lat + (Math.random() - 0.5) * 0.01;
+    const offsetLng = long + (Math.random() - 0.5) * 0.01;
+    return [offsetLat, offsetLng];
+  });
   const icon = createWarehouseIcon();
   
   const [displayAddress, setDisplayAddress] = useState<string>(addressText || "");
@@ -30,6 +37,10 @@ export function WarehouseMapDisplay({ lat, long, addressText }: Props) {
     let isMounted = true;
 
       const resolveExactAddress = async () => {
+      if (obfuscateLocation) {
+        if (isMounted) setDisplayAddress(addressText || "");
+        return;
+      }
       setLoadingAddress(true);
       try {
         const data = await nominatimReverse(lat, long);
@@ -91,8 +102,8 @@ export function WarehouseMapDisplay({ lat, long, addressText }: Props) {
       <div className="h-[350px] rounded-xl overflow-hidden border-2 border-[var(--color-border)] relative">
         {/* @ts-ignore */}
         <MapContainer
-          center={center}
-          zoom={16}
+          center={mapCenter}
+          zoom={obfuscateLocation ? 14 : 16}
           style={{ height: "100%", width: "100%", zIndex: 1 }}
           scrollWheelZoom={false}
         >
@@ -101,9 +112,17 @@ export function WarehouseMapDisplay({ lat, long, addressText }: Props) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <MapController center={center} zoom={16} />
-          {/* @ts-ignore */}
-          <Marker position={center} icon={icon} />
+          <MapController center={mapCenter} zoom={obfuscateLocation ? 14 : 16} />
+          {obfuscateLocation ? (
+            <Circle 
+                center={mapCenter} 
+                radius={800} 
+                pathOptions={{ fillColor: 'var(--color-primary)', color: 'var(--color-primary)', fillOpacity: 0.2 }} 
+            />
+          ) : (
+            /* @ts-ignore */
+            <Marker position={mapCenter} icon={icon} />
+          )}
         </MapContainer>
       </div>
     </div>

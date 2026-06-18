@@ -190,20 +190,26 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                     <div>
                       <Label>Nhiệt độ tối thiểu (°C)</Label>
                       <Input
-                        type="number"
+                        type="text"
                         placeholder="VD: -20"
                         value={s.temp_min !== undefined ? s.temp_min : ""}
-                        onChange={(e) => updateSection(s.id_section, "temp_min", parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.-]/g, '');
+                          updateSection(s.id_section, "temp_min", val as any);
+                        }}
                         className="mt-1"
                       />
                     </div>
                     <div>
                       <Label>Nhiệt độ tối đa (°C)</Label>
                       <Input
-                        type="number"
+                        type="text"
                         placeholder="VD: -15"
                         value={s.temp_max !== undefined ? s.temp_max : ""}
-                        onChange={(e) => updateSection(s.id_section, "temp_max", parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.-]/g, '');
+                          updateSection(s.id_section, "temp_max", val as any);
+                        }}
                         className="mt-1"
                       />
                     </div>
@@ -211,12 +217,13 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                     <div>
                       <Label>Độ ẩm tiêu chuẩn (%)</Label>
                       <Input
-                        type="number"
-                        min="0"
-                        max="100"
+                        type="text"
                         placeholder="VD: 85"
                         value={s.humidity !== undefined ? s.humidity : ""}
-                        onChange={(e) => updateSection(s.id_section, "humidity", parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.-]/g, '');
+                          updateSection(s.id_section, "humidity", val as any);
+                        }}
                         className="mt-1"
                       />
                     </div>

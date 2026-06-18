@@ -1,44 +1,61 @@
-import { Package, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
-
-interface TokenStats {
-  totalConversations: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalMessages: number;
-}
+import { Package, MessageSquare, Sparkles, TrendingUp, DollarSign, Calendar, Zap, AlertCircle } from "lucide-react";
+import { RenterStatisticResponseDTO } from "../../../services/renterService";
 
 interface RenterStatsProps {
-  activeWarehouseCount: number;
-  tokenStats: TokenStats;
+  stats: RenterStatisticResponseDTO;
 }
 
-export function RenterStats({ activeWarehouseCount, tokenStats }: RenterStatsProps) {
+export function RenterStats({ stats }: RenterStatsProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[var(--color-border)] mb-8">
       {[
         {
-          label: "Tổng kho",
-          value: activeWarehouseCount.toString(),
+          label: "Hợp đồng hoạt động",
+          value: stats.totalActiveContract.toString(),
           icon: <Package className="h-5 w-5" />,
           color: "var(--color-primary)",
         },
         {
-          label: "Phiên AI đã dùng",
-          value: tokenStats.totalConversations.toString(),
-          icon: <MessageSquare className="h-5 w-5" />,
+          label: "Kho đang thuê",
+          value: stats.totalWarehouseWithActiveContract.toString(),
+          icon: <Sparkles className="h-5 w-5" />,
           color: "var(--color-secondary)",
         },
         {
-          label: "Token đã sử dụng",
-          value: (tokenStats.totalInputTokens + tokenStats.totalOutputTokens).toLocaleString("vi-VN"),
-          icon: <Sparkles className="h-5 w-5" />,
-          color: "var(--color-accent, #f59e0b)",
+          label: "Yêu cầu thuê",
+          value: stats.totalRentRequest.toString(),
+          icon: <MessageSquare className="h-5 w-5" />,
+          color: "var(--color-info, #3b82f6)",
         },
         {
-          label: "Tin nhắn AI",
-          value: tokenStats.totalMessages.toString(),
+          label: "Gói AI hiện tại",
+          value: stats.aiSubscriptionInUse === 'Default' ? 'Cơ bản' : stats.aiSubscriptionInUse,
+          icon: <Zap className="h-5 w-5" />,
+          color: "var(--color-warning, #f59e0b)",
+        },
+        {
+          label: "Phiên AI đã dùng",
+          value: stats.totalAiConversation.toString(),
           icon: <TrendingUp className="h-5 w-5" />,
           color: "var(--color-success, #22c55e)",
+        },
+        {
+          label: "Token đã sử dụng",
+          value: stats.totalTokenUsage.toLocaleString("vi-VN"),
+          icon: <Sparkles className="h-5 w-5" />,
+          color: "var(--color-error, #ef4444)",
+        },
+        {
+          label: "Tổng chi phí",
+          value: stats.totalBilling.toLocaleString("vi-VN") + "đ",
+          icon: <DollarSign className="h-5 w-5" />,
+          color: "var(--color-accent, #8b5cf6)",
+        },
+        {
+          label: "Sắp hết hạn HĐ",
+          value: stats.endOfContract.toString(),
+          icon: <Calendar className="h-5 w-5" />,
+          color: "var(--color-danger, #f43f5e)",
         },
       ].map((s) => (
         <div
@@ -49,12 +66,12 @@ export function RenterStats({ activeWarehouseCount, tokenStats }: RenterStatsPro
             <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
               {s.label}
             </p>
-            <p className="text-2xl font-extrabold">
+            <p className="text-2xl font-extrabold truncate max-w-[120px]" title={s.value}>
               {s.value}
             </p>
           </div>
           <div
-            className="w-10 h-10 flex items-center justify-center"
+            className="w-10 h-10 flex items-center justify-center shrink-0"
             style={{ background: s.color, color: "#fff" }}
           >
             {s.icon}

@@ -54,8 +54,9 @@ export const ownerService = {
         available_capacity: sec.availableCapacity,
         temp_min: sec.tempMin,
         temp_max: sec.tempMax,
-        priceTiers: sec.priceTiers?.map((pt: any) => ({
+        priceTiers: sec.priceTiers?.map((pt: any, idx: number) => ({
           ...pt,
+          id_price_tier: pt.id_price_tier || pt.id || (Date.now() + idx),
           unit: 'month' // Force to 'month' to match frontend price calculation
         }))
       })),
@@ -75,7 +76,7 @@ export const ownerService = {
         id_cerfSubmit: c.id,
         documentUrl: c.link, // Used by MyWarehouseCard
         isVerified: c.status === 'VERIFIED',
-        label: c.link ? decodeURIComponent(c.link.split('/').pop() || 'Tài liệu tải lên') : 'Tài liệu tải lên'
+        label: c.label || (c.link ? decodeURIComponent(c.link.split('/').pop() || 'Tài liệu tải lên') : 'Tài liệu tải lên')
       }))
     };
     });
@@ -143,8 +144,9 @@ export const ownerService = {
         available_capacity: sec.availableCapacity,
         temp_min: sec.tempMin,
         temp_max: sec.tempMax,
-        priceTiers: sec.priceTiers?.map((pt: any) => ({
+        priceTiers: sec.priceTiers?.map((pt: any, idx: number) => ({
           ...pt,
+          id_price_tier: pt.id_price_tier || pt.id || (Date.now() + idx),
           unit: 'month'
         }))
       })),
@@ -164,7 +166,7 @@ export const ownerService = {
         id_cerfSubmit: c.id,
         documentUrl: c.link,
         isVerified: c.status === 'VERIFIED',
-        label: c.link ? decodeURIComponent(c.link.split('/').pop() || 'Tài liệu tải lên') : 'Tài liệu tải lên'
+        label: c.label || (c.link ? decodeURIComponent(c.link.split('/').pop() || 'Tài liệu tải lên') : 'Tài liệu tải lên')
       }))
     };
   },
@@ -259,6 +261,12 @@ export const ownerService = {
   getWarehouseLocation: async (id: number): Promise<{locationLat: number, locationLong: number}> => {
     console.log(`[API CALL] GET /warehouses/${id}/location`);
     const response = await api.get(`/warehouses/${id}/location`);
+    console.log('[API RESPONSE]', response.data);
+    return response.data;
+  },
+  getCertifications: async (): Promise<any[]> => {
+    console.log('[API CALL] GET /certs');
+    const response = await api.get('/certs');
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },

@@ -45,6 +45,14 @@ export default function WarehouseRequests() {
       const dataRes = await ownerService.getIncomingRequests(p, 10, t === 'all' ? undefined : t);
       const mapped = (dataRes.content as any[]).map(r => {
         const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
+        const details = r.details || [];
+        const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
+        const sectionName = details.length > 1 
+          ? `${details.length} phân khu` 
+          : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
+        const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
+        const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
+
         return {
           ...r,
           id_rentRequest: r.id || r.id_rentRequest,
@@ -64,10 +72,12 @@ export default function WarehouseRequests() {
           renterName: r.renterName,
           renterPhone: r.renterPhone || 'N/A',
           renterEmail: r.renterEmail || 'N/A',
-          requestedCapacity: r.details?.[0]?.rentedArea,
-          priceTierLabel: r.details?.[0]?.priceTierLabel,
-          priceTierValue: r.details?.[0]?.priceTierValue,
-          sectionName: r.details?.[0]?.sector ? `Phân khu ${r.details[0].sector}` : undefined,
+          requestedCapacity,
+          priceTierLabel,
+          priceTierValue,
+          sectionName,
+          start_date: r.startDate,
+          end_date: r.endDate,
           submit_at: r.createdAt || r.submit_at || new Date().toISOString()
         } as IncomingRequest;
       });
@@ -132,11 +142,13 @@ export default function WarehouseRequests() {
         renterName: r.renterName,
         renterPhone: r.renterPhone || 'N/A',
         renterEmail: r.renterEmail || 'N/A',
-        requestedCapacity: r.details?.[0]?.rentedArea,
-        priceTierLabel: r.details?.[0]?.priceTierLabel,
-        priceTierValue: r.details?.[0]?.priceTierValue,
-        sectionName: r.details?.[0]?.sector ? `Phân khu ${r.details[0].sector}` : undefined,
+        requestedCapacity: r.details?.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined,
+        priceTierLabel: r.details?.length > 1 ? 'Nhiều phân khu' : r.details?.[0]?.priceTierLabel,
+        priceTierValue: r.details?.length > 1 ? undefined : r.details?.[0]?.priceTierValue,
+        sectionName: r.details?.length > 1 ? `${r.details.length} phân khu` : (r.details?.[0]?.sector ? `Phân khu ${r.details[0].sector}` : undefined),
         sectionId: r.details?.[0]?.sector,
+        start_date: r.startDate,
+        end_date: r.endDate,
         submit_at: r.createdAt || r.submit_at || new Date().toISOString()
       } as IncomingRequest;
 

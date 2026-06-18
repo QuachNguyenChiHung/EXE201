@@ -353,7 +353,14 @@ export default function CreateContract() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Thời gian thuê</p>
-                    <p className="text-sm font-medium">{request.duration} {request.durationUnit}</p>
+                    <p className="text-sm font-medium flex flex-col gap-0.5">
+                      <span>{request.duration} {request.durationUnit}</span>
+                      {request.startDate && request.endDate && (
+                        <span className="text-[11px] text-gray-400 font-normal">
+                          (Từ {new Date(request.startDate).toLocaleDateString('vi-VN')} đến {new Date(request.endDate).toLocaleDateString('vi-VN')})
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Loại hàng hoá</p>

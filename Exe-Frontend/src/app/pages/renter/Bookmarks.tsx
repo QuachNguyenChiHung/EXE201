@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { Footer } from '../../components/Footer';
@@ -8,6 +8,8 @@ import { useApp } from '../../../context/AppContext';
 import { CompositeWarehouse } from '../../../types';
 import { Heart, Loader2, Sparkles, MessageSquare, ChevronRight, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useBookmarks, clearBookmarksState } from '../../../hooks/useBookmarks';
+import { renterService } from '../../../services/renterService';
 
 import { BookmarksHeader } from '../../components/renter/BookmarksHeader';
 import { CompareTable } from '../../components/renter/CompareTable';
@@ -18,7 +20,8 @@ type ViewMode = 'list' | 'compare';
 
 export default function Bookmarks() {
     const navigate = useNavigate();
-    const { warehouses: allWarehouses, bookmarkedIds, compareIds, toggleCompare, clearCompare, clearAllBookmarks, loading } = useApp();
+    const { compareWarehouses, toggleCompare, clearCompare, loading: appLoading } = useApp();
+    const { bookmarkedIds } = useBookmarks();
 
     const [view, setView] = useState<ViewMode>('list');
     const [showAI, setShowAI] = useState(false);
@@ -26,14 +29,22 @@ export default function Bookmarks() {
     const [aiInitialReq, setAiInitialReq] = useState<string | undefined>();
     const [bestId, setBestId] = useState<number | null>(null);
 
-    const bookmarkedWarehouses = allWarehouses.filter((w) => bookmarkedIds.includes(w.id_warehouse));
-    const compareWarehouses = allWarehouses.filter((w) => compareIds.includes(w.id_warehouse));
+    const [bookmarkedWarehouses, setBookmarkedWarehouses] = useState<CompositeWarehouse[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setLoading(true);
+        renterService.getMyBookmarks()
+            .then(setBookmarkedWarehouses)
+            .finally(() => setLoading(false));
+    }, [bookmarkedIds]); // Re-fetch or locally filter when bookmarkedIds changes
 
     const handleClearAll = async () => {
         if (!confirm('Bạn có chắc chắn muốn xóa tất cả kho đã lưu?')) return;
         try {
-            await clearAllBookmarks();
-            toast.success('Đã xóa tất cả kho lưu');
+            clearBookmarksState();
+            setBookmarkedWarehouses([]);
+            toast.success('Đã xóa tất cả kho lưu (local)');
         } catch {
             toast.error('Có lỗi xảy ra');
         }
@@ -46,7 +57,9 @@ export default function Bookmarks() {
     };
 
     const handleToggleCompare = (id: number) => {
-        toggleCompare(id);
+        // Find warehouse by id from compareWarehouses
+        const w = compareWarehouses.find(cw => cw.id_warehouse === id);
+        if (w) toggleCompare(w);
     };
 
     return (
@@ -112,7 +125,7 @@ export default function Bookmarks() {
                 )}
 
                 {/* ── Empty State ── */}
-                {!loading.warehouses && bookmarkedWarehouses.length === 0 && (
+                {!loading && bookmarkedWarehouses.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-24 gap-4">
                         <div
                             className="w-20 h-20 flex items-center justify-center bg-[rgba(239,68,68,0.08)]"
@@ -135,14 +148,14 @@ export default function Bookmarks() {
                 )}
 
                 {/* ── Loading ── */}
-                {loading.warehouses && (
+                {loading && (
                     <div className="flex items-center justify-center py-24">
                         <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
                     </div>
                 )}
 
                 {/* ── List View ── */}
-                {!loading.warehouses && view === 'list' && bookmarkedWarehouses.length > 0 && (
+                {!loading && view === 'list' && bookmarkedWarehouses.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {bookmarkedWarehouses.map((w) => (
                             <WarehouseCard key={w.id_warehouse} warehouse={w} compact />
@@ -151,7 +164,7 @@ export default function Bookmarks() {
                 )}
 
                 {/* ── Compare View ── */}
-                {!loading.warehouses && view === 'compare' && (
+                {!loading && view === 'compare' && (
                     <>
                         {compareWarehouses.length < 2 ? (
                             <div className="text-center py-16">

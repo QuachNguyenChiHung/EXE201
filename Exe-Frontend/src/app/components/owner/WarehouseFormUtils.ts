@@ -157,4 +157,5 @@ export interface CertFile {
   name: string;
   size: number;
   file: File;
+  certTypeId?: number | string;
 }

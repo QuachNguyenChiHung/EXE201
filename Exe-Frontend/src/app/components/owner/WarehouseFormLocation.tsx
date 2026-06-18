@@ -129,12 +129,12 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
     if (warehouse.address && !houseNumber && !street && !ward) {
       const parts = warehouse.address.split(",").map(p => p.trim());
       if (parts.length > 0) {
-        if (parts.length === 3) {
+        if (parts.length >= 3) {
           setHouseNumber(parts[0]);
-          setStreet(parts[1]);
-          setWard(parts[2]);
+          setWard(parts[parts.length - 1]);
+          setStreet(parts.slice(1, -1).join(", "));
         } else if (parts.length === 2) {
-          if (/^\d/.test(parts[0])) {
+          if (/^\d/i.test(parts[0]) || /^s[ốo]\s*\d/i.test(parts[0]) || /^l[ôo]\s*[a-z0-9]/i.test(parts[0])) {
             setHouseNumber(parts[0]);
             setStreet(parts[1]);
           } else {

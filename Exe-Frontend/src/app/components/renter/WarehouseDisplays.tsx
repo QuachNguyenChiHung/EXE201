@@ -43,7 +43,7 @@ export function CertificationList({ warehouse }: { warehouse: CompositeWarehouse
     return (
         <div className="flex flex-col gap-2 text-left">
             {warehouse.certifications?.map((cert: any, idx) => {
-                const label = CERT_LABELS[cert.id_type?.toString() || ''] || `Chứng chỉ ${cert.id_type || idx + 1}`;
+                const label = cert.label || CERT_LABELS[cert.id_type?.toString() || ''] || `Chứng chỉ ${cert.id_type || idx + 1}`;
                 return (
                     <div
                         key={cert.id_cerfSubmit || idx}

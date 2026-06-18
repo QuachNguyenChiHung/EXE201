@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink
+    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { CompositeRentRequest, CompositeWarehouse, CompositeContract } from "../../../types";
@@ -22,16 +22,21 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
     const { contracts, users } = useApp();
     const [sectionOpen, setSectionOpen] = useState(false);
 
-    if (!warehouse) return null;
     const status = request.status as RequestStatus;
     const cfg = STATUS_CONFIG[status];
     if (!cfg) return null;
 
-    const section = request.sectionId
-        ? warehouse.sections?.find((s) => s.id_section?.toString() === request.sectionId?.toString())
-        : undefined;
+    // Use request.details for section info if warehouse is missing
+    const section = warehouse?.sections
+        ? warehouse.sections.find((s) => s.id_section?.toString() === request.sectionId?.toString())
+        : request.details && request.details.length > 0
+            ? { name: `Phân khu ${request.details[0].sector}`, temp_min: "-", temp_max: "-", total_capacity: request.details[0].rentedArea, description: "-" }
+            : undefined;
 
-    const ownerUser = users.find((u) => u.id_user === warehouse.id_owner);
+    const ownerUser = warehouse ? users.find((u) => u.id_user === warehouse.id_owner) : undefined;
+    const warehouseName = warehouse?.name || request.warehouseName || "Kho không xác định";
+    const ownerName = ownerUser?.name || warehouse?.ownerName || request.ownerName || "Chủ kho";
+    
     const existingContract = contracts.find((c: CompositeContract) => c.id_rent_request === request.id_rentRequest);
 
     return (
@@ -53,16 +58,17 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
 
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>
-                        {warehouse.name}
-                        {request.sectionName && (
-                            <span className="ml-2 text-[11px] font-normal" style={{ color: "var(--color-primary)" }}>
-                                · {request.sectionName}
+                        Yêu cầu thuê kho #{request.id_rentRequest}
+                        {request.cargoType && (
+                            <span className="ml-2 text-[12px] font-normal" style={{ color: "var(--color-text-secondary)" }}>
+                                · {CARGO_LABEL[request.cargoType] ?? request.cargoType}
                             </span>
                         )}
                     </p>
                     <p className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                        <MapPin className="inline h-2.5 w-2.5 mr-0.5" />
-                        {warehouse.location_commune}, {warehouse.location_province}
+                        <Building className="inline h-2.5 w-2.5 mr-0.5" />
+                        {warehouseName}
+                        {request.sectionName && ` · ${request.sectionName}`}
                         {" · "}{relativeTime(request.submit_at || request.submit_at)}
                     </p>
                 </div>
@@ -200,18 +206,18 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                 Phản hồi từ chủ kho
                             </p>
 
-                            {/* Waiting */}
-                            {(status === "sent" || status === "viewed") && (
+                            {/* Pending / Negotiating */}
+                            {status === "PENDING" && !request.owner_note && !request.offered_price && (
                                 <div className="flex flex-col items-center justify-center py-8 gap-2">
                                     <Clock className="h-6 w-6" style={{ color: "var(--color-text-muted)" }} />
                                     <p className="text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
-                                        {status === "sent" ? "Đang chờ chủ kho xem yêu cầu..." : "Chủ kho đã xem, đang cân nhắc..."}
+                                        Đang chờ chủ kho xử lý yêu cầu...
                                     </p>
                                 </div>
                             )}
 
                             {/* Rejected */}
-                            {status === "rejected" && (
+                            {status === "REJECTED" && (
                                 <div className="space-y-2">
                                     <div
                                         className="flex items-center gap-2 px-3 py-2"
@@ -231,8 +237,8 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                 </div>
                             )}
 
-                            {/* In-progress */}
-                            {status === "inprogress" && (
+                            {/* Negotiating (Still PENDING but has owner note/price) */}
+                            {status === "PENDING" && (request.owner_note || request.offered_price) && (
                                 <div className="space-y-2">
                                     <div
                                         className="flex items-center gap-2 px-3 py-2"
@@ -263,14 +269,12 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                     )}
                                     {/* Contacts */}
                                     <div className="grid grid-cols-2 gap-1.5">
-                                        {(ownerUser?.name ?? warehouse.ownerName) && (
-                                            <div className="px-2.5 py-2 border border-[var(--color-border)]">
-                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Liên hệ</p>
-                                                <p className="text-xs font-semibold truncate" style={{ color: "var(--color-text)" }}>
-                                                    {ownerUser?.name ?? warehouse.ownerName}
-                                                </p>
-                                            </div>
-                                        )}
+                                        <div className="px-2.5 py-2 border border-[var(--color-border)]">
+                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Liên hệ</p>
+                                            <p className="text-xs font-semibold truncate" style={{ color: "var(--color-text)" }}>
+                                                {ownerName}
+                                            </p>
+                                        </div>
                                         {ownerUser?.phone && (
                                             <a href={`tel:${ownerUser.phone}`} className="px-2.5 py-2 border border-[var(--color-border)] hover:border-[#22c55e] transition-colors">
                                                 <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Điện thoại</p>
@@ -326,13 +330,13 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                             })()}
 
                             {/* Contracted but no contract object yet */}
-                            {status === "contracted" && !existingContract && (
+                            {status === "APPROVED" && !existingContract && (
                                 <div
                                     className="flex items-center gap-2 px-3 py-2"
                                     style={{ background: "rgba(124,58,237,0.07)", borderLeft: "3px solid #7c3aed" }}
                                 >
                                     <FileText className="h-4 w-4 shrink-0" style={{ color: "#7c3aed" }} />
-                                    <p className="text-xs" style={{ color: "#7c3aed" }}>Hợp đồng đang được soạn thảo.</p>
+                                    <p className="text-xs" style={{ color: "#7c3aed" }}>Yêu cầu đã được chấp nhận. Hợp đồng đang được soạn thảo.</p>
                                 </div>
                             )}
                         </div>
@@ -343,7 +347,7 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                         className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-border)]"
                         style={{ background: "var(--color-bg-secondary)" }}
                     >
-                        {(status === "sent" || status === "viewed") && (
+                        {status === "PENDING" && (
                             <button
                                 onClick={() => onWithdraw(request.id_rentRequest)}
                                 className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-error)]"
@@ -352,7 +356,7 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                 Rút yêu cầu
                             </button>
                         )}
-                        {status === "rejected" && (
+                        {status === "REJECTED" && warehouse && (
                             <button
                                 onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
                                 className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-primary)]"
@@ -361,13 +365,15 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                 Gửi lại yêu cầu
                             </button>
                         )}
-                        <button
-                            onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
-                            className="text-xs px-3 py-1.5 border transition-colors flex items-center gap-1 hover:border-[var(--color-primary)]"
-                            style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
-                        >
-                            <ExternalLink className="h-3 w-3" /> Xem kho
-                        </button>
+                        {warehouse && (
+                            <button
+                                onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
+                                className="text-xs px-3 py-1.5 border transition-colors flex items-center gap-1 hover:border-[var(--color-primary)]"
+                                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
+                            >
+                                <ExternalLink className="h-3 w-3" /> Xem kho
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

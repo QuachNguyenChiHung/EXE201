@@ -205,7 +205,13 @@ export default function SharedContractDetail() {
                   </p>
                   <div className="text-sm space-y-1 pl-3 border-l-2 border-gray-300 print:border-black">
                     <p>- Hàng hóa lưu trữ: {requestDetail.cargoDescription || 'Chưa mô tả'}</p>
-                    <p>- Thời gian thuê: {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm' ? 'Năm' : requestDetail.durationUnit}</p>
+                    <p>- Thời gian thuê: {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm' ? 'Năm' : requestDetail.durationUnit}
+                      {requestDetail.startDate && requestDetail.endDate && (
+                        <span className="italic ml-1">
+                          (Từ {new Date(requestDetail.startDate).toLocaleDateString('vi-VN')} đến {new Date(requestDetail.endDate).toLocaleDateString('vi-VN')})
+                        </span>
+                      )}
+                    </p>
                     {requestDetail.details && requestDetail.details.length > 0 && (
                        <div className="mt-2">
                           <p className="font-semibold">- Phân khu yêu cầu thuê:</p>

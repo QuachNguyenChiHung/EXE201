@@ -5,7 +5,8 @@ import {
   Sparkles, Bot, User as UserIcon, ChevronDown, ChevronUp,
   MessageSquare, Calendar, Warehouse, X,
 } from 'lucide-react';
-import { ATTRIBUTES } from '../pages/renter/aiSearchData';
+import { getAttributes, Attribute } from '../pages/renter/aiSearchData';
+import { renterService } from '../../services/renterService';
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('vi-VN', {
@@ -31,9 +32,9 @@ function renderMd(text: string) {
   });
 }
 
-function CriteriaChips({ criteria }: { criteria: Record<string, string[]> }) {
+function CriteriaChips({ criteria, attributes }: { criteria: Record<string, string[]>, attributes: Attribute[] }) {
   const chips: string[] = [];
-  ATTRIBUTES.forEach((attr) => {
+  attributes.forEach((attr) => {
     (criteria[attr.id] ?? []).forEach((v) => {
       const opt = attr.options.find((o) => o.value === v);
       if (opt) chips.push(opt.label);
@@ -50,7 +51,7 @@ function CriteriaChips({ criteria }: { criteria: Record<string, string[]> }) {
 }
 
 // ── Single conversation card ──────────────────────────────────────────────────
-function ConversationCard({ conv }: { conv: AIConversationRecord }) {
+function ConversationCard({ conv, attributes }: { conv: AIConversationRecord, attributes: Attribute[] }) {
   const [expanded, setExpanded] = useState(false);
   const messages: any[] = conv.message || [];
   const userMsgCount = messages.filter(m => m.role === 'user').length;
@@ -82,7 +83,7 @@ function ConversationCard({ conv }: { conv: AIConversationRecord }) {
             )}
           </div>
           <div className="mt-1">
-            <CriteriaChips criteria={conv.criteria} />
+            <CriteriaChips criteria={conv.criteria} attributes={attributes} />
           </div>
         </div>
         <div className="shrink-0">
@@ -132,12 +133,19 @@ export function UserConversationsModal({
   onClose: () => void;
 }) {
   const [convs, setConvs] = useState<AIConversationRecord[]>([]);
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    aiAPI.getConversationsByUser(userId)
-      .then(setConvs)
+    Promise.all([
+      aiAPI.getConversationsByUser(userId),
+      renterService.getFilterMeta()
+    ])
+      .then(([convData, meta]) => {
+        setConvs(convData);
+        setAttributes(getAttributes(meta));
+      })
       .catch((err) => console.log('[convs] Fetch error:', err?.message))
       .finally(() => setLoading(false));
   }, [userId]);
@@ -192,7 +200,7 @@ export function UserConversationsModal({
                 </span>
               </div>
               {convs.map((c) => (
-                <ConversationCard key={c.id_ai_conversations} conv={c} />
+                <ConversationCard key={c.id_ai_conversations} conv={c} attributes={attributes} />
               ))}
             </>
           )}

@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
-import { ATTRIBUTES } from "./aiSearchData";
-import type { SelectMode } from "./aiSearchData";
+import { getAttributes } from "./aiSearchData";
+import type { SelectMode, Attribute } from "./aiSearchData";
 import { useApp } from "../../../context/AppContext";
 import { CompositeWarehouse, CompositeAiConversations } from "../../../types";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { renterService, FilterMetaResponseDTO } from "../../../services/renterService";
 import { aiAPI } from "../../../services/apiClient";
-import { applyLocalFilter, buildFilterSummary, isAINotConfigured } from "./aiSearchUtils";
+import { buildFilterSummary, isAINotConfigured, buildSearchParams } from "./aiSearchUtils";
 import { AISearchCriteria } from "../../components/renter/AISearchCriteria";
 import { AIChatPanel, ChatMsg } from "../../components/renter/AIChatPanel";
 import { AIResultGrid } from "../../components/renter/AIResultGrid";
@@ -30,9 +31,9 @@ export interface AIResponsePayload {
     usage?: { input_tokens: number; output_tokens: number };
 }
 
-function SelectionSummary({ selections }: { selections: Record<string, string[]> }) {
+function SelectionSummary({ selections, attributes }: { selections: Record<string, string[]>, attributes: Attribute[] }) {
     const chips: string[] = [];
-    ATTRIBUTES.forEach((attr) => {
+    attributes.forEach((attr) => {
         (selections[attr.id] ?? []).forEach((v) => {
             const opt = attr.options.find((o) => o.value === v);
             if (opt) chips.push(opt.label);
@@ -53,6 +54,9 @@ export default function AISearchWarehouse() {
     const [phase, setPhase] = useState<Phase>("select");
     const [selections, setSelections] = useState<Record<string, string[]>>({});
     const [usage, setUsage] = useState<{ monthlyQueries: number; monthlyCost: number } | null>(null);
+    const [metaLoading, setMetaLoading] = useState(true);
+    const [filterMeta, setFilterMeta] = useState<FilterMetaResponseDTO | null>(null);
+    const [attributes, setAttributes] = useState<Attribute[]>([]);
 
     const [initialList, setInitialList] = useState<CompositeWarehouse[]>([]);
     const [displayedList, setDisplayedList] = useState<CompositeWarehouse[]>([]);
@@ -70,6 +74,16 @@ export default function AISearchWarehouse() {
     const conversationIdRef = useRef<number>(0);
     const conversationCreatedAtRef = useRef<string>("");
     const cumulativeTokensRef = useRef<{ input: number; output: number }>({ input: 0, output: 0 });
+
+    useEffect(() => {
+        renterService.getFilterMeta()
+            .then((data) => {
+                setFilterMeta(data);
+                setAttributes(getAttributes(data));
+            })
+            .catch((err) => console.error("Failed to load filter metadata:", err))
+            .finally(() => setMetaLoading(false));
+    }, []);
 
     useEffect(() => {
         if (chatScrollRef.current) {
@@ -122,6 +136,10 @@ export default function AISearchWarehouse() {
         });
     };
 
+    const handleSetSelection = (attrId: string, values: string[]) => {
+        setSelections((prev) => ({ ...prev, [attrId]: values }));
+    };
+
     const callAIBackend = async (
         prompt: string,
         criteria: Record<string, string[]>,
@@ -142,12 +160,7 @@ export default function AISearchWarehouse() {
 
     const handleInitialSearch = async () => {
         const hasCriteria = totalSelected > 0;
-        const filtered = hasCriteria
-            ? applyLocalFilter(allWarehouses, selections)
-            : allWarehouses.filter((w) => w.status === "active");
 
-        setInitialList(filtered);
-        setDisplayedList(filtered);
         setChatMessages([]);
         setWarehousesRevealed(false);
         setAiError(null);
@@ -158,7 +171,14 @@ export default function AISearchWarehouse() {
         conversationIdRef.current = Date.now();
         conversationCreatedAtRef.current = new Date().toISOString();
         cumulativeTokensRef.current = { input: 0, output: 0 };
+        let filtered: CompositeWarehouse[] = [];
         try {
+            const params = hasCriteria ? buildSearchParams(selections) : { page: 0, size: 50 };
+            const data = await renterService.searchWarehouses(params);
+            filtered = data.content || [];
+
+            setInitialList(filtered);
+            setDisplayedList(filtered);
             const response = await callAIBackend("", hasCriteria ? selections : {}, filtered, []);
 
             if (response.usage) {
@@ -253,6 +273,18 @@ export default function AISearchWarehouse() {
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend(); }
     };
 
+    if (metaLoading) {
+        return (
+            <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
+                <Navbar />
+                <div className="flex-1 flex items-center justify-center">
+                    <p className="text-gray-500">Đang tải cấu hình AI...</p>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
+
     if (phase === "select") {
         return (
             <div className="min-h-screen bg-[var(--color-bg)]">
@@ -262,8 +294,10 @@ export default function AISearchWarehouse() {
                     usage={usage}
                     totalSelected={totalSelected}
                     onToggle={handleToggle}
+                    onSetSelection={handleSetSelection}
                     onReset={() => setSelections({})}
                     onSearch={handleInitialSearch}
+                    filterMeta={filterMeta}
                 />
                 <Footer />
             </div>
@@ -279,7 +313,7 @@ export default function AISearchWarehouse() {
                         <ArrowLeft className="h-4 w-4" /> Chỉnh sửa tiêu chí
                     </button>
                     <div className="hidden sm:block w-px h-4 bg-[var(--color-border)]" />
-                    <SelectionSummary selections={selections} />
+                    <SelectionSummary selections={selections} attributes={attributes} />
                 </div>
             </div>
 

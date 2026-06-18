@@ -91,6 +91,7 @@ export interface FilterOptions {
   temperatureRange?: { min: number; max: number };
   availability?: ('available' | 'partially')[];
   certificationRequired?: boolean;
+  certifications?: string[];
   features?: string[];
   securityLevel?: ('basic' | 'medium' | 'high')[];
 }

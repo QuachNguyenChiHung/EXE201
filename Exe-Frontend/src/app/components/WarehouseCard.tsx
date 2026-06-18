@@ -21,6 +21,7 @@ import { SubscriptionTierBadge, SubscriptionTierStrip } from './SubscriptionTier
 import { SUBSCRIPTION_TIERS } from '../../types';
 import { toast } from 'sonner';
 import { WarehouseReviewsModal } from './WarehouseReviewsModal';
+import { useBookmarks } from '../../hooks/useBookmarks';
 
 interface WarehouseCardProps {
   warehouse: CompositeWarehouse;
@@ -30,36 +31,29 @@ interface WarehouseCardProps {
 }
 
 // ─── Helpers to derive stats from sections ────────────────────────────────────
-function getEffectivePrice(warehouse: CompositeWarehouse): number {
-  // Prefer the minimum monthly price across all section tiers
-  const sectionPrices: number[] = [];
-  warehouse.sections?.forEach(s =>
-    s.priceTiers?.forEach(t => {
-      if (t.unit === 'month' && t.value > 0) sectionPrices.push(t.value);
-    }),
-  );
-  if (sectionPrices.length > 0) return Math.min(...sectionPrices);
-  // Fall back to top-level tiers or legacy price
-  const tierPrices = (warehouse.priceTiers ?? [])
-    .filter(t => t.unit === 'month' && t.value > 0)
-    .map(t => t.value);
-  if (tierPrices.length > 0) return Math.min(...tierPrices);
-  return warehouse.pricePerCubicMeter;
+interface LowestPriceContext {
+  value: number;
+  timeUnit?: string;
+  areaUnit?: string;
 }
 
-function getMaxEffectivePrice(warehouse: CompositeWarehouse): number | null {
-  const sectionPrices: number[] = [];
-  warehouse.sections?.forEach(s =>
-    s.priceTiers?.forEach(t => {
-      if (t.unit === 'month' && t.value > 0) sectionPrices.push(t.value);
-    }),
-  );
-  if (sectionPrices.length > 1) return Math.max(...sectionPrices);
-  const tierPrices = (warehouse.priceTiers ?? [])
-    .filter(t => t.unit === 'month' && t.value > 0)
-    .map(t => t.value);
-  if (tierPrices.length > 1) return Math.max(...tierPrices);
-  return null;
+function getLowestPriceInfo(warehouse: CompositeWarehouse): LowestPriceContext | null {
+  let lowest: LowestPriceContext | null = null;
+  
+  const checkTier = (t: any) => {
+    if (t.value > 0 && (!lowest || t.value < lowest.value)) {
+      lowest = { value: t.value, timeUnit: t.timeUnit, areaUnit: t.areaUnit };
+    }
+  };
+
+  warehouse.sections?.forEach(s => s.priceTiers?.forEach(checkTier));
+  warehouse.priceTiers?.forEach(checkTier);
+
+  if (!lowest && warehouse.pricePerCubicMeter) {
+      lowest = { value: warehouse.pricePerCubicMeter, areaUnit: 'm3', timeUnit: 'month' };
+  }
+
+  return lowest;
 }
 
 function getEffectiveTempRange(warehouse: CompositeWarehouse): { min: number; max: number } {
@@ -90,7 +84,8 @@ export function WarehouseCard({
 }: WarehouseCardProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { bookmarkedIds, compareIds, ratings, toggleBookmark, toggleCompare } = useApp();
+  const { compareIds, ratings, toggleCompare } = useApp();
+  const { bookmarkedIds, toggleBookmark } = useBookmarks();
 
   const [allRatings, setAllRatings] = useState(ratings || []);
 
@@ -117,8 +112,7 @@ export function WarehouseCard({
 
   const hasSections = (warehouse.sections?.length ?? 0) > 0;
   const availableSections = warehouse.sections?.filter(s => s.availability !== 'full').length ?? 0;
-  const effectivePrice = getEffectivePrice(warehouse);
-  const maxPrice = getMaxEffectivePrice(warehouse);
+  const lowestPriceInfo = getLowestPriceInfo(warehouse);
   const tempRange = getEffectiveTempRange(warehouse);
   const availableCapacity = getEffectiveAvailableCapacity(warehouse);
 
@@ -164,24 +158,30 @@ export function WarehouseCard({
 
   const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await toggleBookmark(warehouse.id_warehouse);
-    toast.success(
-      isBookmarked ? 'Đã xoá khỏi danh sách lưu' : 'Đã lưu kho lạnh!',
-    );
+    try {
+      await toggleBookmark(warehouse.id_warehouse);
+      toast.success(isBookmarked ? 'Đã bỏ lưu kho' : 'Đã lưu kho thành công');
+    } catch (err: any) {
+      if (err.message === 'AUTH_REQUIRED') {
+        toast.error('Vui lòng đăng nhập với tài khoản người thuê để lưu kho');
+      } else {
+        toast.error('Có lỗi xảy ra khi lưu kho');
+      }
+    }
   };
 
   const handleCompare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (compareIsFull) {
+    if (!compareIds.includes(warehouse.id_warehouse) && compareIds.length >= 3) {
       toast.error('Chỉ được so sánh tối đa 3 kho cùng lúc');
       return;
     }
-    toggleCompare(warehouse.id_warehouse);
+    toggleCompare(warehouse);
   };
 
   return (
     <div
-      className="bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden cursor-pointer hover:border-[var(--color-primary)] transition-colors"
+      className="bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden cursor-pointer hover:border-[var(--color-primary)] transition-colors flex flex-col h-full"
       style={
         isInCompare
           ? { borderColor: 'var(--color-primary)', borderWidth: 2 }
@@ -316,7 +316,7 @@ export function WarehouseCard({
         </button>
       </div>
 
-      <div className={`${compact ? 'p-3 space-y-2' : 'p-4 space-y-4'}`}>
+      <div className={`flex-1 flex flex-col ${compact ? 'p-3 space-y-2' : 'p-4 space-y-4'}`}>
         {/* Name & location */}
         <div>
           <div className="flex items-center gap-1.5 mb-0.5">
@@ -339,34 +339,36 @@ export function WarehouseCard({
           </div>
 
           {/* Live rating row */}
-          {displayScore !== null && displayScore > 0 && (
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); setShowReviews(true); }}
-              className="flex items-center gap-1 mt-1 hover:opacity-75 transition-opacity"
-            >
-              {[1, 2, 3, 4, 5].map(n => (
-                <Star
-                  key={n}
-                  style={{
-                    width: compact ? 10 : 12,
-                    height: compact ? 10 : 12,
-                    color: n <= Math.round(displayScore!) ? '#f59e0b' : 'var(--color-border)',
-                    fill: n <= Math.round(displayScore!) ? '#f59e0b' : 'transparent',
-                  }}
-                />
-              ))}
-              <span
-                className="ml-0.5"
-                style={{
-                  fontSize: compact ? '0.6rem' : '0.7rem',
-                  color: 'var(--color-text-muted)',
-                }}
+          <div className="h-5 flex items-center mt-1">
+            {displayScore !== null && displayScore > 0 ? (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setShowReviews(true); }}
+                className="flex items-center gap-1 hover:opacity-75 transition-opacity"
               >
-                {displayScore!.toFixed(1)} ({displayCount})
-              </span>
-            </button>
-          )}
+                {[1, 2, 3, 4, 5].map(n => (
+                  <Star
+                    key={n}
+                    style={{
+                      width: compact ? 10 : 12,
+                      height: compact ? 10 : 12,
+                      color: n <= Math.round(displayScore!) ? '#f59e0b' : 'var(--color-border)',
+                      fill: n <= Math.round(displayScore!) ? '#f59e0b' : 'transparent',
+                    }}
+                  />
+                ))}
+                <span
+                  className="ml-0.5"
+                  style={{
+                    fontSize: compact ? '0.6rem' : '0.7rem',
+                    color: 'var(--color-text-muted)',
+                  }}
+                >
+                  {displayScore!.toFixed(1)} ({displayCount})
+                </span>
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {!compact && (
@@ -466,67 +468,71 @@ export function WarehouseCard({
         )}
 
         {/* Price & CTA — price derived from sections */}
-        <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-[10px] text-[var(--color-text-muted)] mb-0.5">
-              {hasSections ? 'Giá từ' : 'Giá thuê'}
-            </div>
-            <div
-              className="font-bold text-[var(--color-primary)]"
-              style={{ fontSize: compact ? '0.75rem' : undefined }}
-            >
-              {formatPrice(effectivePrice)}
-              {maxPrice && maxPrice !== effectivePrice && (
-                <span className="font-bold text-[var(--color-primary)]">
-                  {' '}–{' '}{formatPrice(maxPrice)}
-                </span>
-              )}
-              <span
-                className="text-[var(--color-text-muted)]"
-                style={{ fontSize: '0.7rem' }}
+        <div className="mt-auto flex flex-col gap-3">
+          <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[10px] text-[var(--color-text-muted)] mb-0.5">
+                {hasSections ? 'Giá từ' : 'Giá thuê'}
+              </div>
+              <div
+                className="font-bold text-[var(--color-primary)]"
+                style={{ fontSize: compact ? '0.75rem' : undefined }}
               >
-                /m³/tháng
-              </span>
+                {lowestPriceInfo ? (
+                  <>
+                    {formatPrice(lowestPriceInfo.value)}
+                    <span
+                      className="text-[var(--color-text-muted)]"
+                      style={{ fontSize: '0.7rem' }}
+                    >
+                      /{lowestPriceInfo.areaUnit === 'sector' ? 'khu' : lowestPriceInfo.areaUnit || 'm³'}
+                      /{lowestPriceInfo.timeUnit === 'day' ? 'ngày' : lowestPriceInfo.timeUnit === 'week' ? 'tuần' : lowestPriceInfo.timeUnit === 'year' ? 'năm' : 'tháng'}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[var(--color-text-muted)]" style={{ fontSize: '0.8rem' }}>Đang cập nhật</span>
+                )}
+              </div>
             </div>
+            <Button
+              size="sm"
+              className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] shrink-0"
+              style={compact ? { fontSize: '0.7rem', padding: '0.25rem 0.5rem', height: 'auto' } : {}}
+              onClick={(e) => {
+                e.stopPropagation();
+                const url = `/renter/warehouse/${warehouse.id_warehouse}`;
+                if (openInNewTab) window.open(url, '_blank');
+                else navigate(url);
+              }}
+            >
+              Xem chi tiết
+            </Button>
           </div>
-          <Button
-            size="sm"
-            className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] shrink-0"
-            style={compact ? { fontSize: '0.7rem', padding: '0.25rem 0.5rem', height: 'auto' } : {}}
-            onClick={(e) => {
-              e.stopPropagation();
-              const url = `/renter/warehouse/${warehouse.id_warehouse}`;
-              if (openInNewTab) window.open(url, '_blank');
-              else navigate(url);
-            }}
-          >
-            Xem chi tiết
-          </Button>
-        </div>
 
-        {/* Compare toggle */}
-        {showCompare && (
-          <button
-            type="button"
-            onClick={handleCompare}
-            disabled={compareIsFull}
-            className="w-full flex items-center justify-center gap-2 text-xs py-2 border transition-colors disabled:opacity-40"
-            style={{
-              borderColor: isInCompare
-                ? 'var(--color-primary)'
-                : 'var(--color-border)',
-              color: isInCompare
-                ? 'var(--color-primary)'
-                : 'var(--color-text-secondary)',
-              background: isInCompare
-                ? 'rgba(37,99,235,0.06)'
-                : 'transparent',
-            }}
-          >
-            <BarChart2 className="h-3.5 w-3.5" />
-            {isInCompare ? 'Đang so sánh ✓' : 'Thêm vào so sánh'}
-          </button>
-        )}
+          {/* Compare toggle */}
+          {showCompare && (
+            <button
+              type="button"
+              onClick={handleCompare}
+              disabled={compareIsFull}
+              className="w-full flex items-center justify-center gap-2 text-xs py-2 border transition-colors disabled:opacity-40"
+              style={{
+                borderColor: isInCompare
+                  ? 'var(--color-primary)'
+                  : 'var(--color-border)',
+                color: isInCompare
+                  ? 'var(--color-primary)'
+                  : 'var(--color-text-secondary)',
+                background: isInCompare
+                  ? 'rgba(37,99,235,0.06)'
+                  : 'transparent',
+              }}
+            >
+              <BarChart2 className="h-3.5 w-3.5" />
+              {isInCompare ? 'Đang so sánh ✓' : 'Thêm vào so sánh'}
+            </button>
+          )}
+        </div>
       </div>
 
       {showReviews && (

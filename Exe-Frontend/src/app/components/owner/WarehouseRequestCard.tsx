@@ -152,9 +152,16 @@ export function WarehouseRequestCard({
                       </div>
                       <div>
                         <p className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "var(--color-text-muted)" }}>Thời gian thuê</p>
-                        <p className="text-sm flex items-center gap-1">
+                        <p className="text-sm flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
                             {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' ? 'Năm' : requestDetail.durationUnit}
+                          </span>
+                          {requestDetail.startDate && requestDetail.endDate && (
+                            <span className="text-[11px] text-[var(--color-text-muted)] ml-4.5">
+                              (Từ {new Date(requestDetail.startDate).toLocaleDateString('vi-VN')} đến {new Date(requestDetail.endDate).toLocaleDateString('vi-VN')})
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -218,23 +225,31 @@ export function WarehouseRequestCard({
                                 {fmtCurrency(totalExpected)}
                               </span>
                             </div>
+                            {requestDetail.renterOfferedPrice && (
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span style={{ color: "var(--color-text-muted)" }}>Khách hàng đề xuất (trọn gói):</span>
+                                  <span className="font-bold text-orange-600">
+                                    {fmtCurrency(requestDetail.renterOfferedPrice)}
+                                  </span>
+                                </div>
+                            )}
+                            {requestDetail.offeredPrice && (
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span style={{ color: "var(--color-text-muted)" }}>Bạn đã chốt giá (trọn gói):</span>
+                                  <span className="font-bold text-green-600">
+                                    {fmtCurrency(requestDetail.offeredPrice)}
+                                  </span>
+                                </div>
+                            )}
                           </div>
                         );
                       })()}
                     </div>
                   )}
 
-                  {/* Lời nhắn / Mức giá trọn gói */}
-                  {(requestDetail.otherDetail || requestDetail.renterOfferedPrice) && (
+                  {/* Lời nhắn */}
+                  {requestDetail.otherDetail && (
                     <div className="space-y-3 pt-3 border-t border-[var(--color-border)]">
-                      {requestDetail.renterOfferedPrice && (
-                        <div>
-                          <p className="text-[10px] mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Khách hàng đề xuất mức giá trọn gói</p>
-                          <p className="text-sm font-bold text-orange-600">
-                            {fmtCurrency(requestDetail.renterOfferedPrice)}
-                          </p>
-                        </div>
-                      )}
                       {requestDetail.otherDetail && (
                         <div
                           className="px-3 py-2 text-xs border-l-2"

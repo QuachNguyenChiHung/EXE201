@@ -6,6 +6,8 @@ import { CompositeWarehouse } from "../../../types";
 import { useApp } from "../../../context/AppContext";
 import { toast } from "sonner";
 import { Star, List, ChevronUp, ChevronDown } from "lucide-react";
+import { useBookmarks } from "../../../hooks/useBookmarks";
+import { renterService } from "../../../services/renterService";
 
 import { WarehouseDetailGallery } from "../../components/renter/WarehouseDetailGallery";
 import { WarehouseDetailInfo } from "../../components/renter/WarehouseDetailInfo";
@@ -16,7 +18,8 @@ export default function WarehouseDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const { bookmarkedIds, toggleBookmark, warehouses: warehouseList, ratings: allRatings } = useApp();
+    const { warehouses: warehouseList, ratings: allRatings } = useApp();
+    const { bookmarkedIds, toggleBookmark } = useBookmarks();
 
     const [warehouse, setWarehouse] = useState<CompositeWarehouse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -30,23 +33,15 @@ export default function WarehouseDetail() {
 
     useEffect(() => {
         if (!id) return;
-        const fromStore = (warehouseList as any[]).find(w => w.id_warehouse?.toString() === id);
-        if (fromStore) {
-            setWarehouse(fromStore);
-            setLoading(false);
-            return;
-        }
-        // Fallback to API if not in store
-        import("../../../services/apiClient").then(({ warehousesAPI }) => {
-            warehousesAPI.getById(id)
-                .then(data => {
-                    if (data) setWarehouse(data);
-                    else { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); }
-                })
-                .catch(() => { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); })
-                .finally(() => setLoading(false));
-        });
-    }, [id, warehouseList, navigate]);
+        setLoading(true);
+        renterService.getWarehouseDetail(id)
+            .then(data => {
+                if (data) setWarehouse(data);
+                else { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); }
+            })
+            .catch(() => { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); })
+            .finally(() => setLoading(false));
+    }, [id, navigate]);
 
     if (loading) {
         return (
@@ -88,9 +83,11 @@ export default function WarehouseDetail() {
                                     Bảo trì
                                 </span>
                             )}
-                            <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
-                                {warehouse.ownerName}
-                            </span>
+                            {warehouse.ownerName && (
+                                <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
+                                    {warehouse.ownerName}
+                                </span>
+                            )}
                         </div>
                     </div>
                     <div>

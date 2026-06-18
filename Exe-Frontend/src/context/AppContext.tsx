@@ -26,9 +26,8 @@ interface AppState {
   contracts: CompositeContract[];
   ratings: Rating[];
 
-  // Bookmarks
-  bookmarkedIds: number[];
-  compareIds: number[];
+  // Compare
+  compareWarehouses: CompositeWarehouse[];
 
   // Loading states
   loading: {
@@ -76,11 +75,10 @@ interface AppContextValue extends AppState {
   updateRating: (id: string | number, updates: Partial<Rating>) => Promise<void>;
   deleteRating: (id: string | number) => Promise<void>;
 
-  // Bookmark actions
-  toggleBookmark: (warehouseId: number) => Promise<void>;
-  toggleCompare: (warehouseId: number) => void;
+  // Compare actions
+  compareIds: number[];
+  toggleCompare: (warehouse: CompositeWarehouse) => void;
   clearCompare: () => void;
-  clearAllBookmarks: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -94,8 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     requests: [],
     contracts: [],
     ratings: [],
-    bookmarkedIds: [],
-    compareIds: [],
+    compareWarehouses: [],
     loading: {
       users: false,
       warehouses: false,
@@ -120,12 +117,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Load bookmarks when user changes
   useEffect(() => {
-    if (state.user) {
-      bookmarksAPI.getByUser(state.user.id_user).then(data => {
-        setState(prev => ({ ...prev, bookmarkedIds: data.warehouseIds }));
-      }).catch(console.error);
-    } else {
-      setState(prev => ({ ...prev, bookmarkedIds: [], compareIds: [] }));
+    if (!state.user) {
+      setState(prev => ({ ...prev, compareWarehouses: [] }));
     }
   }, [state.user?.id_user]);
 
@@ -142,8 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...prev,
       user: null,
       isAuthenticated: false,
-      bookmarkedIds: [],
-      compareIds: [],
+      compareWarehouses: [],
     }));
   };
 
@@ -280,39 +272,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshWarehouses();
   };
 
-  // Bookmark actions
-  const toggleBookmark = async (warehouseId: number) => {
-    if (!state.user) return;
-
-    const newBookmarks = state.bookmarkedIds.includes(warehouseId)
-      ? state.bookmarkedIds.filter(id => id !== warehouseId)
-      : [...state.bookmarkedIds, warehouseId];
-
-    await bookmarksAPI.saveForUser(state.user.id_user, newBookmarks);
-    setState(prev => ({ ...prev, bookmarkedIds: newBookmarks }));
-  };
-
-  const toggleCompare = (warehouseId: number) => {
-    setState(prev => ({
-      ...prev,
-      compareIds: prev.compareIds.includes(warehouseId)
-        ? prev.compareIds.filter(id => id !== warehouseId)
-        : [...prev.compareIds, warehouseId],
-    }));
+  // Compare actions
+  const toggleCompare = (warehouse: CompositeWarehouse) => {
+    setState(prev => {
+      const exists = prev.compareWarehouses.some(w => w.id_warehouse === warehouse.id_warehouse);
+      return {
+        ...prev,
+        compareWarehouses: exists
+          ? prev.compareWarehouses.filter(w => w.id_warehouse !== warehouse.id_warehouse)
+          : [...prev.compareWarehouses, warehouse],
+      };
+    });
   };
 
   const clearCompare = () => {
-    setState(prev => ({ ...prev, compareIds: [] }));
-  };
-
-  const clearAllBookmarks = async () => {
-    if (!state.user) return;
-    await bookmarksAPI.saveForUser(state.user.id_user, []);
-    setState(prev => ({ ...prev, bookmarkedIds: [] }));
+    setState(prev => ({ ...prev, compareWarehouses: [] }));
   };
 
   const value: AppContextValue = {
     ...state,
+    compareIds: state.compareWarehouses.map(w => w.id_warehouse),
     login,
     logout,
     setUser,
@@ -334,10 +313,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     submitRating,
     updateRating,
     deleteRating,
-    toggleBookmark,
     toggleCompare,
     clearCompare,
-    clearAllBookmarks,
   };
 
   // Auto-load mock data on app start so pages have initial data without needing Data Migration

@@ -40,9 +40,22 @@ export default function WarehouseForm() {
           return;
         }
 
+        const locationData = await ownerService.getWarehouseLocation(Number(id));
+
+        let rawAddress = data.location_address_text || data.address || "";
+        if (data.location_province && rawAddress.endsWith(`, ${data.location_province}`)) {
+          rawAddress = rawAddress.slice(0, -(`, ${data.location_province}`.length));
+        }
+        if (data.location_commune && rawAddress.endsWith(`, ${data.location_commune}`)) {
+          rawAddress = rawAddress.slice(0, -(`, ${data.location_commune}`.length));
+        }
+
         // Setup default arrays if null
         setWarehouse({
           ...data,
+          location_lat: locationData.locationLat || data.location_lat,
+          location_long: locationData.locationLong || data.location_long,
+          address: rawAddress,
           sections: data.sections || [],
           images: data.images || [],
           certifications: data.certifications || [],
@@ -110,20 +123,20 @@ export default function WarehouseForm() {
       const dto = {
         name: warehouse.name,
         description: warehouse.description,
-        locationAddressText: warehouse.location_address_text || warehouse.address,
+        locationAddressText: [warehouse.address, warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", "),
         locationProvince: warehouse.location_province,
         locationCommune: warehouse.location_commune,
         locationLong: warehouse.location_long,
         locationLat: warehouse.location_lat,
         locationPostalCode: warehouse.location_postal_code || "",
         sections: (warehouse.sections || []).map(sec => ({
-          id_section: sec.id_section, // Included for update
+          id: sec.id_section > 1000000000 ? null : sec.id_section, // Backend expects 'id', null for brand new sections
           sector: sec.sector,
           totalCapacity: sec.total_capacity,
           availableCapacity: sec.available_capacity,
-          tempMin: sec.temp_min,
-          tempMax: sec.temp_max,
-          humidity: sec.humidity,
+          tempMin: parseFloat(String(sec.temp_min)) || 0,
+          tempMax: parseFloat(String(sec.temp_max)) || 0,
+          humidity: parseFloat(String(sec.humidity)) || 0,
           hasCertification: sec.hasCertification,
           priceTiers: (sec.priceTiers || []).map((pt: any) => ({
             label: pt.label,

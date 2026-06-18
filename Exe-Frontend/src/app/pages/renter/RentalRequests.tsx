@@ -1,91 +1,162 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { useApp } from '../../../context/AppContext';
+import { renterService } from '../../../services/renterService';
 import { Send, ArrowLeft, ClipboardList, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { CompositeWarehouse, CompositeRentRequest } from "../../../types";
 
-import { FilterTab } from "../../components/renter/RentalRequestUtils";
-import { RentalRequestFilters } from "../../components/renter/RentalRequestFilters";
+import { FilterTab, TABS } from "../../components/renter/RentalRequestUtils";
 import { RentalRequestCard } from "../../components/renter/RentalRequestCard";
 
 export default function RentalRequests() {
     const navigate = useNavigate();
-    const { user, isAuthenticated, requests: allRequests, warehouses: warehouseList, withdrawRequest } = useApp();
+    const { user, isAuthenticated, warehouses: warehouseList, loading: appLoading } = useApp();
+
+    const [tab, setTab] = useState<FilterTab>("all");
+    const [expandedId, setExpandedId] = useState<number | null>(null);
+
+    // Pagination & Caching
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [requestsList, setRequestsList] = useState<CompositeRentRequest[]>([]);
+    const [cache, setCache] = useState<Record<string, { list: CompositeRentRequest[], totalPages: number, totalElements: number }>>({});
 
     const warehouses = useMemo<Record<string, CompositeWarehouse>>(
         () => Object.fromEntries(warehouseList.map((w) => [w.id_warehouse?.toString(), w])),
         [warehouseList],
     );
 
-    const requests = useMemo(
-        () => allRequests.filter((r) => r.id_renter === user?.id_user),
-        [allRequests, user],
-    ) as CompositeRentRequest[];
-
-    const [tab, setTab] = useState<FilterTab>("all");
-    const [expandedId, setExpandedId] = useState<number | null>(null);
-
     useEffect(() => {
-        if (!isAuthenticated || user?.role !== "RENTER") navigate("/login");
+        const savedUser = localStorage.getItem('user');
+        if (!savedUser && !isAuthenticated) {
+            navigate("/login");
+        } else if (user && user.role !== "RENTER") {
+            navigate("/login");
+        }
     }, [isAuthenticated, user, navigate]);
 
-    // Auto-expand first inprogress
+    const fetchPage = useCallback(async (p: number, t: FilterTab, isPreload: boolean = false, forceRefetch: boolean = false) => {
+        const cacheKey = `${t}_${p}`;
+        if (!forceRefetch && cache[cacheKey]) {
+            if (!isPreload) {
+                setRequestsList(cache[cacheKey].list);
+                setTotalPages(cache[cacheKey].totalPages);
+                setTotalElements(cache[cacheKey].totalElements);
+                setLoading(false);
+            }
+            return cache[cacheKey];
+        }
+
+        if (!isPreload) setLoading(true);
+        try {
+            const dataRes = await renterService.getMyRequests(p, 10, t === 'all' ? undefined : t);
+            const mapped = (dataRes.content as any[]).map(r => {
+                const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
+                const details = r.details || [];
+                const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
+                const sectionName = details.length > 1 
+                  ? `${details.length} phân khu` 
+                  : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
+                const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
+                const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
+
+                return {
+                    ...r,
+                    id_rentRequest: r.id || r.id_rentRequest,
+                    id_warehouse: matchingWarehouse?.id_warehouse,
+                    cargo_description: r.cargoDescription,
+                    cargoType: r.cargoDescription,
+                    other_detail: r.otherDetail,
+                    message: r.otherDetail,
+                    duration: r.duration,
+                    duration_unit: r.durationUnit,
+                    durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
+                    status: r.status,
+                    offered_price: r.offeredPrice,
+                    renterOfferedPrice: r.renterOfferedPrice,
+                    owner_note: r.ownerNote,
+                    rejection_reason: r.rejectionReason,
+                    requestedCapacity,
+                    priceTierLabel,
+                    priceTierValue,
+                    sectionName,
+                    sectionId: details[0]?.sector,
+                    start_date: r.startDate,
+                    end_date: r.endDate,
+                    submit_at: r.createdAt || r.submit_at || new Date().toISOString(),
+                    details: r.details
+                } as CompositeRentRequest;
+            });
+            
+            const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
+            setCache(prev => ({ ...prev, [cacheKey]: newData }));
+
+            if (!isPreload) {
+                setRequestsList(mapped);
+                setTotalPages(dataRes.totalPages);
+                setTotalElements(dataRes.totalElements);
+            }
+            return newData;
+        } catch (err: any) {
+            console.error('Failed to fetch requests', err);
+            if (!isPreload) toast.error('Không tải được danh sách yêu cầu');
+        } finally {
+            if (!isPreload) setLoading(false);
+        }
+    }, [cache, warehouseList]);
+
     useEffect(() => {
-        const inprog = requests.find((r) => r.status === "inprogress");
-        if (inprog && !expandedId) setExpandedId(inprog.id_rentRequest);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+        if (!user || user.role !== 'RENTER' || appLoading.warehouses) return;
+        fetchPage(page, tab).then(data => {
+            if (data && page < data.totalPages - 1) {
+                fetchPage(page + 1, tab, true);
+            }
+        });
+    }, [page, tab, user?.email, appLoading.warehouses]);
 
     const handleWithdraw = async (id: number) => {
         try {
-            await withdrawRequest(id);
+            await renterService.cancelRequest(id);
             if (expandedId === id) setExpandedId(null);
             toast.success("Đã rút yêu cầu thuê kho.");
+            
+            // Invalidate cache and refetch current page
+            setCache({});
+            fetchPage(page, tab, false, true);
         } catch (err) {
             toast.error('Không thể rút yêu cầu');
         }
     };
 
-    const filtered = useMemo(
-        () => tab === "all" ? requests : requests.filter((r) => r.status === tab),
-        [requests, tab],
-    );
 
-    const counts: Record<FilterTab, number> = {
-        all: requests.length,
-        sent: requests.filter((r) => r.status === "sent").length,
-        viewed: requests.filter((r) => r.status === "viewed").length,
-        inprogress: requests.filter((r) => r.status === "inprogress").length,
-        contracted: requests.filter((r) => r.status === "contracted").length,
-        rejected: requests.filter((r) => r.status === "rejected").length,
-    };
 
     return (
         <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>
             <Navbar />
 
-            <div className="max-w-[900px] w-full mx-auto px-4 py-8">
+            <div className="bento-container">
                 {/* ── Header ── */}
-                <div className="mb-6">
-                    <div className="flex items-center gap-3 mb-2">
-                        <button
-                            onClick={() => navigate("/renter")}
-                            className="flex items-center gap-1 text-sm hover:underline"
-                            style={{ color: "var(--color-text-secondary)" }}
-                        >
-                            <ArrowLeft className="h-4 w-4" /> Dashboard
-                        </button>
-                    </div>
+                <div className="bento-header">
+                    <button
+                        onClick={() => navigate("/renter")}
+                        className="flex items-center gap-1 text-sm mb-2 hover:underline"
+                        style={{ color: "var(--color-text-secondary)" }}
+                    >
+                        <ArrowLeft className="h-4 w-4" /> Dashboard
+                    </button>
                     <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-3 mb-1">
-                                <div className="w-9 h-9 flex items-center justify-center" style={{ background: "var(--color-primary)" }}>
-                                    <ClipboardList className="h-5 w-5 text-white" />
-                                </div>
-                                <h1 className="text-xl font-bold">Yêu cầu thuê kho</h1>
+                        <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 flex items-center justify-center shrink-0" style={{ background: "var(--color-primary)" }}>
+                                <ClipboardList className="h-5 w-5 text-white" />
                             </div>
-                            <p style={{ color: "var(--color-text-secondary)" }}>Theo dõi trạng thái các yêu cầu bạn đã gửi</p>
+                            <div>
+                                <h1>Yêu cầu thuê kho</h1>
+                                <p style={{ color: "var(--color-text-secondary)" }}>Theo dõi trạng thái các yêu cầu bạn đã gửi</p>
+                            </div>
                         </div>
                         <button
                             onClick={() => navigate("/renter/search")}
@@ -97,15 +168,27 @@ export default function RentalRequests() {
                     </div>
                 </div>
 
-                <RentalRequestFilters
-                    activeTab={tab}
-                    onTabChange={setTab}
-                    counts={counts}
-                />
+                {/* ── Tabs ── */}
+                <div className="flex border-b border-[var(--color-border)] mb-4 overflow-x-auto">
+                    {TABS.map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => { setTab(t.key); setPage(0); }}
+                            className="px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors"
+                            style={{
+                                borderBottomColor: tab === t.key ? 'var(--color-primary)' : 'transparent',
+                                color: tab === t.key ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                                fontWeight: tab === t.key ? 600 : 400,
+                            }}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
 
                 {/* ── Results bar ── */}
                 <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>{filtered.length} yêu cầu</p>
+                    <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>{totalElements} yêu cầu</p>
                     {expandedId && (
                         <button
                             onClick={() => setExpandedId(null)}
@@ -118,35 +201,38 @@ export default function RentalRequests() {
                 </div>
 
                 {/* ── List ── */}
-                {requests.length === 0 ? (
-                    <div className="border p-10 text-center bg-[var(--color-surface)]">
-                        <ClipboardList className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--color-primary)" }} />
+                {loading ? (
+                    <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
+                    </div>
+                ) : requestsList.length === 0 ? (
+                    <div className="border border-[var(--color-border)] p-10 text-center bg-[var(--color-surface)]">
+                        <ClipboardList className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--color-text-muted)" }} />
                         <h3 className="mb-2 font-semibold">Chưa có yêu cầu nào</h3>
                         <p className="text-sm mb-5" style={{ color: "var(--color-text-secondary)" }}>
-                            Tìm kiếm và gửi yêu cầu thuê kho để bắt đầu.
+                            {tab === "all" ? "Tìm kiếm và gửi yêu cầu thuê kho để bắt đầu." : "Không có yêu cầu nào trong trạng thái này."}
                         </p>
-                        <button
-                            onClick={() => navigate("/renter/search")}
-                            className="px-6 py-2 text-sm text-white"
-                            style={{ background: "var(--color-primary)" }}
-                        >
-                            Tìm kho ngay
-                        </button>
-                    </div>
-                ) : filtered.length === 0 ? (
-                    <div className="text-center py-12">
-                        <p style={{ color: "var(--color-text-secondary)" }}>Không có yêu cầu nào trong trạng thái này.</p>
-                        <button
-                            onClick={() => setTab("all")}
-                            className="text-sm mt-3 underline"
-                            style={{ color: "var(--color-primary)" }}
-                        >
-                            Xem tất cả yêu cầu
-                        </button>
+                        {tab === 'all' ? (
+                            <button
+                                onClick={() => navigate("/renter/search")}
+                                className="px-6 py-2 text-sm text-white"
+                                style={{ background: "var(--color-primary)" }}
+                            >
+                                Tìm kho ngay
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => { setTab("all"); setPage(0); }}
+                                className="text-sm mt-3 underline"
+                                style={{ color: "var(--color-primary)" }}
+                            >
+                                Xem tất cả yêu cầu
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-3 pb-20">
-                        {filtered.map((req) => (
+                    <div className="space-y-2">
+                        {requestsList.map((req) => (
                             <RentalRequestCard
                                 key={req.id_rentRequest}
                                 request={req}
@@ -156,6 +242,31 @@ export default function RentalRequests() {
                                 onWithdraw={handleWithdraw}
                             />
                         ))}
+                    </div>
+                )}
+
+                {/* ── Pagination ── */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded mt-4">
+                        <span className="text-sm text-[var(--color-text-secondary)]">
+                            Trang {page + 1} / {totalPages}
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setPage(p => Math.max(0, p - 1))}
+                                disabled={page === 0}
+                                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Trước
+                            </button>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                                disabled={page >= totalPages - 1}
+                                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Sau
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

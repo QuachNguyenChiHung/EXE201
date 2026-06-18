@@ -1,8 +1,11 @@
+import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { Shield, AlertTriangle, Upload, X, FileText, CheckCircle2 } from "lucide-react";
 import { CertFile } from "./WarehouseFormUtils";
+import { ownerService } from "../../../services/ownerService";
+import type { CertificationType } from "../../../types";
 
 interface Props {
   certFiles: CertFile[];
@@ -12,6 +15,19 @@ interface Props {
 }
 
 export function WarehouseFormCerts({ certFiles, setCertFiles, existingCerts, setExistingCerts }: Props) {
+  const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
+
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const data = await ownerService.getCertifications();
+        setCertTypes(data || []);
+      } catch (err) {
+        console.error("Failed to fetch cert types", err);
+      }
+    };
+    fetchTypes();
+  }, []);
 
   const handleCertUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
@@ -93,8 +109,22 @@ export function WarehouseFormCerts({ certFiles, setCertFiles, existingCerts, set
                       {cert.label || "Chứng nhận hệ thống"}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-[var(--color-text-secondary)]">Đã xác minh</span>
-                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      {cert.status === "VERIFIED" ? (
+                        <>
+                          <span className="text-xs text-[var(--color-text-secondary)]">Đã xác minh</span>
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        </>
+                      ) : cert.status === "REJECTED" ? (
+                        <>
+                          <span className="text-xs text-[var(--color-text-secondary)]">Bị từ chối</span>
+                          <AlertTriangle className="h-3 w-3 text-red-500" />
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs text-[var(--color-text-secondary)]">Chờ xác minh</span>
+                          <div className="h-3 w-3 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -126,9 +156,30 @@ export function WarehouseFormCerts({ certFiles, setCertFiles, existingCerts, set
                     <p className="text-xs text-[var(--color-text-secondary)]">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => removeNewCert(i)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-3">
+                  <select
+                    className="text-sm border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg)] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                    value={file.certTypeId || ""}
+                    onChange={(e) => {
+                      const newCertFiles = [...certFiles];
+                      newCertFiles[i].certTypeId = e.target.value;
+                      setCertFiles(newCertFiles);
+                    }}
+                  >
+                    <option value="" disabled>-- Chọn loại --</option>
+                    {certTypes.map(type => {
+                      const id = type.certID || type.id_certification || (type as any).id;
+                      return (
+                        <option key={id} value={id}>
+                          {type.label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <Button variant="ghost" size="icon" onClick={() => removeNewCert(i)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

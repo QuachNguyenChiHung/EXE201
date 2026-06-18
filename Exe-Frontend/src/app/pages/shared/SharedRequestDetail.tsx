@@ -110,9 +110,16 @@ export default function SharedRequestDetail() {
               </div>
               <div>
                 <p className="text-xs uppercase font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>Thời gian thuê</p>
-                <p className="text-sm flex items-center gap-1">
+                <p className="text-sm flex flex-col gap-0.5">
+                  <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4 text-[var(--color-text-muted)]" />
                     {request.duration} {request.durationUnit === 'MONTHS' ? 'Tháng' : request.durationUnit === 'YEARS' ? 'Năm' : request.durationUnit}
+                  </span>
+                  {request.startDate && request.endDate && (
+                    <span className="text-[11px] text-[var(--color-text-muted)] ml-5">
+                      (Từ {new Date(request.startDate).toLocaleDateString('vi-VN')} đến {new Date(request.endDate).toLocaleDateString('vi-VN')})
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

@@ -1,5 +1,8 @@
 import { CompositeContract } from "../../../types";
 import { ClipboardList, Calendar, Package, DollarSign, Edit3 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar as CalendarComponent } from "../ui/calendar";
 
 interface Props {
   contract: Partial<CompositeContract>;
@@ -48,13 +51,24 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Calendar className="h-4 w-4 text-gray-400" />
                 </div>
-                <input
-                  type="date"
-                  className={`${INPUT_CLS} pl-9`}
-                  style={INPUT_STYLE}
-                  value={contract.start_at || ""}
-                  onChange={(e) => onChange("start_at", e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={`${INPUT_CLS} pl-9 text-left flex items-center w-full`}
+                      style={INPUT_STYLE}
+                    >
+                      {contract.start_at ? format(parseISO(contract.start_at), "dd/MM/yyyy") : <span className="text-gray-400">dd/mm/yyyy</span>}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={contract.start_at ? parseISO(contract.start_at) : undefined}
+                      onSelect={(date) => onChange("start_at", date ? format(date, "yyyy-MM-dd") : "")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </Field>
             <Field label="Ngày kết thúc" required>
@@ -62,14 +76,24 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Calendar className="h-4 w-4 text-gray-400" />
                 </div>
-                <input
-                  type="date"
-                  className={`${INPUT_CLS} pl-9`}
-                  style={INPUT_STYLE}
-                  value={contract.end_at || ""}
-                  onChange={(e) => onChange("end_at", e.target.value)}
-                  min={contract.start_at}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={`${INPUT_CLS} pl-9 text-left flex items-center w-full`}
+                      style={INPUT_STYLE}
+                    >
+                      {contract.end_at ? format(parseISO(contract.end_at), "dd/MM/yyyy") : <span className="text-gray-400">dd/mm/yyyy</span>}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={contract.end_at ? parseISO(contract.end_at) : undefined}
+                      onSelect={(date) => onChange("end_at", date ? format(date, "yyyy-MM-dd") : "")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {request && contract.start_at && (
                 <div className="mt-2 flex">
@@ -153,9 +177,27 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                 const ownerOffer = request.offeredPrice;
                 const renterOffer = request.renterOfferedPrice;
                 
-                if (!ownerOffer && !renterOffer) return null;
+                let defaultExpected = 0;
+                if (request.details) {
+                  const totalMonthly = request.details.reduce((acc: number, d: any) => acc + ((d.rentedArea || 0) * (d.priceTierValue || 0)), 0);
+                  const isYears = request.durationUnit === 'YEARS' || request.durationUnit === 'Năm';
+                  const durationMultiplier = isYears ? ((request.duration || 1) * 12) : (request.duration || 1);
+                  defaultExpected = totalMonthly * durationMultiplier;
+                }
+                
+                if (!ownerOffer && !renterOffer && !defaultExpected) return null;
                 return (
                   <div className="mt-2 flex flex-col gap-2 text-xs">
+                    {defaultExpected > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onChange("monthlyRate", defaultExpected)}
+                        className="px-2 py-1.5 rounded border transition-colors cursor-pointer text-left"
+                        style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}
+                      >
+                        <span className="font-semibold block">Chọn giá gốc dự kiến: {defaultExpected.toLocaleString()} VNĐ</span>
+                      </button>
+                    )}
                     {ownerOffer != null && (
                       <button
                         type="button"
@@ -163,7 +205,7 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                         className="px-2 py-1.5 rounded border transition-colors cursor-pointer text-left"
                         style={{ borderColor: 'rgba(37, 99, 235, 0.3)', background: 'rgba(37, 99, 235, 0.05)', color: 'var(--color-primary)' }}
                       >
-                        <span className="font-semibold block">Chọn giá của bạn: {ownerOffer.toLocaleString()} VNĐ</span>
+                        <span className="font-semibold block">Chọn giá bạn đã chốt: {ownerOffer.toLocaleString()} VNĐ</span>
                       </button>
                     )}
                     {renterOffer != null && (

@@ -45,6 +45,11 @@ export function MapComponent({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    // Cleanup any existing leaflet id
+    if ((containerRef.current as any)._leaflet_id) {
+        (containerRef.current as any)._leaflet_id = null;
+    }
+
     const map = L.map(containerRef.current, {
       center,
       zoom,

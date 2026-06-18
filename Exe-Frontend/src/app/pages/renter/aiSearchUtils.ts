@@ -138,3 +138,58 @@ export const isAINotConfigured = (err: any): boolean =>
 
 export const fmtCurrency = (n: number) => 
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+
+export function buildSearchParams(selections: Record<string, string[]>): any {
+    const params: any = { page: 0, size: 50 }; // Fetch up to 50 for AI context
+
+    const locs = selections["location"] ?? [];
+    if (locs.length > 0 && locs[0] !== "other") {
+        params.province = locs[0];
+    }
+
+    const caps = selections["capacity"] ?? [];
+    if (caps.length > 0) {
+        const ranges: Record<string, [number, number]> = {
+            xs: [0, 200],
+            sm: [200, 500],
+            md: [500, 2000],
+            lg: [2000, 5000],
+            xl: [5000, Infinity],
+        };
+        let minArea = Infinity;
+        let maxArea = 0;
+        caps.forEach((c) => {
+            const [min, max] = ranges[c] ?? [0, Infinity];
+            if (min < minArea) minArea = min;
+            if (max > maxArea) maxArea = max;
+        });
+        if (minArea !== Infinity && minArea > 0) params.minArea = minArea;
+        if (maxArea > 0 && maxArea !== Infinity) params.maxArea = maxArea;
+    }
+
+    const budgets = selections["budget"] ?? [];
+    if (budgets.length > 0 && !budgets.includes("any")) {
+        const budgetRanges: Record<string, [number, number]> = {
+            budget: [0, 200000],
+            mid: [200001, 350000],
+            high: [350001, 500000],
+            premium: [500001, Infinity],
+        };
+        let minPrice = Infinity;
+        let maxPrice = 0;
+        budgets.forEach((b) => {
+            const [min, max] = budgetRanges[b] ?? [0, Infinity];
+            if (min < minPrice) minPrice = min;
+            if (max > maxPrice) maxPrice = max;
+        });
+        if (minPrice !== Infinity && minPrice > 0) params.minPrice = minPrice;
+        if (maxPrice > 0 && maxPrice !== Infinity) params.maxPrice = maxPrice;
+    }
+
+    const certs = (selections["certifications"] ?? []).filter((v) => v !== "none");
+    if (certs.length > 0) {
+        params.certTypeId = Number(certs[0]);
+    }
+
+    return params;
+}

@@ -1,27 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     MapPin, LayoutGrid, Check, Info, Shield, Droplets, Zap, Lock, AlertTriangle
 } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types';
-import { MapComponent } from '../MapComponent';
+import { WarehouseMapDisplay } from '../owner/WarehouseMapDisplay';
+import { renterService } from '../../../services/renterService';
 
 interface WarehouseDetailInfoProps {
     warehouse: CompositeWarehouse;
 }
 
 export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
+    const [fetchedLocation, setFetchedLocation] = useState<{lat: number, long: number} | null>(null);
+
+    useEffect(() => {
+        if (warehouse.id_warehouse) {
+            renterService.getWarehouseLocation(warehouse.id_warehouse)
+                .then(res => {
+                    setFetchedLocation({ lat: res.locationLat, long: res.locationLong });
+                })
+                .catch(err => console.error("Failed to fetch location", err));
+        }
+    }, [warehouse.id_warehouse]);
+
     // If sections don't exist, we fallback to warehouse stats
     const sections = warehouse.sections || [];
     const hasCertifications = warehouse.certifications && warehouse.certifications.length > 0;
+
+    const totalCapacity = sections.length > 0 ? sections.reduce((acc, s) => acc + s.total_capacity, 0) : (warehouse.stats?.totalCapacity || 0);
+    const availableCapacity = sections.length > 0 ? sections.reduce((acc, s) => acc + s.available_capacity, 0) : (warehouse.stats?.availableCapacity || 0);
+    const minTemp = sections.length > 0 ? Math.min(...sections.map(s => s.temp_min)) : (warehouse.stats?.temperatureMin ?? 0);
+    const maxTemp = sections.length > 0 ? Math.max(...sections.map(s => s.temp_max)) : (warehouse.stats?.temperatureMax ?? 0);
 
     return (
         <div className="flex flex-col gap-5">
             {/* ── Overview Stats ── */}
             <div id="section-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[var(--color-border)] bento-card overflow-hidden" style={{ order: 1 }}>
                 {[
-                    { label: 'Tổng diện tích', value: `${(warehouse.stats?.totalCapacity || 0).toLocaleString()} m³` },
-                    { label: 'Có sẵn', value: `${(warehouse.stats?.availableCapacity || 0).toLocaleString()} m³`, color: 'var(--color-success)' },
-                    { label: 'Nhiệt độ', value: `${warehouse.stats?.temperatureMin ?? 0}°C ~ ${warehouse.stats?.temperatureMax ?? 0}°C` },
+                    { label: 'Tổng diện tích', value: `${totalCapacity.toLocaleString()} m³` },
+                    { label: 'Có sẵn', value: `${availableCapacity.toLocaleString()} m³`, color: 'var(--color-success)' },
+                    { label: 'Nhiệt độ', value: `${minTemp}°C ~ ${maxTemp}°C` },
                     { label: 'An ninh', value: warehouse.stats?.securityLevel === 'high' ? 'Cao' : 'Tiêu chuẩn' },
                 ].map((s, i) => (
                     <div key={i} className="bg-[var(--color-surface)] p-5 text-center">
@@ -59,18 +77,19 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className={`grid grid-cols-1 ${sections.length > 1 ? 'sm:grid-cols-2' : ''} gap-4`}>
                         {sections.map(sec => {
                             const used = sec.total_capacity > 0 ? Math.round(((sec.total_capacity - sec.available_capacity) / sec.total_capacity) * 100) : 0;
-                            const availColor = sec.availability === "available" ? "var(--color-success)" : sec.availability === "partially" ? "var(--color-warning)" : "var(--color-error)";
-                            const availLbl = { available: "Còn trống", partially: "Gần đầy", full: "Đã đầy" }[sec.availability || 'available'] || 'Còn trống';
+                            const availStatus = sec.availability || 'available';
+                            const availColor = availStatus === "available" ? "var(--color-success)" : availStatus === "partially" ? "var(--color-warning)" : "var(--color-error)";
+                            const availLbl = { available: "Còn trống", partially: "Gần đầy", full: "Đã đầy" }[availStatus] || 'Còn trống';
                             const barColor = used > 90 ? "var(--color-error)" : used > 65 ? "var(--color-warning)" : "var(--color-primary)";
 
                             return (
                                 <div key={sec.id_section} className="border border-[var(--color-border)] rounded-xl overflow-hidden hover:border-[var(--color-primary)] transition-colors bg-[var(--color-surface)] flex flex-col">
                                     <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex justify-between items-start gap-2">
                                         <div>
-                                            <h4 className="font-semibold">{sec.name}</h4>
+                                            <h4 className="font-semibold">{sec.name || `Phân khu ${sec.sector || ''}`}</h4>
                                             {sec.description && <p className="text-xs text-[var(--color-text-muted)] mt-1">{sec.description}</p>}
                                         </div>
                                         <span className="text-xs px-2 py-1 rounded-sm border" style={{ color: availColor, borderColor: availColor, background: `${availColor}10` }}>
@@ -102,6 +121,27 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
                                         <div className="flex justify-between mt-1 text-[10px] text-[var(--color-text-muted)]">
                                             <span>Đã dùng {used}%</span>
                                         </div>
+                                        
+                                        {sec.priceTiers && sec.priceTiers.length > 0 && (
+                                            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                                                <p className="text-[10px] uppercase text-[var(--color-text-muted)] mb-2 font-semibold">Bảng giá tham khảo</p>
+                                                <div className="space-y-2">
+                                                    {sec.priceTiers.map(tier => (
+                                                        <div key={tier.id_price_tier || Math.random()} className="flex justify-between items-center bg-[var(--color-bg-secondary)] px-3 py-2 rounded-md">
+                                                            <span className="text-xs font-medium">{tier.label || "Giá thuê"}</span>
+                                                            <div className="text-right">
+                                                                <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
+                                                                    {tier.value ? tier.value.toLocaleString('vi-VN') : 0} ₫
+                                                                </span>
+                                                                <span className="text-xs text-[var(--color-text-muted)] ml-1">
+                                                                    / {tier.unit === 'month' ? 'tháng' : tier.unit === 'day' ? 'ngày' : tier.unit} / {tier.area_unit === 'm3' ? 'm³' : tier.area_unit === 'm2' ? 'm²' : tier.area_unit}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -130,16 +170,27 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className={`grid grid-cols-1 ${warehouse.certifications?.length > 1 ? 'sm:grid-cols-2' : ''} gap-4`}>
                         {warehouse.certifications?.map((cert: any, i: number) => (
                             <div key={i} className="flex items-center gap-4 p-4 border border-[var(--color-border)] rounded-xl hover:border-[var(--color-primary)] transition-colors">
-                                <div className="w-12 h-12 rounded-full bg-[var(--color-success)] bg-opacity-10 flex items-center justify-center flex-shrink-0">
+                                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
                                     <Shield className="h-6 w-6 text-[var(--color-success)]" />
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-sm">Chứng chỉ Kiểm định</h4>
-                                    <p className="text-xs text-[var(--color-text-muted)]">#{cert.id_cerfSubmit}</p>
-                                    <span className="text-[10px] text-[var(--color-success)] font-semibold uppercase mt-1 inline-block">Đã xác minh</span>
+                                    <h4 className="font-semibold text-sm">{cert.label || 'Chứng chỉ Kiểm định'}</h4>
+                                    <div className="flex gap-2 items-center mt-1">
+                                        <p className="text-xs text-[var(--color-text-muted)]">#{cert.id || cert.id_cerfSubmit}</p>
+                                        {cert.status === 'VERIFIED' ? (
+                                            <span className="text-[10px] text-[var(--color-success)] font-semibold uppercase inline-block">Đã xác minh</span>
+                                        ) : cert.status === 'PENDING' ? (
+                                            <span className="text-[10px] text-[var(--color-warning)] font-semibold uppercase inline-block">Chờ xác minh</span>
+                                        ) : null}
+                                    </div>
+                                    {cert.link && (
+                                        <a href={cert.link} target="_blank" rel="noreferrer" className="text-xs text-[var(--color-primary)] hover:underline mt-1 block">
+                                            Xem tài liệu
+                                        </a>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -148,23 +199,19 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
             </div>
 
             {/* ── Location Map ── */}
-            <div id="section-location" className="bento-card p-6" style={{ order: 6, scrollMarginTop: '80px' }}>
-                <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="h-5 w-5 text-[var(--color-primary)]" />
-                    <h2 className="text-lg font-semibold">Vị trí</h2>
-                </div>
-                <p className="text-sm mb-4 text-[var(--color-text-secondary)]">
-                    {warehouse.location_address_text}
-                </p>
-                <div className="h-80 w-full rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-secondary)] relative">
-                    <MapComponent
-                        center={[warehouse.location_lat, warehouse.location_long]}
-                        markers={[{ position: [warehouse.location_lat, warehouse.location_long], popup: warehouse.location_address_text }]}
-                        zoom={15}
-                        height="100%"
+            <div id="section-location" style={{ order: 6, scrollMarginTop: '80px' }}>
+                {fetchedLocation ? (
+                    <WarehouseMapDisplay 
+                        lat={fetchedLocation.lat} 
+                        long={fetchedLocation.long} 
+                        addressText={[warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", ")} 
+                        obfuscateLocation={true}
                     />
-                    <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)' }} />
-                </div>
+                ) : (
+                    <div className="h-80 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-center text-[var(--color-text-muted)] text-sm">
+                        Đang tải bản đồ...
+                    </div>
+                )}
             </div>
         </div>
     );

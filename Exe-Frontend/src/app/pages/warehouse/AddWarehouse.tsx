@@ -57,13 +57,18 @@ export default function AddWarehouse() {
       return;
     }
 
+    if (certFiles.some((cert) => !cert.certTypeId)) {
+      toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
+      return;
+    }
+
     setSaving(true);
     try {
       // 1. Build the DTO mapping for the JSON part
       const dto = {
         name: warehouse.name,
         description: warehouse.description,
-        locationAddressText: warehouse.location_address_text || warehouse.address,
+        locationAddressText: [warehouse.address, warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", "),
         locationProvince: warehouse.location_province,
         locationCommune: warehouse.location_commune,
         locationLong: warehouse.location_long,
@@ -73,9 +78,9 @@ export default function AddWarehouse() {
           sector: sec.sector,
           totalCapacity: sec.total_capacity,
           availableCapacity: sec.available_capacity,
-          tempMin: sec.temp_min,
-          tempMax: sec.temp_max,
-          humidity: sec.humidity,
+          tempMin: parseFloat(String(sec.temp_min)) || 0,
+          tempMax: parseFloat(String(sec.temp_max)) || 0,
+          humidity: parseFloat(String(sec.humidity)) || 0,
           hasCertification: sec.hasCertification,
           priceTiers: (sec.priceTiers || []).map((pt: any) => ({
             label: pt.label,
@@ -104,9 +109,14 @@ export default function AddWarehouse() {
         });
       }
 
-      // 4. Append certificate
-      if (certFiles.length > 0 && certFiles[0].file) {
-        formData.append("certificate", certFiles[0].file);
+      // 4. Append certificates
+      if (certFiles && certFiles.length > 0) {
+        certFiles.forEach((cert) => {
+          if (cert.file && cert.certTypeId) {
+            formData.append("certFiles", cert.file);
+            formData.append("certTypeIds", String(cert.certTypeId));
+          }
+        });
       }
 
       console.log("[WarehouseForm] Submitting creation for:", dto);

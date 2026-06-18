@@ -26,27 +26,48 @@ const ROWS: CompareRow[] = [
     {
         label: 'Tổng công suất',
         icon: <Package className="h-3.5 w-3.5" />,
-        render: (w) => `${w.stats?.totalCapacity?.toLocaleString()} m³`,
+        render: (w) => {
+            const total = w.sections?.reduce((sum, s) => sum + (s.total_capacity || 0), 0) || 0;
+            return total > 0 ? `${total.toLocaleString()} m³` : 'N/A';
+        },
     },
     {
         label: 'Còn trống',
         icon: <Package className="h-3.5 w-3.5" />,
-        render: (w) => `${w.stats?.availableCapacity?.toLocaleString()} m³`,
+        render: (w) => {
+            const avail = w.sections?.reduce((sum, s) => sum + (s.available_capacity || 0), 0) || 0;
+            return avail > 0 ? `${avail.toLocaleString()} m³` : '0 m³';
+        },
     },
     {
         label: 'Nhiệt độ tối thiểu',
         icon: <Thermometer className="h-3.5 w-3.5" />,
-        render: (w) => `${w.stats?.temperatureMin}°C`,
+        render: (w) => {
+            if (!w.sections || w.sections.length === 0) return 'N/A';
+            const min = Math.min(...w.sections.map(s => s.temp_min ?? Infinity));
+            return min === Infinity ? 'N/A' : `${min}°C`;
+        },
     },
     {
         label: 'Nhiệt độ tối đa',
         icon: <Thermometer className="h-3.5 w-3.5" />,
-        render: (w) => `${w.stats?.temperatureMax}°C`,
+        render: (w) => {
+            if (!w.sections || w.sections.length === 0) return 'N/A';
+            const max = Math.max(...w.sections.map(s => s.temp_max ?? -Infinity));
+            return max === -Infinity ? 'N/A' : `${max}°C`;
+        },
     },
     {
         label: 'Độ ẩm',
         icon: <Zap className="h-3.5 w-3.5" />,
-        render: (w) => `${w.stats?.humidity}%`,
+        render: (w) => {
+            if (!w.sections || w.sections.length === 0) return 'N/A';
+            const humidities = w.sections.map(s => s.humidity).filter((h): h is number => h !== undefined && h !== null);
+            if (humidities.length === 0) return 'N/A';
+            const minH = Math.min(...humidities);
+            const maxH = Math.max(...humidities);
+            return minH === maxH ? `${minH}%` : `${minH}% ~ ${maxH}%`;
+        },
     },
     {
         label: 'Giá thuê',
@@ -58,23 +79,7 @@ const ROWS: CompareRow[] = [
         icon: <LayoutGrid className="h-3.5 w-3.5" />,
         render: (w) => <SectionsDisplay warehouse={w} />,
     },
-    {
-        label: 'Bảo mật',
-        icon: <Shield className="h-3.5 w-3.5" />,
-        render: (w) => secLabel(w.stats?.securityLevel || ''),
-    },
-    {
-        label: 'Dự phòng điện',
-        icon: <Zap className="h-3.5 w-3.5" />,
-        render: (w) =>
-            w.stats?.powerBackup ? (
-                <span className="flex items-center justify-center gap-1" style={{ color: 'var(--color-success)' }}>
-                    <CheckCircle className="h-4 w-4" /> Có
-                </span>
-            ) : (
-                <span style={{ color: 'var(--color-text-muted)' }}>Không</span>
-            ),
-    },
+
     {
         label: 'Chứng chỉ',
         icon: <CheckCircle className="h-3.5 w-3.5" />,
@@ -84,7 +89,13 @@ const ROWS: CompareRow[] = [
         label: 'Tình trạng',
         icon: <Package className="h-3.5 w-3.5" />,
         render: (w) => {
-            const availability = w.availability || 'full';
+            const total = w.sections?.reduce((sum, s) => sum + (s.total_capacity || 0), 0) || 0;
+            const avail = w.sections?.reduce((sum, s) => sum + (s.available_capacity || 0), 0) || 0;
+            
+            let availability = 'available';
+            if (total > 0 && avail === 0) availability = 'full';
+            else if (total > 0 && avail < total * 0.2) availability = 'partially';
+
             const color =
                 availability === 'available'
                     ? 'var(--color-success)'

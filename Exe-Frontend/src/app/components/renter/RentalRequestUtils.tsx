@@ -1,6 +1,6 @@
 import React from "react";
 import {
-    Send, Eye, XCircle, MessageSquare, FileText, AlertCircle, CheckCircle,
+    Send, Eye, XCircle, MessageSquare, FileText, AlertCircle, CheckCircle, Clock
 } from "lucide-react";
 import { RentRequestStatus } from "../../../types";
 
@@ -24,20 +24,16 @@ export const UNIT_LABEL: Record<string, string> = {
 };
 
 export const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> = {
-    sent: { label: "Đã gửi", color: "#3b82f6", icon: <Send className="h-3 w-3" />, description: "Đang chờ chủ kho phản hồi." },
-    viewed: { label: "Đã xem", color: "#f59e0b", icon: <Eye className="h-3 w-3" />, description: "Chủ kho đã xem, đang cân nhắc." },
-    rejected: { label: "Từ chối", color: "#ef4444", icon: <XCircle className="h-3 w-3" />, description: "Chủ kho đã từ chối yêu cầu này." },
-    inprogress: { label: "Đang thương lượng", color: "#22c55e", icon: <MessageSquare className="h-3 w-3" />, description: "Chủ kho muốn liên hệ — xem thông tin bên dưới." },
-    contracted: { label: "Có hợp đồng", color: "#7c3aed", icon: <FileText className="h-3 w-3" />, description: "Hợp đồng đã được soạn." },
+    PENDING: { label: "Đang chờ", color: "#f59e0b", icon: <Clock className="h-3 w-3" />, description: "Đang chờ chủ kho phản hồi." },
+    APPROVED: { label: "Đã chấp nhận", color: "#22c55e", icon: <CheckCircle className="h-3 w-3" />, description: "Chủ kho đã chấp nhận yêu cầu này." },
+    REJECTED: { label: "Từ chối", color: "#ef4444", icon: <XCircle className="h-3 w-3" />, description: "Chủ kho đã từ chối yêu cầu này." },
 };
 
 export const TABS: { key: FilterTab; label: string }[] = [
     { key: "all", label: "Tất cả" },
-    { key: "sent", label: "Đã gửi" },
-    { key: "viewed", label: "Đã xem" },
-    { key: "inprogress", label: "Thương lượng" },
-    { key: "contracted", label: "Có hợp đồng" },
-    { key: "rejected", label: "Từ chối" },
+    { key: "PENDING", label: "Đang chờ" },
+    { key: "APPROVED", label: "Đã chấp nhận" },
+    { key: "REJECTED", label: "Từ chối" },
 ];
 
 export const CONTRACT_CFG: Record<string, { label: string; sublabel: string; color: string; bg: string; actionLabel: string; icon: React.ReactNode }> = {
