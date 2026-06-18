@@ -39,11 +39,13 @@ export interface WarehouseSection {
 }
 
 export interface PriceTier {
+  id?: number;
   id_price_tier: number;
   id_warehouseSection?: number; // FK WarehouseSection
   label: string;
   value: number;
   unit: string;
+  timeUnit?: string;
   area_unit: string;
 }
 

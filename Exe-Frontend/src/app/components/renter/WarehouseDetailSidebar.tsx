@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Send, LayoutGrid, Check, Calendar as CalendarIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -6,8 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarComponent } from '../ui/calendar';
 import { CompositeWarehouse, User } from '../../../types';
 import { toast } from 'sonner';
-import { useApp } from '../../../context/AppContext';
+// import { useApp } from '../../../context/AppContext';
 import { renterService } from '../../../services/renterService';
+import { getUser } from '../../../utils/auth';
 
 interface InquiryForm {
     name: string;
@@ -41,7 +42,7 @@ interface WarehouseDetailSidebarProps {
 }
 
 export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProps) {
-    const { user, createRequest } = useApp();
+    const user = useMemo(() => getUser(), []);
     const navigate = useNavigate();
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -64,21 +65,20 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
 
     const availableUnits = React.useMemo(() => {
         if (!form.selectedSectionIds.length || !warehouse.sections) return [];
-        
+
         const targetSections = warehouse.sections.filter(s => form.selectedSectionIds.includes(s.id_section?.toString() || ''));
         if (!targetSections.length) return [];
 
-        let commonUnits: string[] | null = null;
-        targetSections.forEach(sec => {
-            const units = sec.priceTiers?.map(pt => pt.unit || pt.timeUnit) || [];
-            if (commonUnits === null) {
-                commonUnits = units;
-            } else {
-                commonUnits = commonUnits.filter(u => units.includes(u));
-            }
-        });
+        // Gather units from each selected section's price tiers
+        const unitsPerSection = targetSections.map(sec => sec.priceTiers?.map(pt => pt.unit || pt.timeUnit) || []);
+        // Compute intersection of units across all sections
+        const commonUnits = unitsPerSection.reduce<string[]>((acc, units) => {
+            if (acc === null) return units;
+            return acc.filter(u => units.includes(u));
+        }, null as any) || [];
 
-        return commonUnits || [];
+        // Ensure unique values
+        return Array.from(new Set(commonUnits));
     }, [warehouse, form.selectedSectionIds]);
 
     useEffect(() => {
@@ -101,6 +101,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form.startDate, form.durationValue, form.durationUnit]);
 
+    // Populate initial form fields once on mount (user is memoized)
     useEffect(() => {
         if (user) {
             setForm(f => ({
@@ -110,7 +111,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                 email: f.email || user.email || "",
             }));
         }
-    }, [user]);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -119,11 +120,12 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
             navigate("/login");
             return;
         }
+        console.log(user)
         if (user.role?.toUpperCase() !== 'RENTER') {
             toast.error("Chỉ tài khoản Người Thuê mới có thể gửi yêu cầu thuê kho");
             return;
         }
-        
+
         if (form.selectedSectionIds.length === 0) {
             toast.error("Vui lòng chọn ít nhất 1 phân khu");
             return;
@@ -144,15 +146,15 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
 
         const duration = parseInt(form.durationValue);
         const du = form.durationUnit;
-        
+
         let finalDuration = duration;
-        
+
         setSubmitting(true);
         try {
-            const targetSections = form.isWholeWarehouse 
-                ? (warehouse.sections || []) 
+            const targetSections = form.isWholeWarehouse
+                ? (warehouse.sections || [])
                 : (warehouse.sections || []).filter(s => form.selectedSectionIds.includes(s.id_section?.toString() || ''));
-            
+
             const details = targetSections.map(s => {
                 const requestedArea = parseFloat(form.sectionCapacities[s.id_section?.toString() || '']) || 0;
                 const pt = s.priceTiers?.find(t => t.unit === du || t.timeUnit === du);
@@ -161,8 +163,8 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                 }
                 return {
                     sectionId: s.id_section,
-                    // Fallback to sectionId since the backend PriceTierDTO omits the ID
-                    priceTierId: pt.id_price_tier || pt.id || s.id_section || 1,
+                    // Use the price tier ID provided by the backend, or fallback to id_price_tier
+                    priceTierId: pt.id || pt.id_price_tier,
                     rentedArea: requestedArea,
                     areaUnit: "m3"
                 };
@@ -219,10 +221,10 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 <div>
                     <label className="block text-xs font-semibold mb-2 text-[var(--color-text-secondary)]">Chọn Phân Khu</label>
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                            {warehouse.sections?.map(sec => {
-                                const isSelected = form.selectedSectionIds.includes(sec.id_section?.toString() || '');
-                                return (
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        {warehouse.sections?.map(sec => {
+                            const isSelected = form.selectedSectionIds.includes(sec.id_section?.toString() || '');
+                            return (
                                 <div key={sec.id_section} className={`p-2 border rounded-md transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'hover:bg-[var(--color-bg-secondary)]'}`}>
                                     <label className="flex items-start gap-2 cursor-pointer">
                                         <input
@@ -250,37 +252,38 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                                         const valStr = form.sectionCapacities[sec.id_section?.toString() || ''] || '';
                                         const capVal = parseFloat(valStr);
                                         const isOverLimit = !isNaN(capVal) && capVal > sec.available_capacity;
-                                        
+
                                         return (
-                                        <div className="mt-3 pl-6">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={sec.available_capacity}
-                                                required
-                                                placeholder={`Dung tích cần thuê (tối đa: ${sec.available_capacity} m³)...`}
-                                                className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none bg-[var(--color-surface)] ${isOverLimit ? 'border-red-500 focus:border-red-500' : 'focus:border-[var(--color-primary)]'}`}
-                                                value={valStr}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setForm(f => ({
-                                                        ...f,
-                                                        sectionCapacities: { ...f.sectionCapacities, [sec.id_section?.toString() || '']: val }
-                                                    }));
-                                                }}
-                                            />
-                                            {isOverLimit && (
-                                                <p className="text-[10px] text-red-500 mt-1">
-                                                    Vượt quá sức chứa tối đa ({sec.available_capacity} m³)
-                                                </p>
-                                            )}
-                                        </div>
+                                            <div className="mt-3 pl-6">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={sec.available_capacity}
+                                                    required
+                                                    placeholder={`Dung tích cần thuê (tối đa: ${sec.available_capacity} m³)...`}
+                                                    className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none bg-[var(--color-surface)] ${isOverLimit ? 'border-red-500 focus:border-red-500' : 'focus:border-[var(--color-primary)]'}`}
+                                                    value={valStr}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setForm(f => ({
+                                                            ...f,
+                                                            sectionCapacities: { ...f.sectionCapacities, [sec.id_section?.toString() || '']: val }
+                                                        }));
+                                                    }}
+                                                />
+                                                {isOverLimit && (
+                                                    <p className="text-[10px] text-red-500 mt-1">
+                                                        Vượt quá sức chứa tối đa ({sec.available_capacity} m³)
+                                                    </p>
+                                                )}
+                                            </div>
                                         );
                                     })()}
                                 </div>
-                            )})}
-                        </div>
+                            )
+                        })}
                     </div>
+                </div>
                 <div>
                     <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">Loại Hàng</label>
                     <input
@@ -292,7 +295,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                         onChange={e => setForm(f => ({ ...f, cargoType: e.target.value }))}
                     />
                 </div>
-                
+
 
                 <div>
                     <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">Thời Gian Bắt Đầu</label>
@@ -334,7 +337,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                             value={form.durationUnit}
                             onChange={e => setForm(f => ({ ...f, durationUnit: e.target.value as any }))}
                         >
-                            {availableUnits.length > 0 
+                            {availableUnits.length > 0
                                 ? availableUnits.map(u => <option key={u} value={u}>{PRICE_TIER_LABELS[u] || u}</option>)
                                 : Object.entries(PRICE_TIER_LABELS).slice(0, 4).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
@@ -385,7 +388,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                         {(() => {
                             const targetSections = warehouse.sections?.filter(s => form.selectedSectionIds.includes(s.id_section?.toString() || '')) || [];
                             let totalCost = 0;
-                            
+
                             return (
                                 <>
                                     {targetSections.map(sec => {
