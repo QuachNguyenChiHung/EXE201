@@ -13,6 +13,7 @@ import { buildFilterSummary, isAINotConfigured, buildSearchParams } from "./aiSe
 import { AISearchCriteria } from "../../components/renter/AISearchCriteria";
 import { AIChatPanel, ChatMsg } from "../../components/renter/AIChatPanel";
 import { AIResultGrid } from "../../components/renter/AIResultGrid";
+import { getUser } from "../../../utils/auth";
 
 type Phase = "select" | "results";
 
@@ -49,7 +50,8 @@ function SelectionSummary({ selections, attributes }: { selections: Record<strin
 }
 
 export default function AISearchWarehouse() {
-    const { warehouses: allWarehouses, user: currentUser } = useApp();
+    const currentUser = getUser();
+    const { warehouses: allWarehouses } = useApp();
 
     const [phase, setPhase] = useState<Phase>("select");
     const [selections, setSelections] = useState<Record<string, string[]>>({});

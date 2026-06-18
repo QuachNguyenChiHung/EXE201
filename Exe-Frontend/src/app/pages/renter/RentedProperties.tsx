@@ -12,10 +12,12 @@ import { FilterTab } from '../../components/renter/RentedPropertyUtils';
 import { RentedPropertyFilters } from '../../components/renter/RentedPropertyFilters';
 import { ContractDetailModal, RejectContractModal } from '../../components/renter/ContractModals';
 import { RentedPropertyCard } from '../../components/renter/RentedPropertyCard';
+import { getUser } from '../../../utils/auth';
 
 export default function RentedProperties() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, contracts: allContracts, warehouses: warehouseList, ratings: allRatings, refreshContracts, refreshWarehouses, refreshRatings } = useApp();
+  const user = getUser();
+  const { contracts: allContracts, warehouses: warehouseList, ratings: allRatings, refreshContracts, refreshWarehouses, refreshRatings } = useApp();
 
   const [tab, setTab] = useState<FilterTab>('all');
   const [viewingContract, setViewingContract] = useState<CompositeContract | null>(null);
@@ -46,8 +48,9 @@ export default function RentedProperties() {
   );
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'RENTER') navigate('/login');
-  }, [isAuthenticated, user, navigate]);
+    if (!user) navigate('/login');
+    else if (user.role !== 'RENTER') navigate('/login');
+  }, [user, navigate]);
 
   useEffect(() => {
     // initial load

@@ -9,10 +9,12 @@ import { CompositeWarehouse, CompositeRentRequest } from "../../../types";
 
 import { FilterTab, TABS } from "../../components/renter/RentalRequestUtils";
 import { RentalRequestCard } from "../../components/renter/RentalRequestCard";
+import { getUser } from "../../../utils/auth";
 
 export default function RentalRequests() {
     const navigate = useNavigate();
-    const { user, isAuthenticated, warehouses: warehouseList, loading: appLoading } = useApp();
+    const user = getUser();
+    const { warehouses: warehouseList, loading: appLoading } = useApp();
 
     const [tab, setTab] = useState<FilterTab>("all");
     const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -31,13 +33,12 @@ export default function RentalRequests() {
     );
 
     useEffect(() => {
-        const savedUser = localStorage.getItem('user');
-        if (!savedUser && !isAuthenticated) {
+        if (!user) {
             navigate("/login");
-        } else if (user && user.role !== "RENTER") {
+        } else if (user.role !== "RENTER") {
             navigate("/login");
         }
-    }, [isAuthenticated, user, navigate]);
+    }, [user, navigate]);
 
     const fetchPage = useCallback(async (p: number, t: FilterTab, isPreload: boolean = false, forceRefetch: boolean = false) => {
         const cacheKey = `${t}_${p}`;
@@ -58,9 +59,9 @@ export default function RentalRequests() {
                 const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
                 const details = r.details || [];
                 const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
-                const sectionName = details.length > 1 
-                  ? `${details.length} phân khu` 
-                  : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
+                const sectionName = details.length > 1
+                    ? `${details.length} phân khu`
+                    : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
                 const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
                 const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
 
@@ -91,7 +92,7 @@ export default function RentalRequests() {
                     details: r.details
                 } as CompositeRentRequest;
             });
-            
+
             const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
             setCache(prev => ({ ...prev, [cacheKey]: newData }));
 
@@ -123,7 +124,7 @@ export default function RentalRequests() {
             await renterService.cancelRequest(id);
             if (expandedId === id) setExpandedId(null);
             toast.success("Đã rút yêu cầu thuê kho.");
-            
+
             // Invalidate cache and refetch current page
             setCache({});
             fetchPage(page, tab, false, true);

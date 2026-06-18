@@ -3,6 +3,7 @@ import { Star, X, CheckCircle, Edit3, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Rating } from '../../types';
 import { toast } from 'sonner';
+import { getUser } from '../../utils/auth';
 
 interface Props {
   warehouseId: string;
@@ -23,7 +24,8 @@ export function RateWarehouseModal({
   existingRating,
   onClose,
 }: Props) {
-  const { user, ratings, submitRating, updateRating, deleteRating } = useApp();
+  const user = getUser();
+  const { ratings, submitRating, updateRating, deleteRating } = useApp();
   const [allRatings, setAllRatings] = useState(ratings || []);
 
   useEffect(() => { setAllRatings(ratings || []); }, [ratings]);

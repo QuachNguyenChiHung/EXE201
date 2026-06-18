@@ -9,11 +9,13 @@ import { toast } from 'sonner';
 import { FilterTab, IncomingRequest, RequestStatus, STATUS_CFG, TABS } from '../../components/owner/WarehouseRequestUtils';
 import { WarehouseResponseModal } from '../../components/owner/WarehouseResponseModal';
 import { WarehouseRequestCard } from '../../components/owner/WarehouseRequestCard';
+import { getUser } from '../../../utils/auth';
 
 export default function WarehouseRequests() {
   const navigate = useNavigate();
-  const { user, warehouses: warehouseList, loading: appLoading, contracts, updateRequest } = useApp();
-  const [tab, setTab]         = useState<FilterTab>('all');
+  const user = getUser();
+  const { warehouses: warehouseList, loading: appLoading, contracts, updateRequest } = useApp();
+  const [tab, setTab] = useState<FilterTab>('all');
   const [modalReq, setModalReq] = useState<IncomingRequest | null>(null);
 
   // Pagination & Caching
@@ -26,7 +28,7 @@ export default function WarehouseRequests() {
 
   const warehouses = useMemo<Record<string, CompositeWarehouse>>(() =>
     Object.fromEntries(warehouseList.map(w => [w.id_warehouse, w])),
-  [warehouseList]);
+    [warehouseList]);
 
   const fetchPage = useCallback(async (p: number, t: FilterTab, isPreload: boolean = false, forceRefetch: boolean = false) => {
     const cacheKey = `${t}_${p}`;
@@ -47,8 +49,8 @@ export default function WarehouseRequests() {
         const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
         const details = r.details || [];
         const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
-        const sectionName = details.length > 1 
-          ? `${details.length} phân khu` 
+        const sectionName = details.length > 1
+          ? `${details.length} phân khu`
           : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
         const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
         const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
@@ -81,7 +83,7 @@ export default function WarehouseRequests() {
           submit_at: r.createdAt || r.submit_at || new Date().toISOString()
         } as IncomingRequest;
       });
-      
+
       const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
       setCache(prev => ({ ...prev, [cacheKey]: newData }));
 
@@ -153,7 +155,7 @@ export default function WarehouseRequests() {
       } as IncomingRequest;
 
       setRequestsList(prev => prev.map(req => req.id_rentRequest.toString() === id ? updatedReq : req));
-      
+
       // Update cache
       setCache(prev => {
         const newCache = { ...prev };
@@ -269,9 +271,9 @@ export default function WarehouseRequests() {
 
         {/* Content */}
         {loading ? (
-             <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
-                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
-             </div>
+          <div className="flex justify-center items-center py-12 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
+          </div>
         ) : requestsList.length === 0 ? (
           <div className="border border-[var(--color-border)] p-16 text-center" style={{ background: 'var(--color-surface)' }}>
             <ClipboardList className="h-10 w-10 mx-auto mb-4" style={{ color: 'var(--color-text-muted)' }} />
@@ -301,7 +303,7 @@ export default function WarehouseRequests() {
             ))}
           </div>
         )}
-        
+
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded mt-4">
             <span className="text-sm text-[var(--color-text-secondary)]">

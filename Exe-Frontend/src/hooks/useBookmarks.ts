@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { renterService } from '../services/renterService';
 import { useApp } from '../context/AppContext';
+import { getUser } from '../utils/auth';
 
 let globalBookmarkedIds: number[] = [];
 let isInitialized = false;
@@ -32,7 +33,8 @@ export const clearBookmarksState = () => {
 
 export function useBookmarks() {
     const [bookmarkedIds, setBookmarkedIds] = useState<number[]>(globalBookmarkedIds);
-    const { isAuthenticated, user } = useApp();
+    const user = getUser();
+    const { isAuthenticated } = useApp();
 
     useEffect(() => {
         // Clear state if logged out
@@ -59,7 +61,7 @@ export function useBookmarks() {
         }
 
         const isBookmarked = globalBookmarkedIds.includes(warehouseId);
-        
+
         // Optimistic update
         if (isBookmarked) {
             globalBookmarkedIds = globalBookmarkedIds.filter(id => id !== warehouseId);

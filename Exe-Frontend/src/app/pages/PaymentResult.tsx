@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { useApp } from '../../context/AppContext';
+import { getUser } from '../../utils/auth';
 
 export default function PaymentResult() {
-  const { user } = useApp();
+  const user = getUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -11,7 +11,7 @@ export default function PaymentResult() {
     if (!user) return; // Wait until user is loaded
 
     const isSuccess = location.pathname.includes('success');
-    
+
     if (user.role === 'OWNER') {
       navigate(`/warehouse/subscription?payment=${isSuccess ? 'success' : 'fail'}`, { replace: true });
     } else if (user.role === 'RENTER') {

@@ -11,7 +11,7 @@ import {
 } from '../../../types';
 import { Crown } from 'lucide-react';
 import { toast } from 'sonner';
-
+import { getUser } from "../../../utils/auth";
 import { SubscriptionPricingGrid } from '../../components/owner/SubscriptionPricingGrid';
 import { SubscriptionWarehouseList } from '../../components/owner/SubscriptionWarehouseList';
 import { SubscriptionTierPicker } from '../../components/owner/SubscriptionTierPicker';
@@ -19,7 +19,7 @@ import { SubscriptionConfirmModal } from '../../components/owner/SubscriptionCon
 import { ownerService } from '../../../services/ownerService';
 
 export default function SubscriptionManagement() {
-  const { user: currentUser, warehouses: allWarehouses, updateWarehouse } = useApp();
+  const user = getUser();
 
   const [myWarehouses, setMyWarehouses] = useState<CompositeWarehouse[]>([]);
 
@@ -47,7 +47,7 @@ export default function SubscriptionManagement() {
     const fetchTiers = async () => {
       try {
         const backendTiers = await ownerService.getSponsorTiers();
-        
+
         // Add "Free" default tier
         const freeTier: SponsorTierDTO = {
           id: 0,
@@ -58,7 +58,7 @@ export default function SubscriptionManagement() {
           activeWarehousesCount: 0,
           isActive: true
         };
-        
+
         setSponsorTiers([freeTier, ...backendTiers]);
       } catch (err) {
         console.error("Failed to fetch sponsor tiers", err);
@@ -82,20 +82,20 @@ export default function SubscriptionManagement() {
     setUpgrading(true);
     try {
       if (tier.id === 0) {
-         // Free tier - probably just remove the sponsor tier. We'll send sponsorTierId = 0 and handle it on backend if needed, or maybe call a different endpoint.
-         // Wait, the prompt says "it is default so it is basically no sponsor tier".
-         // Let's call the same API with sponsorTierId 0, or just ignore. 
-         const res = await ownerService.buySponsorTier(warehouse.id_warehouse, 0);
-         toast.success(`Đã huỷ gói đăng ký cho kho "${warehouse.name}"`);
-         setShowConfirm(null);
+        // Free tier - probably just remove the sponsor tier. We'll send sponsorTierId = 0 and handle it on backend if needed, or maybe call a different endpoint.
+        // Wait, the prompt says "it is default so it is basically no sponsor tier".
+        // Let's call the same API with sponsorTierId 0, or just ignore. 
+        const res = await ownerService.buySponsorTier(warehouse.id_warehouse, 0);
+        toast.success(`Đã huỷ gói đăng ký cho kho "${warehouse.name}"`);
+        setShowConfirm(null);
       } else {
-         const res = await ownerService.buySponsorTier(warehouse.id_warehouse, tier.id);
-         if (res.paymentUrl) {
-            window.location.href = res.paymentUrl;
-         } else {
-            toast.success(`Đã nâng cấp "${warehouse.name}" lên ${tier.label}!`);
-            setShowConfirm(null);
-         }
+        const res = await ownerService.buySponsorTier(warehouse.id_warehouse, tier.id);
+        if (res.paymentUrl) {
+          window.location.href = res.paymentUrl;
+        } else {
+          toast.success(`Đã nâng cấp "${warehouse.name}" lên ${tier.label}!`);
+          setShowConfirm(null);
+        }
       }
     } catch (err: any) {
       toast.error(err?.message ?? 'Không thể nâng cấp. Vui lòng thử lại.');
@@ -123,7 +123,7 @@ export default function SubscriptionManagement() {
           <p className="text-[var(--color-text-secondary)] mt-1 max-w-xl">
             Chọn gói phù hợp để tăng hiển thị kho lạnh của bạn trong kết quả tìm kiếm. Gói cao
             hơn = xếp hạng ưu tiên hơn.
-            <br/>
+            <br />
             <span className="text-xs italic mt-1 inline-block">
               *Lưu ý: Kho lạnh chỉ được ưu tiên hiển thị khi thông tin kho phù hợp với các tiêu chí tìm kiếm của người dùng.
             </span>
