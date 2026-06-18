@@ -25,9 +25,9 @@ export function WarehouseDashboardActions() {
         {
           icon: <TrendingUp className="h-7 w-7" />,
           color: "var(--color-warning)",
-          title: "Báo cáo",
-          desc: "Xem thống kê và báo cáo chi tiết",
-          path: null,
+          title: "Yêu cầu thuê",
+          desc: "Xem danh sách yêu cầu thuê kho của bạn",
+          path: "/warehouse/requests",
         },
       ].map((a) => (
         <button
