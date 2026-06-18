@@ -134,43 +134,44 @@ export default function SharedContractDetail() {
         </div>
 
         {/* Paper Contract View */}
-        <div 
-          id="printable-contract"
-          className="bg-white shadow-xl mx-auto border border-gray-300 print:shadow-none print:border-none"
-          style={{ 
-            maxWidth: '210mm', 
-            minHeight: '297mm', 
-            padding: '2cm',
-            fontFamily: '"Times New Roman", Times, serif',
-            color: '#000'
-          }}
-        >
+          <div 
+            id="printable-contract"
+            className="bg-white shadow-xl mx-auto border border-gray-300 print:shadow-none print:border-none"
+            style={{ 
+              width: '210mm', 
+              minHeight: '297mm', 
+              padding: '2cm',
+              fontFamily: '"Times New Roman", Times, serif',
+              color: '#000',
+              boxSizing: 'border-box'
+            }}
+          >
           {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="font-bold text-lg leading-tight uppercase">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h2>
-            <h3 className="font-bold text-base leading-tight underline decoration-1 underline-offset-4">Độc lập - Tự do - Hạnh phúc</h3>
-            <p className="mt-4 text-sm italic">
+          <div className="text-center mb-6">
+            <div className="font-bold leading-tight uppercase" style={{ fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+            <div className="font-bold leading-tight underline decoration-1 underline-offset-4 mt-1" style={{ fontSize: '14pt' }}>Độc lập - Tự do - Hạnh phúc</div>
+            <div className="mt-3 italic" style={{ fontSize: '13pt' }}>
               {/* If no exact province is available, default to "Việt Nam" */}
               Hôm nay, ngày {day} tháng {month} năm {year}
-            </p>
+            </div>
           </div>
 
-          <div className="text-center mb-8">
-            <h1 className="font-bold text-2xl uppercase mb-1">HỢP ĐỒNG CHO THUÊ KHO BÃI</h1>
-            <p className="text-base">Số: {contract.id}/HĐTK-{year}</p>
+          <div className="text-center mb-6">
+            <div className="font-bold uppercase mb-1" style={{ fontSize: '14pt' }}>HỢP ĐỒNG CHO THUÊ KHO BÃI</div>
+            <div style={{ fontSize: '13pt' }}>Số: {contract.id}/HĐTK-{year}</div>
           </div>
 
           {/* Body */}
-          <div className="space-y-6 text-base leading-relaxed text-justify">
-            <p>
+          <div className="leading-relaxed text-justify" style={{ fontSize: '14pt' }}>
+            <p className="mb-4">
               Căn cứ Bộ Luật Dân Sự số 91/2015/QH13 đã được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam khóa XIII, kỳ họp thứ 10 thông qua ngày 24 tháng 11 năm 2015;
             </p>
-            <p>
+            <p className="mb-4">
               Căn cứ vào sự thỏa thuận và nhu cầu của hai bên.
             </p>
 
-            <div className="mt-6">
-              <h3 className="font-bold text-lg mb-2">BÊN CHO THUÊ (BÊN A):</h3>
+            <div className="mt-6 mb-6">
+              <div className="font-bold mb-2" style={{ fontSize: '14pt' }}>BÊN CHO THUÊ (BÊN A):</div>
               <p><strong>Cơ sở / Kho bãi:</strong> {contract.warehouseName || 'Không có tên'}</p>
               <p><strong>Đại diện pháp luật:</strong> {contract.ownerLegalName}</p>
               <p><strong>Mã số thuế:</strong> {contract.ownerTaxCode || 'Chưa cập nhật'}</p>
@@ -179,8 +180,8 @@ export default function SharedContractDetail() {
               <p><strong>Điện thoại:</strong> {contract.ownerPhone || 'Chưa cập nhật'}</p>
             </div>
 
-            <div className="mt-6">
-              <h3 className="font-bold text-lg mb-2">BÊN THUÊ (BÊN B):</h3>
+            <div className="mt-6 mb-6">
+              <div className="font-bold mb-2" style={{ fontSize: '14pt' }}>BÊN THUÊ (BÊN B):</div>
               <p><strong>Đại diện pháp luật:</strong> {contract.renterLegalName || 'Khách hàng'}</p>
               <p><strong>Mã số thuế:</strong> {contract.renterTaxCode || 'Chưa cập nhật'}</p>
               <p><strong>Địa chỉ:</strong> {contract.renterAddress || 'Chưa cập nhật'}</p>
@@ -189,21 +190,21 @@ export default function SharedContractDetail() {
               <p><strong>Liên kết Yêu cầu thuê (Request ID):</strong> #{contract.requestId}</p>
             </div>
 
-            <div className="mt-8 space-y-4">
-              <h3 className="font-bold text-lg">ĐIỀU 1: NỘI DUNG HỢP ĐỒNG</h3>
-              <p>
+            <div className="mt-6 mb-4">
+              <div className="font-bold mb-2" style={{ fontSize: '14pt' }}>ĐIỀU 1: NỘI DUNG HỢP ĐỒNG</div>
+              <p className="mb-2">
                 Bên A đồng ý cho Bên B thuê không gian tại kho bãi <strong>{contract.warehouseName || 'đã chỉ định'}</strong>.
               </p>
-              <p className="mt-2">
+              <p className="mb-2">
                 <strong>Thời hạn hiệu lực của hợp đồng:</strong> Từ ngày {contract.startAt ? new Date(contract.startAt).toLocaleDateString('vi-VN') : '...'} đến ngày {contract.endAt ? new Date(contract.endAt).toLocaleDateString('vi-VN') : '...'}.
               </p>
               {requestDetail && (
-                <div className="mt-4 p-4 border border-gray-300 bg-gray-50 rounded-md print:border-gray-400 print:bg-transparent">
-                  <h4 className="font-bold text-sm uppercase mb-2 text-gray-700 print:text-black">Tham chiếu Yêu cầu thuê (#{contract.requestId})</h4>
-                  <p className="text-sm italic text-gray-600 print:text-black mb-3">
+                <div className="mt-4 mb-4 p-4 border border-gray-300 bg-gray-50 rounded-md print:border-gray-400 print:bg-transparent">
+                  <div className="font-bold uppercase mb-2 text-gray-700 print:text-black" style={{ fontSize: '13pt' }}>Tham chiếu Yêu cầu thuê (#{contract.requestId})</div>
+                  <p className="italic text-gray-600 print:text-black mb-3" style={{ fontSize: '13pt' }}>
                     Chi tiết từ Yêu cầu thuê ban đầu. Lưu ý: Các điều khoản, diện tích, hoặc mức giá chính thức trong hợp đồng có thể thay đổi so với yêu cầu ban đầu tùy theo thỏa thuận thực tế.
                   </p>
-                  <div className="text-sm space-y-1 pl-3 border-l-2 border-gray-300 print:border-black">
+                  <div className="space-y-1 pl-3 border-l-2 border-gray-300 print:border-black" style={{ fontSize: '13pt' }}>
                     <p>- Hàng hóa lưu trữ: {requestDetail.cargoDescription || 'Chưa mô tả'}</p>
                     <p>- Thời gian thuê: {requestDetail.duration} {requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm' ? 'Năm' : requestDetail.durationUnit}
                       {requestDetail.startDate && requestDetail.endDate && (
@@ -232,9 +233,9 @@ export default function SharedContractDetail() {
                              const totalExpected = totalMonthly * durationMultiplier;
                              const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
                              return (
-                               <div className="mt-3 text-sm space-y-1">
+                               <div className="mt-3 space-y-1" style={{ fontSize: '13pt' }}>
                                  <p>- Phí thuê dự kiến gốc cho phân khu: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
-                                 <p>- Tổng chi phí dự kiến gốc ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong> <span className="text-xs italic text-gray-500 print:text-black">*(Ước tính dựa trên đơn giá tháng)</span></p>
+                                 <p>- Tổng chi phí dự kiến gốc ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong> <span className="italic text-gray-500 print:text-black" style={{ fontSize: '12pt' }}>*(Ước tính dựa trên đơn giá tháng)</span></p>
                                  {requestDetail.renterOfferedPrice && (
                                     <p>- Tổng khách hàng đề xuất: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.renterOfferedPrice)}</strong></p>
                                  )}
@@ -251,10 +252,10 @@ export default function SharedContractDetail() {
                     {(requestDetail.otherDetail || requestDetail.ownerNote || requestDetail.rejectionReason || requestDetail.renterRejectionReason) && (
                       <div className="mt-4 pt-3 border-t border-gray-300 border-dashed print:border-black">
                         <p className="font-semibold mb-1">- Ghi chú & Lịch sử thương lượng:</p>
-                        {requestDetail.otherDetail && <p className="ml-4 italic text-xs mb-1"><span className="not-italic font-medium">Khách hàng ghi chú:</span> {requestDetail.otherDetail}</p>}
-                        {requestDetail.ownerNote && <p className="ml-4 italic text-xs mb-1"><span className="not-italic font-medium">Chủ kho phản hồi:</span> {requestDetail.ownerNote}</p>}
-                        {requestDetail.rejectionReason && <p className="ml-4 italic text-xs text-red-600 print:text-black mb-1"><span className="not-italic font-medium">Lý do chủ kho từ chối:</span> {requestDetail.rejectionReason}</p>}
-                        {requestDetail.renterRejectionReason && <p className="ml-4 italic text-xs text-red-600 print:text-black"><span className="not-italic font-medium">Lý do khách hàng từ chối:</span> {requestDetail.renterRejectionReason}</p>}
+                        {requestDetail.otherDetail && <p className="ml-4 italic mb-1" style={{ fontSize: '12pt' }}><span className="not-italic font-medium">Khách hàng ghi chú:</span> {requestDetail.otherDetail}</p>}
+                        {requestDetail.ownerNote && <p className="ml-4 italic mb-1" style={{ fontSize: '12pt' }}><span className="not-italic font-medium">Chủ kho phản hồi:</span> {requestDetail.ownerNote}</p>}
+                        {requestDetail.rejectionReason && <p className="ml-4 italic text-red-600 print:text-black mb-1" style={{ fontSize: '12pt' }}><span className="not-italic font-medium">Lý do chủ kho từ chối:</span> {requestDetail.rejectionReason}</p>}
+                        {requestDetail.renterRejectionReason && <p className="ml-4 italic text-red-600 print:text-black" style={{ fontSize: '12pt' }}><span className="not-italic font-medium">Lý do khách hàng từ chối:</span> {requestDetail.renterRejectionReason}</p>}
                       </div>
                     )}
 
@@ -262,22 +263,22 @@ export default function SharedContractDetail() {
                 </div>
               )}
 
-              <h3 className="font-bold text-lg mt-6">ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG & THANH TOÁN</h3>
-              <p>
+              <div className="font-bold mb-2 mt-6" style={{ fontSize: '14pt' }}>ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG & THANH TOÁN</div>
+              <p className="mb-2">
                 Tổng giá trị hợp đồng chính thức được hai bên thống nhất xác nhận là: <strong>{formatCurrency(contractTotalPrice)}</strong> <em>(Chưa bao gồm thuế GTGT)</em>.
               </p>
               {autoCalculatedTotal !== contractTotalPrice && autoCalculatedTotal > 0 && (
-                <p className="text-sm italic text-gray-600 print:text-black">
+                <p className="italic text-gray-600 print:text-black mb-2" style={{ fontSize: '13pt' }}>
                   *(Mức giá trên áp dụng theo thỏa thuận cuối cùng của hợp đồng, có thể khác với giá dự kiến ban đầu là {formatCurrency(autoCalculatedTotal)}).
                 </p>
               )}
-              <p className="mt-2">{contract.paymentTerm || 'Chưa cập nhật phương thức và kỳ hạn thanh toán cụ thể.'}</p>
+              <p className="mb-4">{contract.paymentTerm || 'Chưa cập nhật phương thức và kỳ hạn thanh toán cụ thể.'}</p>
 
-              <h3 className="font-bold text-lg">ĐIỀU 3: ĐIỀU KHOẢN PHẠT & CAM KẾT CHUNG</h3>
-              <p>{contract.penaltyClause || 'Chưa cập nhật các điều khoản phạt vi phạm hợp đồng.'}</p>
-              <p>{contract.specialTerm || 'Chưa có các cam kết hoặc điều khoản đặc biệt nào khác.'}</p>
+              <div className="font-bold mb-2 mt-6" style={{ fontSize: '14pt' }}>ĐIỀU 3: ĐIỀU KHOẢN PHẠT & CAM KẾT CHUNG</div>
+              <p className="mb-2">{contract.penaltyClause || 'Chưa cập nhật các điều khoản phạt vi phạm hợp đồng.'}</p>
+              <p className="mb-4">{contract.specialTerm || 'Chưa có các cam kết hoặc điều khoản đặc biệt nào khác.'}</p>
 
-              <h3 className="font-bold text-lg">ĐIỀU 4: TÌNH TRẠNG PHÁP LÝ & HIỆU LỰC</h3>
+              <div className="font-bold mb-2 mt-6" style={{ fontSize: '14pt' }}>ĐIỀU 4: TÌNH TRẠNG PHÁP LÝ & HIỆU LỰC</div>
               {contract.cancelReason && (
                 <p>
                   <strong>Lý do hủy/chấm dứt:</strong> {contract.cancelReason}
@@ -292,13 +293,13 @@ export default function SharedContractDetail() {
           {/* Signatures */}
           <div className="mt-16 grid grid-cols-2 gap-8 text-center break-inside-avoid">
             <div>
-              <h3 className="font-bold text-base mb-1">ĐẠI DIỆN BÊN A</h3>
-              <p className="text-sm italic mb-20">(Ký, ghi rõ họ tên)</p>
-              <p className="font-bold">{contract.ownerLegalName}</p>
+              <div className="font-bold mb-1" style={{ fontSize: '14pt' }}>ĐẠI DIỆN BÊN A</div>
+              <p className="italic mb-20" style={{ fontSize: '13pt' }}>(Ký, ghi rõ họ tên)</p>
+              <p className="font-bold" style={{ fontSize: '14pt' }}>{contract.ownerLegalName}</p>
             </div>
             <div>
-              <h3 className="font-bold text-base mb-1">ĐẠI DIỆN BÊN B</h3>
-              <p className="text-sm italic mb-20">(Ký, ghi rõ họ tên)</p>
+              <div className="font-bold mb-1" style={{ fontSize: '14pt' }}>ĐẠI DIỆN BÊN B</div>
+              <p className="italic mb-20" style={{ fontSize: '13pt' }}>(Ký, ghi rõ họ tên)</p>
               <p className="font-bold">{contract.renterLegalName}</p>
             </div>
           </div>
