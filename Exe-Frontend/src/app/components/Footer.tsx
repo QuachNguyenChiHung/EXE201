@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Warehouse } from "lucide-react";
+import logoUrl from "../../assets/logo.jpg";
 
 export function Footer() {
   return (
@@ -8,14 +8,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-[var(--color-primary)] flex items-center justify-center">
-                <Warehouse className="h-4 w-4 text-white" />
+            <Link to="/" className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 flex items-center justify-center overflow-hidden rounded-md">
+                <img src={logoUrl} alt="Logicha" className="w-full h-full object-cover" />
               </div>
               <span className="font-extrabold text-xl tracking-tight">
                 Logicha
               </span>
-            </div>
+            </Link>
             <p className="text-[var(--color-text-secondary)] text-sm max-w-xs">
               Nền tảng cho thuê kho lạnh hàng đầu Việt Nam. Kết
               nối doanh nghiệp với chủ kho thông minh và hiệu
