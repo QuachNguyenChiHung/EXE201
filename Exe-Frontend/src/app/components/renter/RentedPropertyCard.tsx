@@ -1,45 +1,66 @@
 import { useNavigate } from 'react-router';
 import {
-    MapPin, Thermometer, Package, Calendar, AlertTriangle, Phone, ExternalLink, RotateCcw,
-    FileText, XCircle, LayoutGrid, PenLine, Star
+    MapPin, Thermometer, Package, Calendar, Phone, ExternalLink,
+    FileText, XCircle, LayoutGrid, PenLine
 } from 'lucide-react';
-import { CompositeContract, CompositeWarehouse } from '../../../types';
-import { ContractStatus, STATUS_CONFIG, fmtCurrency, fmtDate, daysUntil } from './RentedPropertyUtils';
+import { CompositeContract, CompositeWarehouse, ContractDetailDTO } from '../../../types';
+import { ContractStatus, STATUS_CONFIG, fmtCurrency, fmtDate, mapBackendStatus } from './RentedPropertyUtils';
 
 interface RentedPropertyCardProps {
     contract: CompositeContract;
     warehouse: CompositeWarehouse | undefined;
-    rating: any; // Using any for Rating type as it's defined elsewhere, or I can import it
     onViewContract: () => void;
     onRejectContract: () => void;
     onCancelContract: () => void;
-    onRateWarehouse: () => void;
 }
 
 export function RentedPropertyCard({
     contract,
     warehouse,
-    rating,
     onViewContract,
     onRejectContract,
     onCancelContract,
-    onRateWarehouse
 }: RentedPropertyCardProps) {
     const navigate = useNavigate();
 
     const wh = warehouse;
-    const cfg = STATUS_CONFIG[contract.status as ContractStatus] || STATUS_CONFIG['draft'];
-    const monthly = (contract.rentedCapacity || 0) * (contract.monthlyRate || 0);
-    const days = daysUntil(contract.end_at);
+    const mappedStatus = mapBackendStatus(contract.status, contract.ownerSigned, contract.renterSigned);
+    const cfg = STATUS_CONFIG[mappedStatus] || STATUS_CONFIG['active'];
+    const isPendingRenter = mappedStatus === 'pending_renter';
 
-    const rentedSection = contract.sectionId
-        ? (wh?.sections?.find(s => s.id_section?.toString() === contract.sectionId?.toString()) ?? null)
-        : null;
+    // contractDetails comes from the page (requests API via id_rent_request).
+    // Fallback: derive from warehouse sections when not available.
+    const contractDetails: ContractDetailDTO[] = (() => {
+        if (contract.contractDetails && contract.contractDetails.length > 0) return contract.contractDetails;
+        if (!wh) return [];
+        const active = (wh.sections ?? []).filter((s: any) => s.priceTiers && s.priceTiers.length > 0);
+        return active.map((s: any) => {
+            const tier = s.priceTiers?.[0];
+            return {
+                sectionId: s.id_section ?? 0,
+                sectionName: s.name ?? s.label ?? `Phân khu ${s.sector}`,
+                sector: s.sector,
+                rentedArea: s.available_capacity ?? 0,
+                areaUnit: tier?.area_unit ?? 'm³',
+                priceTierId: tier?.id_price_tier ?? 0,
+                priceTierLabel: tier?.label,
+                priceTierValue: tier?.value ?? 0,
+                priceTierUnit: tier?.unit ?? 'tháng',
+            };
+        });
+    })();
 
-    const tempMin = rentedSection ? rentedSection.temp_min : wh?.stats?.temperatureMin;
-    const tempMax = rentedSection ? rentedSection.temp_max : wh?.stats?.temperatureMax;
+    const totalCapacity = contractDetails.reduce((s, d) => s + (d.rentedArea || 0), 0) || contract.rentedCapacity || 0;
+    const monthlyTotal = contractDetails.length > 0
+        ? contractDetails.reduce((sum, d) => sum + (d.rentedArea || 0) * (d.priceTierValue || 0), 0)
+        : (contract.rentedCapacity || 0) * (contract.monthlyRate || 0);
 
-    const canRate = ['active', 'expiring_soon', 'expired'].includes(contract.status);
+    // Temperature from first section or warehouse stats
+    const firstDetail = contractDetails[0];
+    const tempMin = firstDetail ? undefined : (wh?.stats?.temperatureMin);
+    const tempMax = firstDetail ? undefined : (wh?.stats?.temperatureMax);
+
+    const canCancel = mappedStatus === 'active';
 
     return (
         <div className="bg-[var(--color-surface)] flex flex-col lg:flex-row">
@@ -59,7 +80,7 @@ export function RentedPropertyCard({
                             </span>
                         </div>
 
-                        <h3 className="mb-1">{wh ? wh.name : `Kho #${contract.id_warehouse}`}</h3>
+                        <h3 className="mb-1">{wh ? wh.name : (contract.owner_legal_name || contract.ownerName || 'Kho')}</h3>
 
                         {wh && (
                             <div className="flex items-center gap-1.5 text-[var(--color-text-secondary)] text-sm mb-3">
@@ -67,41 +88,86 @@ export function RentedPropertyCard({
                                 <span>{wh.address}, {wh.location_commune}, {wh.location_province}</span>
                             </div>
                         )}
-
-                        {/* Section banner */}
-                        {rentedSection && (
-                            <div
-                                className="flex items-start gap-3 mb-3 px-3 py-2.5"
-                                style={{ background: 'rgba(37,99,235,0.06)', borderLeft: '3px solid var(--color-primary)' }}
-                            >
-                                <LayoutGrid className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
-                                            Phân khu đang thuê
-                                        </span>
-                                    </div>
-                                    <p className="font-semibold text-sm mt-0.5" style={{ color: 'var(--color-text)' }}>
-                                        {rentedSection.name}
-                                    </p>
-                                    {rentedSection.description && (
-                                        <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                                            {rentedSection.description}
-                                        </p>
-                                    )}
-                                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                                        <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-info, #3b82f6)' }}>
-                                            <Thermometer className="h-3 w-3" />
-                                            {rentedSection.temp_min}°C ~ {rentedSection.temp_max}°C
-                                        </span>
-                                        <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                                            <Package className="h-3 w-3" />
-                                            Tổng {rentedSection.total_capacity?.toLocaleString()} m³ · Còn {rentedSection.available_capacity?.toLocaleString()} m³
-                                        </span>
-                                    </div>
-                                </div>
+                        {!wh && (contract.owner_address || contract.ownerName || contract.owner_legal_name) && (
+                            <div className="flex items-center gap-1.5 text-[var(--color-text-secondary)] text-sm mb-3">
+                                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>{contract.owner_address || (contract.ownerName || contract.owner_legal_name)}</span>
                             </div>
                         )}
+
+                        {/* ── Phân khu banner (from API or warehouse fallback) ── */}
+                        {contractDetails.length > 0 ? (
+                            contractDetails.length === 1 ? (
+                                /* Single section */
+                                <div
+                                    className="flex items-start gap-3 mb-3 px-3 py-2.5"
+                                    style={{ background: 'rgba(37,99,235,0.06)', borderLeft: '3px solid var(--color-primary)' }}
+                                >
+                                    <LayoutGrid className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                                            Phân khu đang thuê
+                                        </p>
+                                        <p className="font-semibold text-sm mt-0.5" style={{ color: 'var(--color-text)' }}>
+                                            {firstDetail.sectionName}
+                                        </p>
+                                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-info, #3b82f6)' }}>
+                                                <Thermometer className="h-3 w-3" />
+                                                {firstDetail.sector != null ? `Phân khu ${firstDetail.sector}` : '—'}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                                                <Package className="h-3 w-3" />
+                                                {firstDetail.rentedArea?.toLocaleString()} {firstDetail.areaUnit ?? 'm³'}
+                                            </span>
+                                            {firstDetail.priceTierLabel && (
+                                                <span className="text-xs font-medium" style={{ color: 'var(--color-success, #22c55e)' }}>
+                                                    {firstDetail.priceTierLabel} · {fmtCurrency(firstDetail.priceTierValue)}/{firstDetail.priceTierUnit ?? 'tháng'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Multiple sections */
+                                <div className="space-y-2 mb-3">
+                                    {contractDetails.map((detail) => (
+                                        <div
+                                            key={detail.sectionId}
+                                            className="flex items-start gap-3 px-3 py-2.5"
+                                            style={{ background: 'rgba(37,99,235,0.06)', borderLeft: '3px solid var(--color-primary)' }}
+                                        >
+                                            <LayoutGrid className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                                                        Phân khu đang thuê
+                                                    </span>
+                                                    <span className="text-[10px] px-1.5 py-0.5 border"
+                                                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                                                        {detail.sector != null ? `Phân khu ${detail.sector}` : '—'}
+                                                    </span>
+                                                </div>
+                                                <p className="font-semibold text-sm mt-0.5" style={{ color: 'var(--color-text)' }}>
+                                                    {detail.sectionName}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                                    <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                                                        <Package className="h-3 w-3" />
+                                                        {detail.rentedArea?.toLocaleString()} {detail.areaUnit ?? 'm³'}
+                                                    </span>
+                                                    {detail.priceTierLabel && (
+                                                        <span className="text-xs font-medium" style={{ color: 'var(--color-success, #22c55e)' }}>
+                                                            {fmtCurrency(detail.priceTierValue)}/{detail.priceTierUnit ?? 'tháng'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        ) : null}
 
                         {/* Spec chips */}
                         <div className="flex flex-wrap gap-4 text-sm mb-3">
@@ -111,7 +177,9 @@ export function RentedPropertyCard({
                                 </div>
                                 <div>
                                     <div className="text-xs text-[var(--color-text-muted)]">Dung tích thuê</div>
-                                    <div className="font-semibold">{(contract.rentedCapacity || 0).toLocaleString()} m³</div>
+                                    <div className="font-semibold">
+                                        {totalCapacity > 0 ? `${totalCapacity.toLocaleString()} m³` : '—'}
+                                    </div>
                                 </div>
                             </div>
 
@@ -122,9 +190,7 @@ export function RentedPropertyCard({
                                         <Thermometer className="h-4 w-4 text-[var(--color-info, #3b82f6)]" />
                                     </div>
                                     <div>
-                                        <div className="text-xs text-[var(--color-text-muted)]">
-                                            Nhiệt độ{rentedSection ? ' phân khu' : ''}
-                                        </div>
+                                        <div className="text-xs text-[var(--color-text-muted)]">Nhiệt độ phân khu</div>
                                         <div className="font-semibold">{tempMin}°C ~ {tempMax}°C</div>
                                     </div>
                                 </div>
@@ -144,15 +210,7 @@ export function RentedPropertyCard({
                         </div>
 
                         {/* Expiry warning */}
-                        {contract.status === 'expiring_soon' && days > 0 && (
-                            <div className="flex items-center gap-2 border border-[var(--color-warning)] px-3 py-2 text-sm mb-3"
-                                style={{ background: 'rgba(245,158,11,0.07)', color: 'var(--color-warning)' }}>
-                                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                                Còn <strong className="mx-1">{days} ngày</strong> nữa hết hạn — hãy gia hạn sớm!
-                            </div>
-                        )}
-
-                        {/* Owner contact (if available) */}
+                        {/* Owner contact */}
                         {(contract.owner_phone || contract.owner_email) && (
                             <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: 'var(--color-text-muted)' }}>
                                 <span>Chủ kho: <strong style={{ color: 'var(--color-text)' }}>{contract.ownerName || contract.owner_legal_name}</strong></span>
@@ -164,7 +222,6 @@ export function RentedPropertyCard({
                             </div>
                         )}
 
-                        {/* Notes */}
                         {contract.notes && (
                             <p className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg)] px-3 py-2 border-l-2 border-[var(--color-border)] mt-2">
                                 {contract.notes}
@@ -176,13 +233,21 @@ export function RentedPropertyCard({
                     <div className="lg:w-56 flex-shrink-0 flex flex-col gap-3">
                         <div className="bg-[var(--color-bg)] p-4">
                             <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">Chi phí / tháng</div>
-                            <div className="font-extrabold text-[var(--color-primary)]">{fmtCurrency(monthly)}</div>
-                            <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{fmtCurrency(contract.monthlyRate)}/m³</div>
-                            {rentedSection && (
+                            <div className="font-extrabold text-[var(--color-primary)]">{fmtCurrency(monthlyTotal)}</div>
+
+                            {contractDetails.length > 1 ? (
                                 <div className="flex items-center gap-1 text-xs mt-2 pt-2"
                                     style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
                                     <LayoutGrid className="h-3 w-3 flex-shrink-0" />
-                                    <span>{rentedSection.name}</span>
+                                    <span>{contractDetails.length} phân khu</span>
+                                </div>
+                            ) : contractDetails.length === 1 ? (
+                                <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                                    {contractDetails[0].priceTierLabel ?? '—'}
+                                </div>
+                            ) : (
+                                <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                                    {fmtCurrency(contract.monthlyRate)}/m³
                                 </div>
                             )}
                         </div>
@@ -198,7 +263,7 @@ export function RentedPropertyCard({
                                 </button>
                             )}
 
-                            {contract.status === 'pending_renter' && (
+                            {isPendingRenter && (
                                 <>
                                     <button
                                         onClick={onViewContract}
@@ -215,14 +280,7 @@ export function RentedPropertyCard({
                                 </>
                             )}
 
-                            {(contract.status === 'active' || contract.status === 'expiring_soon') && (
-                                <button className="flex items-center justify-center gap-2 border text-sm px-4 py-2 hover:opacity-80 transition-opacity"
-                                    style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-                                    <RotateCcw className="h-3.5 w-3.5" /> Gia hạn hợp đồng
-                                </button>
-                            )}
-
-                            {contract.status !== 'pending_renter' && (
+                            {!isPendingRenter && (
                                 <button
                                     onClick={onViewContract}
                                     className="flex items-center justify-center gap-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm px-4 py-2 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors">
@@ -230,7 +288,7 @@ export function RentedPropertyCard({
                                 </button>
                             )}
 
-                            {contract.status === 'active' && (
+                            {canCancel && (
                                 <button
                                     onClick={onCancelContract}
                                     className="flex items-center justify-center gap-2 border text-sm px-4 py-2 transition-colors"
@@ -240,22 +298,6 @@ export function RentedPropertyCard({
                                 </button>
                             )}
 
-                            {canRate && (
-                                <button
-                                    onClick={onRateWarehouse}
-                                    className="flex items-center justify-center gap-2 border text-sm px-4 py-2 transition-colors"
-                                    style={rating
-                                        ? { borderColor: '#f59e0b', color: '#f59e0b' }
-                                        : { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }
-                                    }
-                                >
-                                    <Star
-                                        className="h-3.5 w-3.5"
-                                        style={rating ? { fill: '#f59e0b', color: '#f59e0b' } : {}}
-                                    />
-                                    {rating ? `Đánh giá: ${rating.stars}★` : 'Đánh giá kho'}
-                                </button>
-                            )}
                         </div>
                     </div>
                 </div>

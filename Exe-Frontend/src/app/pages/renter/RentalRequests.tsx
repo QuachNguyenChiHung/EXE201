@@ -5,7 +5,7 @@ import { useApp } from '../../../context/AppContext';
 import { renterService } from '../../../services/renterService';
 import { Send, ArrowLeft, ClipboardList, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { CompositeWarehouse, CompositeRentRequest } from "../../../types";
+import { CompositeWarehouse, CompositeRentRequest, CompositeContract } from "../../../types";
 
 import { FilterTab, TABS } from "../../components/renter/RentalRequestUtils";
 import { RentalRequestCard } from "../../components/renter/RentalRequestCard";
@@ -18,6 +18,7 @@ export default function RentalRequests() {
 
     const [tab, setTab] = useState<FilterTab>("all");
     const [expandedId, setExpandedId] = useState<number | null>(null);
+    const [contracts, setContracts] = useState<CompositeContract[]>([]);
 
     // Pagination & Caching
     const [page, setPage] = useState(0);
@@ -39,6 +40,47 @@ export default function RentalRequests() {
             navigate("/login");
         }
     }, [user, navigate]);
+
+    const fetchContracts = useCallback(async () => {
+        try {
+            const { content } = await renterService.getMyContracts(0, 100);
+            setContracts(content);
+        } catch (err) {
+            console.warn('[RentalRequests] fetchContracts failed', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchContracts();
+    }, [fetchContracts]);
+
+    const handleAcceptContract = async (contractId: number) => {
+        try {
+            await renterService.signContract(contractId);
+            await fetchContracts();
+            toast.success('Đã ký xác nhận hợp đồng!');
+        } catch (err) {
+            toast.error((err as any)?.message ?? 'Không thể ký hợp đồng');
+        }
+    };
+
+    const handleRejectContract = async (contractId: number, reason: string) => {
+        try {
+            await renterService.rejectContract(contractId, reason);
+            await fetchContracts();
+            toast.success('Đã gửi phản hồi từ chối.');
+        } catch (err) {
+            toast.error((err as any)?.message ?? 'Không thể từ chối hợp đồng');
+        }
+    };
+
+    const contractsByRequestId = useMemo(() => {
+        const map: Record<number, CompositeContract> = {};
+        contracts.forEach(c => {
+            if (c.id_rent_request) map[c.id_rent_request] = c;
+        });
+        return map;
+    }, [contracts]);
 
     const fetchPage = useCallback(async (p: number, t: FilterTab, isPreload: boolean = false, forceRefetch: boolean = false) => {
         const cacheKey = `${t}_${p}`;
@@ -233,16 +275,22 @@ export default function RentalRequests() {
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {requestsList.map((req) => (
-                            <RentalRequestCard
-                                key={req.id_rentRequest}
-                                request={req}
-                                warehouse={warehouses[req.id_warehouse?.toString() || '']}
-                                isExpanded={expandedId === req.id_rentRequest}
-                                onToggle={() => setExpandedId((prev) => prev === req.id_rentRequest ? null : req.id_rentRequest)}
-                                onWithdraw={handleWithdraw}
-                            />
-                        ))}
+                        {requestsList.map((req) => {
+                            const contract = contractsByRequestId[req.id_rentRequest || req.id];
+                            return (
+                                <RentalRequestCard
+                                    key={req.id_rentRequest}
+                                    request={req}
+                                    warehouse={warehouses[req.id_warehouse?.toString() || '']}
+                                    contract={contract}
+                                    isExpanded={expandedId === req.id_rentRequest}
+                                    onToggle={() => setExpandedId((prev) => prev === req.id_rentRequest ? null : req.id_rentRequest)}
+                                    onWithdraw={handleWithdraw}
+                                    onSign={handleAcceptContract}
+                                    onReject={handleRejectContract}
+                                />
+                            );
+                        })}
                     </div>
                 )}
 

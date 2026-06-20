@@ -42,6 +42,10 @@ export const CONTRACT_CFG: Record<string, { label: string; sublabel: string; col
     active: { label: "Hợp đồng đang hiệu lực", sublabel: "Đã ký — đang chạy", color: "#22c55e", bg: "rgba(34,197,94,0.07)", actionLabel: "Xem hợp đồng", icon: <CheckCircle className="h-3.5 w-3.5" /> },
     expired: { label: "Hợp đồng hết hạn", sublabel: "Đã kết thúc", color: "#9ca3af", bg: "rgba(156,163,175,0.07)", actionLabel: "Xem hợp đồng", icon: <XCircle className="h-3.5 w-3.5" /> },
     cancelled: { label: "Hợp đồng đã hủy", sublabel: "Đã bị hủy", color: "#ef4444", bg: "rgba(239,68,68,0.07)", actionLabel: "Xem hợp đồng", icon: <XCircle className="h-3.5 w-3.5" /> },
+    CANCELED: { label: "Hợp đồng đã hủy", sublabel: "Đã bị hủy", color: "#ef4444", bg: "rgba(239,68,68,0.07)", actionLabel: "Xem hợp đồng", icon: <XCircle className="h-3.5 w-3.5" /> },
+    PENDING: { label: "Chờ bạn ký xác nhận", sublabel: "Chủ kho đã gửi hợp đồng", color: "#7c3aed", bg: "rgba(124,58,237,0.07)", actionLabel: "Xem & ký hợp đồng", icon: <AlertCircle className="h-3.5 w-3.5" /> },
+    ACTIVE: { label: "Hợp đồng đang hiệu lực", sublabel: "Đã ký — đang chạy", color: "#22c55e", bg: "rgba(34,197,94,0.07)", actionLabel: "Xem hợp đồng", icon: <CheckCircle className="h-3.5 w-3.5" /> },
+    COMPLETED: { label: "Hợp đồng hết hạn", sublabel: "Đã kết thúc", color: "#9ca3af", bg: "rgba(156,163,175,0.07)", actionLabel: "Xem hợp đồng", icon: <XCircle className="h-3.5 w-3.5" /> },
 };
 
 export const fmtDate = (iso: string | undefined) => {

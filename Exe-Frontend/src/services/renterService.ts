@@ -34,7 +34,7 @@ const mapPriceTiers = (tiers: any[]) => {
         else if (labelStr.includes('ngày') || labelStr.includes('day')) timeUnit = 'day';
         else if (labelStr.includes('tuần') || labelStr.includes('week')) timeUnit = 'week';
         else if (labelStr.includes('năm') || labelStr.includes('year')) timeUnit = 'year';
-        
+
         return {
             ...pt,
             timeUnit: timeUnit, // explicitly set derived time unit
@@ -178,5 +178,128 @@ export const renterService = {
         const response = await api.get(`/warehouses/${id}/location`);
         console.log('[API RESPONSE]', response.data);
         return response.data;
-    }
+    },
+
+    getMyContracts: async (page: number = 0, size: number = 6, status?: string): Promise<{ content: CompositeContract[], totalPages: number, totalElements: number }> => {
+        console.log(`[API CALL] GET /contracts?page=${page}&size=${size}&status=${status || ''}`);
+        const params: any = { page, size };
+        if (status) params.status = status;
+        const response = await api.get('/contracts', { params });
+        console.log('[API RESPONSE]', response.data);
+        return {
+            content: (response.data.content || []).map(mapContractResponse),
+            totalPages: response.data.totalPages || 0,
+            totalElements: response.data.totalElements || 0,
+        };
+    },
+
+    signContract: async (contractId: number): Promise<CompositeContract> => {
+        console.log(`[API CALL] PATCH /renters/contracts/${contractId}/sign`);
+        const response = await api.patch(`/renters/contracts/${contractId}/sign`);
+        console.log('[API RESPONSE]', response.data);
+        return mapContractResponse(response.data);
+    },
+
+    rejectContract: async (contractId: number, reason?: string): Promise<CompositeContract> => {
+        console.log(`[API CALL] PATCH /renters/contracts/${contractId}/reject`);
+        const response = await api.patch(`/renters/contracts/${contractId}/reject`, { reason });
+        console.log('[API RESPONSE]', response.data);
+        return mapContractResponse(response.data);
+    },
 };
+
+export interface ContractResponseDTO {
+    id: number;
+    requestId: number;
+    warehouseName: string;
+    cargoDescription: string;
+    startAt: string;
+    endAt: string;
+    paymentTerm: string;
+    penaltyClause: string;
+    specialTerm: string;
+    cancelReason: string;
+    ownerSigned: boolean;
+    renterSigned: boolean;
+    ownerLegalName: string;
+    ownerTaxCode: string;
+    ownerEmail: string;
+    ownerPhone: string;
+    ownerAddress: string;
+    renterLegalName: string;
+    renterTaxCode: string;
+    renterEmail: string;
+    renterPhone: string;
+    renterAddress: string;
+    totalPrice: number;
+    status: string;
+}
+
+export interface CompositeContract {
+    id_contract: number;
+    id_rent_request?: number;
+    cargo_description: string;
+    create_at: string;
+    status: string;
+    update_at: string;
+    start_at: string;
+    end_at: string;
+    cancel_reason: string;
+    payment_term: string;
+    penalty_clause: string;
+    special_term: string;
+    owner_legal_name: string;
+    owner_tax_code: string;
+    owner_email: string;
+    owner_phone: string;
+    owner_address: string;
+    renter_legal_name: string;
+    renter_tax_code: string;
+    renter_email: string;
+    renter_phone: string;
+    renter_address: string;
+    total_price: number;
+    ownerSigned: boolean;
+    renterSigned: boolean;
+    id_warehouse?: number;
+    contractRef?: string;
+    ownerName?: string;
+    renterCompany?: string;
+    rentedCapacity?: number;
+    monthlyRate?: number;
+    notes?: string;
+    pdfFileName?: string;
+}
+
+function mapContractResponse(c: any): CompositeContract {
+    return {
+        id_contract: c.id,
+        id_rent_request: c.requestId,
+        cargo_description: c.cargoDescription,
+        create_at: c.createdAt || new Date().toISOString(),
+        status: c.status,
+        update_at: c.updatedAt || new Date().toISOString(),
+        start_at: c.startAt,
+        end_at: c.endAt,
+        cancel_reason: c.cancelReason,
+        payment_term: c.paymentTerm,
+        penalty_clause: c.penaltyClause,
+        special_term: c.specialTerm,
+        owner_legal_name: c.ownerLegalName,
+        owner_tax_code: c.ownerTaxCode,
+        owner_email: c.ownerEmail,
+        owner_phone: c.ownerPhone,
+        owner_address: c.ownerAddress,
+        renter_legal_name: c.renterLegalName,
+        renter_tax_code: c.renterTaxCode,
+        renter_email: c.renterEmail,
+        renter_phone: c.renterPhone,
+        renter_address: c.renterAddress,
+        total_price: c.totalPrice,
+        ownerSigned: c.ownerSigned,
+        renterSigned: c.renterSigned,
+        id_warehouse: undefined,
+        ownerName: c.ownerLegalName,
+        renterCompany: c.renterLegalName,
+    };
+}

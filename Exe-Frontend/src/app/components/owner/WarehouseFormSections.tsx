@@ -240,7 +240,9 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                         variant="outline"
                         size="sm"
                         onClick={() => addPriceTier(s.id_section)}
-                        className="h-8 text-xs flex items-center gap-1"
+                        disabled={(s.priceTiers?.length ?? 0) >= 4}
+                        className="h-8 text-xs flex items-center gap-1 disabled:opacity-50"
+                        title={(s.priceTiers?.length ?? 0) >= 4 ? "Đã đủ 4 mốc giá (tối đa)" : undefined}
                       >
                         <Plus className="h-3 w-3" /> Thêm mốc giá
                       </Button>
@@ -301,7 +303,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                       </div>
                     ) : (
                       <div className="text-center py-4 text-sm text-gray-500 italic">
-                        Chưa có thông tin giá. Nhấn "Thêm mốc giá" để bắt đầu.
+                        Chưa có thông tin giá. Nhấn "Thêm mốc giá" để bắt đầu (tối đa 4 mốc giá).
                       </div>
                     )}
                   </div>

@@ -4,6 +4,29 @@ import { CompositeContract } from '../../../types';
 
 export type ContractStatus = CompositeContract['status'];
 
+/**
+ * Map backend contract status + signature flags to frontend UI status.
+ * Backend: PENDING (waiting for signatures), ACTIVE (both signed), COMPLETED, CANCELED
+ * Frontend: pending_renter, active, expired, cancelled
+ */
+export function mapBackendStatus(
+    status: string | undefined,
+    ownerSigned?: boolean,
+    renterSigned?: boolean
+): string {
+    const s = (status || '').toUpperCase();
+    if (s === 'CANCELED') return 'cancelled';
+    if (s === 'COMPLETED') return 'expired';
+    if (s === 'ACTIVE') return 'active';
+    // PENDING: owner signed but renter hasn't → show as "pending_renter"
+    if (s === 'PENDING') {
+        if (!renterSigned) return 'pending_renter';
+        if (!ownerSigned) return 'pending_renter';
+        return 'active';
+    }
+    return 'pending_renter';
+}
+
 export const STATUS_CONFIG: Record<string, {
     label: string;
     bg: string;
@@ -24,6 +47,35 @@ export const STATUS_CONFIG: Record<string, {
         text: 'text-white',
         icon: <PenLine className="h-3.5 w-3.5" />,
         stripeBg: 'bg-[#f59e0b]',
+    },
+    // Backend raw statuses
+    PENDING: {
+        label: 'Chờ bạn ký',
+        bg: 'bg-[#f59e0b]',
+        text: 'text-white',
+        icon: <PenLine className="h-3.5 w-3.5" />,
+        stripeBg: 'bg-[#f59e0b]',
+    },
+    ACTIVE: {
+        label: 'Đang thuê',
+        bg: 'bg-[var(--color-success)]',
+        text: 'text-white',
+        icon: <CheckCircle className="h-3.5 w-3.5" />,
+        stripeBg: 'bg-[var(--color-success)]',
+    },
+    COMPLETED: {
+        label: 'Đã hết hạn',
+        bg: 'bg-[var(--color-text-muted)]',
+        text: 'text-white',
+        icon: <XCircle className="h-3.5 w-3.5" />,
+        stripeBg: 'bg-[var(--color-text-muted)]',
+    },
+    CANCELED: {
+        label: 'Đã huỷ',
+        bg: 'bg-[var(--color-error)]',
+        text: 'text-white',
+        icon: <XCircle className="h-3.5 w-3.5" />,
+        stripeBg: 'bg-[var(--color-error)]',
     },
     active: {
         label: 'Đang thuê',

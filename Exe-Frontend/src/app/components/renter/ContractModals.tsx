@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { X, AlertCircle, FileText, PenLine, XCircle, CheckCircle, Upload } from 'lucide-react';
-import { CompositeContract } from '../../../types';
+import { CompositeContract, ContractDetailDTO } from '../../../types';
 import { toast } from 'sonner';
+
+function isPendingRenterSign(contract: CompositeContract): boolean {
+    const s = (contract.status || '').toUpperCase();
+    if (s === 'PENDING') return !contract.renterSigned;
+    return s === 'PENDING' && !contract.renterSigned;
+}
 
 export function RejectContractModal({
     contractRef,
@@ -75,7 +81,7 @@ export function ContractDetailModal({
     onReject?: () => void;
     onClose: () => void;
 }) {
-    const readOnly = contract.status !== 'pending_renter';
+    const readOnly = !isPendingRenterSign(contract);
     const fmtDate = (d: string | undefined) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
     const fmtCur = (n: number | undefined) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
     const capacity = contract.rentedCapacity || 0;

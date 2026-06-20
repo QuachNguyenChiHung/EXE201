@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building
+    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building, CheckCircle
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { CompositeRentRequest, CompositeWarehouse, CompositeContract } from "../../../types";
@@ -12,15 +12,21 @@ import {
 interface RentalRequestCardProps {
     request: CompositeRentRequest;
     warehouse: CompositeWarehouse | undefined;
+    contract?: CompositeContract;
     isExpanded: boolean;
     onToggle: () => void;
     onWithdraw: (id: number) => void;
+    onViewContract?: (contract: CompositeContract) => void;
+    onSign?: (contractId: number) => void;
+    onReject?: (contractId: number, reason: string) => void;
 }
 
-export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, onWithdraw }: RentalRequestCardProps) {
+export function RentalRequestCard({ request, warehouse, contract, isExpanded, onToggle, onWithdraw, onSign, onReject }: RentalRequestCardProps) {
     const navigate = useNavigate();
-    const { contracts, users } = useApp();
+    const { users } = useApp();
     const [sectionOpen, setSectionOpen] = useState(false);
+    const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
 
     const status = request.status as RequestStatus;
     const cfg = STATUS_CONFIG[status];
@@ -37,7 +43,7 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
     const warehouseName = warehouse?.name || request.warehouseName || "Kho không xác định";
     const ownerName = ownerUser?.name || warehouse?.ownerName || request.ownerName || "Chủ kho";
     
-    const existingContract = contracts.find((c: CompositeContract) => c.id_rent_request === request.id_rentRequest);
+    const existingContract = contract;
 
     return (
         <div
@@ -293,8 +299,8 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
 
                             {/* Contract banner */}
                             {existingContract && (() => {
+                                const isPendingContract = existingContract.status === "pending_renter" || existingContract.status === "PENDING";
                                 const ccfg = CONTRACT_CFG[existingContract.status] ?? CONTRACT_CFG["draft"];
-                                const isPending = existingContract.status === "pending_renter";
                                 return (
                                     <div className="space-y-2">
                                         <div
@@ -306,24 +312,75 @@ export function RentalRequestCard({ request, warehouse, isExpanded, onToggle, on
                                                 <p className="text-xs font-semibold" style={{ color: ccfg.color }}>{ccfg.label}</p>
                                                 <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
                                                     {ccfg.sublabel}
-                                                    {existingContract.status === "active" && existingContract.start_at && (
-                                                        <> · {fmtDate(existingContract.start_at)} — {fmtDate(existingContract.end_at)}</>
-                                                    )}
+                                                    {existingContract.status === "active" || existingContract.status === "ACTIVE" ? (() => {
+                                                        const start = existingContract.start_at;
+                                                        const end = existingContract.end_at;
+                                                        return start && end ? ` · ${fmtDate(start)} — ${fmtDate(end)}` : null;
+                                                    })() : null}
                                                 </p>
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => navigate(isPending ? "/renter/rented" : `/renter/contracts/${existingContract.id_contract}`)}
+                                            onClick={() => navigate(`/shared/contracts/${existingContract.id_contract}`)}
                                             className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
-                                            style={{ background: isPending ? "#7c3aed" : ccfg.color }}
+                                            style={{ background: isPendingContract ? "#7c3aed" : ccfg.color }}
                                         >
                                             <FileText className="h-3 w-3" /> {ccfg.actionLabel}
                                         </button>
-                                        {isPending && (
-                                            <p className="text-[11px] flex items-center gap-1.5" style={{ color: "#7c3aed" }}>
-                                                <AlertCircle className="h-3 w-3 shrink-0" />
-                                                Vui lòng xem và ký hợp đồng để hoàn tất thuê kho.
-                                            </p>
+                                        {isPendingContract && (
+                                            <>
+                                                <p className="text-[11px] flex items-center gap-1.5" style={{ color: "#7c3aed" }}>
+                                                    <AlertCircle className="h-3 w-3 shrink-0" />
+                                                    Vui lòng xem và ký hợp đồng để hoàn tất thuê kho.
+                                                </p>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => onSign?.(existingContract.id_contract)}
+                                                        className="flex-1 text-xs py-1.5 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                                        style={{ background: "#16a34a" }}
+                                                    >
+                                                        <CheckCircle className="h-3 w-3" /> Ký xác nhận
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setRejectReasonOpen(true)}
+                                                        className="flex-1 text-xs py-1.5 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                                        style={{ background: "#dc2626" }}
+                                                    >
+                                                        <XCircle className="h-3 w-3" /> Từ chối
+                                                    </button>
+                                                </div>
+                                                {rejectReasonOpen && (
+                                                    <div className="border border-[var(--color-border)] rounded p-2 space-y-2" style={{ background: "var(--color-surface)" }}>
+                                                        <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+                                                            Lý do từ chối (tùy chọn):
+                                                        </p>
+                                                        <textarea
+                                                            className="w-full text-xs p-2 rounded resize-none focus:outline-none focus:ring-1"
+                                                            style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                            rows={2}
+                                                            placeholder="Nhập lý do từ chối..."
+                                                            value={rejectReason}
+                                                            onChange={e => setRejectReason(e.target.value)}
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => { onReject?.(existingContract.id_contract, rejectReason); setRejectReasonOpen(false); setRejectReason(""); }}
+                                                                className="flex-1 text-xs py-1.5 text-white rounded"
+                                                                style={{ background: "#dc2626" }}
+                                                            >
+                                                                Gửi từ chối
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setRejectReasonOpen(false); setRejectReason(""); }}
+                                                                className="flex-1 text-xs py-1.5 rounded"
+                                                                style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                            >
+                                                                Hủy
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 );

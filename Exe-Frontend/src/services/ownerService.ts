@@ -1,4 +1,5 @@
 import { api } from './asus_api';
+import { storageAPI } from './apiClient';
 import type { CompositeWarehouse } from '../types';
 
 export interface OwnerStatisticResponseDTO {
@@ -106,9 +107,33 @@ export const ownerService = {
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },
-  updateWarehouse: async (id: number, payload: any): Promise<any> => {
-    console.log(`[API CALL] PUT /owners/warehouses/${id}`);
-    const response = await api.put(`/owners/warehouses/${id}`, payload);
+  updateWarehouse: async (id: number, payload: any, force = false): Promise<any> => {
+    // Separate new File objects from existing image URLs
+    const newImageFiles: File[] = [];
+    const imageUrls: string[] = [];
+    if (Array.isArray(payload.images)) {
+      payload.images.forEach((img: any) => {
+        if (img instanceof File) {
+          newImageFiles.push(img);
+        } else {
+          imageUrls.push(img);
+        }
+      });
+    }
+
+    // Upload new image files and collect their URLs
+    for (const file of newImageFiles) {
+      const url = await storageAPI.uploadImage(file);
+      imageUrls.push(url);
+    }
+
+    const payloadWithUrls = {
+      ...payload,
+      images: imageUrls,
+    };
+
+    console.log(`[API CALL] PUT /owners/warehouses/${id}?force=${force}`);
+    const response = await api.put(`/owners/warehouses/${id}?force=${force}`, payloadWithUrls);
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },

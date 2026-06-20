@@ -58,7 +58,7 @@ export async function nominatimSearch(
 ): Promise<NominatimResult[]> {
   const qParts = [houseNumber, street, city, state].filter(Boolean);
   if (qParts.length === 0) return [];
-  
+
   const params = new URLSearchParams({
     format: "jsonv2",
     addressdetails: "1",
@@ -110,7 +110,7 @@ export function parseAddress(addr: NominatimAddress, displayName = "") {
   const district =
     addr.city_district || addr.county || addr.town || addr.city || "";
   let city = addr.state || addr.province || "";
-  
+
   if (!city) {
     // If state/province are missing but we have ISO code, map it
     const isoMap: Record<string, string> = {
@@ -135,6 +135,7 @@ export function parseAddress(addr: NominatimAddress, displayName = "") {
 // ── Constants ──────────────────────────────────────────────────────────────
 export const UNIT_SHORT: Record<string, string> = {
   month: "tháng",
+  week: "tuần",
   day: "ngày",
   hour: "giờ",
   year: "năm",
@@ -149,8 +150,8 @@ export const UNIT_AREA_SHORT: Record<string, string> = {
 export const PRICE_TIER_OPTIONS = [
   { unit: "year", label: "Giá theo năm" },
   { unit: "month", label: "Giá theo tháng" },
+  { unit: "week", label: "Giá theo tuần" },
   { unit: "day", label: "Giá theo ngày" },
-  { unit: "hour", label: "Giá theo giờ" },
 ];
 
 export interface CertFile {

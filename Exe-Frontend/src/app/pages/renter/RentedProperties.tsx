@@ -2,9 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
-import { contractsAPI } from '../../../services/apiClient';
-import { CompositeContract, CompositeWarehouse } from '../../../types';
-import { RateWarehouseModal } from '../../components/RateWarehouseModal';
+import { CompositeContract, CompositeWarehouse, ContractDetailDTO } from '../../../types';
 import { ArrowLeft, Package, Snowflake } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,27 +11,69 @@ import { RentedPropertyFilters } from '../../components/renter/RentedPropertyFil
 import { ContractDetailModal, RejectContractModal } from '../../components/renter/ContractModals';
 import { RentedPropertyCard } from '../../components/renter/RentedPropertyCard';
 import { getUser } from '../../../utils/auth';
+import { renterService } from '../../../services/renterService';
 
 export default function RentedProperties() {
   const navigate = useNavigate();
   const user = getUser();
-  const { contracts: allContracts, warehouses: warehouseList, ratings: allRatings, refreshContracts, refreshWarehouses, refreshRatings } = useApp();
+  const { warehouses: warehouseList, refreshWarehouses } = useApp();
 
   const [tab, setTab] = useState<FilterTab>('all');
   const [viewingContract, setViewingContract] = useState<CompositeContract | null>(null);
   const [rejectingContract, setRejectingContract] = useState<CompositeContract | null>(null);
-  const [ratingContract, setRatingContract] = useState<CompositeContract | null>(null);
+  const [renterContracts, setRenterContracts] = useState<CompositeContract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(true);
 
-  // Helper: refresh data from API
-  const refreshData = async () => {
+  const buildContractDetails = (details: any[]): ContractDetailDTO[] => {
+    if (!details || details.length === 0) return [];
+    return details.map((d) => ({
+      sectionId: d.id ?? 0,
+      sectionName: d.sector ? `Phân khu ${d.sector}` : 'Phân khu',
+      sector: d.sector,
+      rentedArea: d.rentedArea ?? 0,
+      areaUnit: d.areaUnit ?? 'm³',
+      priceTierId: 0,
+      priceTierLabel: d.priceTierLabel ?? 'Giá theo tháng',
+      priceTierValue: d.priceTierValue ?? 0,
+      priceTierUnit: 'tháng',
+    }));
+  };
+
+  const fetchContracts = async () => {
+    setLoadingContracts(true);
     try {
-      await Promise.all([
-        refreshContracts(),
-        refreshWarehouses(),
-        refreshRatings(),
+      const [contractsRes, requestsRes] = await Promise.all([
+        renterService.getMyContracts(0, 100),
+        renterService.getMyRequests(0, 100).catch(() => ({ content: [] })),
       ]);
+
+      const requestDetailsMap: Record<number, any[]> = {};
+      const requestWarehouseMap: Record<number, number> = {};
+      (requestsRes.content as any[]).forEach((r: any) => {
+        const reqId = r.id || r.id_rentRequest;
+        if (r.details && r.details.length > 0) {
+          requestDetailsMap[reqId] = r.details;
+        }
+        if (r.id_warehouse) {
+          requestWarehouseMap[reqId] = r.id_warehouse;
+        }
+      });
+
+      const contracts: CompositeContract[] = contractsRes.content.map((c: CompositeContract) => {
+        const reqId = c.id_rent_request ?? 0;
+        const details = requestDetailsMap[reqId] ?? [];
+        return {
+          ...c,
+          id_warehouse: c.id_warehouse ?? requestWarehouseMap[reqId],
+          contractDetails: buildContractDetails(details),
+        };
+      });
+
+      setRenterContracts(contracts);
     } catch (err) {
-      console.warn('[RentedProperties] refreshData failed', err);
+      console.error('[RentedProperties] fetchContracts failed', err);
+    } finally {
+      setLoadingContracts(false);
     }
   };
 
@@ -42,26 +82,19 @@ export default function RentedProperties() {
     [warehouseList],
   );
 
-  const contracts = useMemo(
-    () => (allContracts as unknown as CompositeContract[]).filter(c => c.id_renter === user?.id_user),
-    [allContracts, user],
-  );
-
   useEffect(() => {
     if (!user) navigate('/login');
     else if (user.role !== 'RENTER') navigate('/login');
   }, [user, navigate]);
 
   useEffect(() => {
-    // initial load
-    refreshData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchContracts();
   }, []);
 
   const handleCancel = async (id: number) => {
     try {
-      await contractsAPI.update(id.toString(), { status: 'cancelled', notes: 'Huỷ theo yêu cầu của người thuê.' });
-      await refreshData();
+      await renterService.rejectContract(id, 'Huỷ theo yêu cầu của người thuê.');
+      await fetchContracts();
       toast.success('Đã huỷ hợp đồng.');
     } catch (err) {
       toast.error((err as any)?.message ?? 'Không thể huỷ hợp đồng');
@@ -70,8 +103,8 @@ export default function RentedProperties() {
 
   const handleAcceptContract = async (id: number) => {
     try {
-      await contractsAPI.update(id.toString(), { status: 'active', acceptedAt: new Date().toISOString() });
-      await refreshData();
+      await renterService.signContract(id);
+      await fetchContracts();
       setViewingContract(null);
       toast.success('Đã ký xác nhận hợp đồng! Hợp đồng hiện đang có hiệu lực.');
     } catch (err) {
@@ -81,8 +114,8 @@ export default function RentedProperties() {
 
   const handleRejectContract = async (id: number, reason: string) => {
     try {
-      await contractsAPI.update(id.toString(), { status: 'draft', renterRejectionReason: reason });
-      await refreshData();
+      await renterService.rejectContract(id, reason);
+      await fetchContracts();
       setRejectingContract(null);
       setViewingContract(null);
       toast.success('Đã gửi phản hồi từ chối. Chủ kho sẽ chỉnh sửa và gửi lại.');
@@ -91,14 +124,16 @@ export default function RentedProperties() {
     }
   };
 
-  const filtered = contracts.filter(c => tab === 'all' || c.status === tab);
+  const filtered = renterContracts.filter(c => tab === 'all' || c.status === tab);
 
-  const counts = contracts.reduce(
+  const counts = renterContracts.reduce(
     (acc, c) => { acc[c.status] = (acc[c.status] || 0) + 1; return acc; },
     {} as Record<string, number>,
   );
 
-  const pendingSignCount = counts['pending_renter'] ?? 0;
+  const pendingSignCount = renterContracts.filter(c =>
+    c.status === 'pending_renter' || c.status === 'PENDING'
+  ).length;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pb-20">
@@ -120,21 +155,6 @@ export default function RentedProperties() {
           onClose={() => setRejectingContract(null)}
         />
       )}
-
-      {ratingContract && (() => {
-        const wh = warehouses[ratingContract.id_warehouse?.toString() || ''];
-        const existingRating = allRatings.find((r: any) => r.warehouse_id?.toString() === ratingContract.id_warehouse?.toString() && r.id_renter === user?.id_user);
-        return (
-          <RateWarehouseModal
-            warehouseId={ratingContract.id_warehouse?.toString() || ''}
-            warehouseName={wh?.name ?? `Kho #${ratingContract.id_warehouse}`}
-            contractId={ratingContract.id_contract.toString()}
-            contractRef={ratingContract.contractRef || ''}
-            existingRating={existingRating}
-            onClose={() => setRatingContract(null)}
-          />
-        );
-      })()}
 
       <div className="max-w-[1000px] w-full mx-auto px-4 py-8">
         {/* ── Header ── */}
@@ -169,7 +189,11 @@ export default function RentedProperties() {
         />
 
         {/* ── Contract list ── */}
-        {contracts.length === 0 ? (
+        {loadingContracts ? (
+          <div className="flex justify-center items-center py-12 mt-2 border border-[var(--color-border)] rounded bg-[var(--color-surface)]">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-primary)]"></div>
+          </div>
+        ) : renterContracts.length === 0 ? (
           <div className="mt-2 border p-12 text-center bg-[var(--color-surface)]">
             <Snowflake className="h-12 w-12 text-[var(--color-primary)] mx-auto mb-4" />
             <h3 className="mb-2 font-semibold text-lg">Bạn chưa có kho nào đang hoạt động</h3>
@@ -203,11 +227,9 @@ export default function RentedProperties() {
                 key={contract.id_contract}
                 contract={contract}
                 warehouse={warehouses[contract.id_warehouse?.toString() || '']}
-                rating={allRatings.find((r: any) => r.warehouse_id?.toString() === contract.id_warehouse?.toString() && r.id_renter === user?.id_user)}
                 onViewContract={() => setViewingContract(contract)}
                 onRejectContract={() => setRejectingContract(contract)}
                 onCancelContract={() => handleCancel(contract.id_contract)}
-                onRateWarehouse={() => setRatingContract(contract)}
               />
             ))}
           </div>

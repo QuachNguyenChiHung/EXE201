@@ -31,11 +31,25 @@ const PRICE_TIER_LABELS: Record<string, string> = {
     week: 'Tuần',
     month: 'Tháng',
     year: 'Năm',
-    'Ngày': 'Ngày',
-    'Tuần': 'Tuần',
-    'Tháng': 'Tháng',
-    'Năm': 'Năm'
 };
+
+const UNIT_MULTIPLIERS: Record<string, number> = {
+    day: 1,
+    week: 7,
+    month: 30,
+    year: 365,
+};
+
+function getTierValue(priceTiers: { unit?: string; timeUnit?: string; value?: number }[] | undefined, unit: string): number {
+    if (!priceTiers) return 0;
+    const tier = priceTiers.find(t => (t.unit || t.timeUnit) === unit);
+    if (tier?.value != null) return tier.value;
+    const dayTier = priceTiers.find(t => (t.unit || t.timeUnit) === 'day');
+    if (dayTier?.value != null && UNIT_MULTIPLIERS[unit]) {
+        return dayTier.value * UNIT_MULTIPLIERS[unit];
+    }
+    return 0;
+}
 
 interface WarehouseDetailSidebarProps {
     warehouse: CompositeWarehouse;
@@ -56,7 +70,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
         cargoType: "",
         sectionCapacities: {},
         durationValue: "",
-        durationUnit: "month",
+        durationUnit: "day",
         startDate: "",
         endDate: "",
         message: "",
@@ -64,28 +78,25 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
     });
 
     const availableUnits = React.useMemo(() => {
-        if (!form.selectedSectionIds.length || !warehouse.sections) return [];
-
-        const targetSections = warehouse.sections.filter(s => form.selectedSectionIds.includes(s.id_section?.toString() || ''));
-        if (!targetSections.length) return [];
-
-        // Gather units from each selected section's price tiers
-        const unitsPerSection = targetSections.map(sec => sec.priceTiers?.map(pt => pt.unit || pt.timeUnit) || []);
-        // Compute intersection of units across all sections
-        const commonUnits = unitsPerSection.reduce<string[]>((acc, units) => {
-            if (acc === null) return units;
-            return acc.filter(u => units.includes(u));
-        }, null as any) || [];
-
-        // Ensure unique values
-        return Array.from(new Set(commonUnits));
+        if (!warehouse.sections && !warehouse.priceTiers) return [];
+        const allPriceTiers = warehouse.priceTiers || [];
+        for (const sec of (warehouse.sections || [])) {
+            if (form.selectedSectionIds.includes(sec.id_section?.toString() || '')) {
+                allPriceTiers.push(...(sec.priceTiers || []));
+            }
+        }
+        const units = allPriceTiers.map(pt => pt.timeUnit || pt.unit).filter(Boolean) as string[];
+        return Array.from(new Set(units)).sort((a, b) => {
+            const order = ['day', 'week', 'month', 'year'];
+            return (order.indexOf(a) - order.indexOf(b));
+        });
     }, [warehouse, form.selectedSectionIds]);
 
     useEffect(() => {
-        if (availableUnits.length > 0 && !availableUnits.includes(form.durationUnit)) {
-            setForm(f => ({ ...f, durationUnit: availableUnits[0] as any }));
+        if (!form.durationUnit) {
+            setForm(f => ({ ...f, durationUnit: 'day' }));
         }
-    }, [availableUnits, form.durationUnit]);
+    }, [form.durationUnit]);
 
     useEffect(() => {
         if (!form.startDate || !form.durationValue) return;
@@ -93,13 +104,28 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
         if (isNaN(val) || val <= 0) return;
         const end = new Date(form.startDate);
         const unitStr = form.durationUnit.toLowerCase();
-        if (unitStr === 'day' || unitStr === 'ngày') end.setDate(end.getDate() + val);
-        if (unitStr === 'week' || unitStr === 'tuần') end.setDate(end.getDate() + val * 7);
-        if (unitStr === 'month' || unitStr === 'tháng') end.setMonth(end.getMonth() + val);
-        if (unitStr === 'year' || unitStr === 'năm') end.setFullYear(end.getFullYear() + val);
+        if (unitStr === 'day') end.setDate(end.getDate() + val);
+        if (unitStr === 'week') end.setDate(end.getDate() + val * 7);
+        if (unitStr === 'month') end.setMonth(end.getMonth() + val);
+        if (unitStr === 'year') end.setFullYear(end.getFullYear() + val);
         setForm(f => ({ ...f, endDate: end.toISOString().split('T')[0] }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form.startDate, form.durationValue, form.durationUnit]);
+
+    // Pre-fill sectionCapacities with each section's available_capacity when sections are selected
+    useEffect(() => {
+        if (!form.selectedSectionIds.length || !warehouse.sections) return;
+        setForm(f => {
+            const updated = { ...f.sectionCapacities };
+            form.selectedSectionIds.forEach(id => {
+                if (!updated[id]) {
+                    const sec = warehouse.sections!.find(s => (s.id_section?.toString() || '') === id);
+                    if (sec) updated[id] = String(sec.available_capacity || 0);
+                }
+            });
+            return { ...f, sectionCapacities: updated };
+        });
+    }, [form.selectedSectionIds]);
 
     // Populate initial form fields once on mount (user is memoized)
     useEffect(() => {
@@ -170,6 +196,19 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                 };
             });
 
+            const computedEndDate = (() => {
+                if (!form.startDate || !form.durationValue) return form.endDate;
+                const val = parseInt(form.durationValue, 10);
+                if (isNaN(val) || val <= 0) return form.endDate;
+                const end = new Date(form.startDate);
+                const unitStr = form.durationUnit.toLowerCase();
+                if (unitStr === 'day') end.setDate(end.getDate() + val);
+                if (unitStr === 'week') end.setDate(end.getDate() + val * 7);
+                if (unitStr === 'month') end.setMonth(end.getMonth() + val);
+                if (unitStr === 'year') end.setFullYear(end.getFullYear() + val);
+                return end.toISOString().split('T')[0];
+            })();
+
             const dto = {
                 warehouseId: warehouse.id_warehouse,
                 cargoDescription: form.cargoType,
@@ -177,7 +216,7 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                 duration: finalDuration || 1,
                 durationUnit: du,
                 startDate: form.startDate,
-                endDate: form.endDate,
+                endDate: computedEndDate,
                 renterOfferedPrice: form.renterOfferedPrice ? parseFloat(form.renterOfferedPrice) : null,
                 details: details
             };
@@ -328,25 +367,43 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                             type="number"
                             required
                             min="1"
-                            className="flex-1 text-sm px-3 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent"
+                            placeholder="0"
+                            className="w-20 text-sm px-3 py-2.5 border rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-transparent text-center font-semibold"
                             value={form.durationValue}
                             onChange={e => setForm(f => ({ ...f, durationValue: e.target.value }))}
                         />
                         <select
-                            className="w-32 text-sm px-2 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-[var(--color-primary-50)] text-[var(--color-primary)] font-semibold"
+                            className="flex-1 text-sm px-3 py-2.5 border-2 border-black rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-white text-[var(--color-primary)] font-bold shadow-sm cursor-pointer"
                             value={form.durationUnit}
                             onChange={e => setForm(f => ({ ...f, durationUnit: e.target.value as any }))}
                         >
                             {availableUnits.length > 0
-                                ? availableUnits.map(u => <option key={u} value={u}>{PRICE_TIER_LABELS[u] || u}</option>)
-                                : Object.entries(PRICE_TIER_LABELS).slice(0, 4).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                ? availableUnits.map(u => (
+                                    <option key={u} value={u}>{PRICE_TIER_LABELS[u] || u}</option>
+                                ))
+                                : ['day', 'week', 'month', 'year'].map(u => (
+                                    <option key={u} value={u}>{PRICE_TIER_LABELS[u] || u}</option>
+                                ))
+                            }
                         </select>
                     </div>
-                    {form.startDate && form.endDate && (
-                        <p className="mt-1.5 text-xs text-[var(--color-text-muted)] italic">
-                            Dự kiến kết thúc: <span className="font-medium text-[var(--color-text)]">{new Date(form.endDate).toLocaleDateString('vi-VN')}</span>
-                        </p>
-                    )}
+                    {form.startDate && form.durationValue && (() => {
+                        const end = new Date(form.startDate);
+                        const val = parseInt(form.durationValue, 10);
+                        if (isNaN(val) || val <= 0) return null;
+                        const unitStr = form.durationUnit.toLowerCase();
+                        if (unitStr === 'day') end.setDate(end.getDate() + val);
+                        if (unitStr === 'week') end.setDate(end.getDate() + val * 7);
+                        if (unitStr === 'month') end.setMonth(end.getMonth() + val);
+                        if (unitStr === 'year') end.setFullYear(end.getFullYear() + val);
+                        return (
+                            <p className="mt-1.5 text-xs text-[var(--color-text-muted)] italic">
+                                Ngày kết thúc: <span className="font-medium text-[var(--color-text)]">
+                                    {`0${end.getDate()}`.slice(-2)}/{`0${end.getMonth() + 1}`.slice(-2)}/{end.getFullYear()}
+                                </span>
+                            </p>
+                        );
+                    })()}
                 </div>
 
                 <div>
@@ -393,13 +450,13 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                                 <>
                                     {targetSections.map(sec => {
                                         const requestedArea = parseFloat(form.sectionCapacities[sec.id_section?.toString() || '']) || 0;
-                                        const pt = sec.priceTiers?.find(t => t.unit === form.durationUnit || t.timeUnit === form.durationUnit);
-                                        const ptValue = pt?.value || 0;
+                                        const ptValue = getTierValue(sec.priceTiers, form.durationUnit);
                                         const cost = requestedArea * ptValue;
                                         totalCost += cost;
+                                        const pt = sec.priceTiers?.find(t => (t.unit || t.timeUnit) === form.durationUnit);
                                         return (
                                             <div key={sec.id_section} className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                                                <span>{sec.name} ({requestedArea > 0 ? requestedArea.toFixed(1) : '0'} {pt?.areaUnit || 'm3'})</span>
+                                                <span>{sec.name} ({requestedArea > 0 ? requestedArea.toFixed(1) : '0'} {pt?.areaUnit || sec.priceTiers?.[0]?.areaUnit || 'm3'})</span>
                                                 <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cost)} / {(PRICE_TIER_LABELS[form.durationUnit] || form.durationUnit).toLowerCase()}</span>
                                             </div>
                                         );

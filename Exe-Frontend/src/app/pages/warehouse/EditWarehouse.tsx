@@ -128,7 +128,6 @@ export default function WarehouseForm() {
         locationCommune: warehouse.location_commune,
         locationLong: warehouse.location_long,
         locationLat: warehouse.location_lat,
-        locationPostalCode: warehouse.location_postal_code || "",
         sections: (warehouse.sections || []).map(sec => ({
           id: sec.id_section > 1000000000 ? null : sec.id_section, // Backend expects 'id', null for brand new sections
           sector: sec.sector,
@@ -148,7 +147,23 @@ export default function WarehouseForm() {
       };
 
       console.log("[WarehouseForm] Submitting update for:", warehouse.id_warehouse, dto);
-      await ownerService.updateWarehouse(warehouse.id_warehouse, dto);
+      try {
+        await ownerService.updateWarehouse(warehouse.id_warehouse, dto);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.response?.data || "";
+        if (typeof msg === 'string' && msg.includes('force=true')) {
+          const confirmed = window.confirm(
+            "Kho bãi này đang có hợp đồng vận hành. Việc thay đổi có thể ảnh hưởng đến khách thuê. Bạn có chắc muốn tiếp tục?"
+          );
+          if (!confirmed) {
+            setSaving(false);
+            return;
+          }
+          await ownerService.updateWarehouse(warehouse.id_warehouse, dto, true);
+        } else {
+          throw err;
+        }
+      }
       toast.success("Cập nhật kho lạnh thành công!");
       navigate("/warehouse/my-warehouses");
     } catch (err: any) {
@@ -193,9 +208,9 @@ export default function WarehouseForm() {
             </div>
             <div className="flex items-center gap-3">
               {warehouse.status === 'active' ? (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   className="text-[var(--color-error)] hover:bg-red-50 border-[var(--color-error)]"
                   onClick={handleToggleStatus}
                   disabled={isTogglingStatus}
@@ -204,9 +219,9 @@ export default function WarehouseForm() {
                   Ngừng hoạt động
                 </Button>
               ) : (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   className="text-[var(--color-success)] hover:bg-green-50 border-[var(--color-success)]"
                   onClick={handleToggleStatus}
                   disabled={isTogglingStatus}
@@ -224,28 +239,28 @@ export default function WarehouseForm() {
 
         {/* ── Main Form ── */}
         <form onSubmit={handleSave} className="space-y-6">
-          
-          <WarehouseFormBasicInfo 
-            warehouse={warehouse} 
-            onChange={updateField} 
+
+          <WarehouseFormBasicInfo
+            warehouse={warehouse}
+            onChange={updateField}
           />
 
-          <WarehouseFormLocation 
-            warehouse={warehouse} 
-            onChange={updateMultipleFields} 
+          <WarehouseFormLocation
+            warehouse={warehouse}
+            onChange={updateMultipleFields}
           />
 
-          <WarehouseFormImages 
-            images={warehouse.images || []} 
-            onChange={(imgs) => updateField("images", imgs)} 
+          <WarehouseFormImages
+            images={warehouse.images || []}
+            onChange={(imgs) => updateField("images", imgs)}
           />
 
-          <WarehouseFormSections 
-            sections={warehouse.sections || []} 
-            onChange={updateSections} 
+          <WarehouseFormSections
+            sections={warehouse.sections || []}
+            onChange={updateSections}
           />
 
-          <WarehouseFormCerts 
+          <WarehouseFormCerts
             certFiles={certFiles}
             setCertFiles={setCertFiles}
             existingCerts={warehouse.certifications || []}

@@ -86,10 +86,22 @@ export interface CompositeRentRequest extends RentRequest {
   details?: any[];
 }
 
+export interface ContractDetailDTO {
+  sectionId: number;
+  sectionName?: string;
+  sector?: number;
+  rentedArea: number;
+  areaUnit?: string;
+  priceTierId?: number;
+  priceTierLabel?: string;
+  priceTierValue?: number;
+  priceTierUnit?: string;
+}
+
 export interface CompositeContract extends Contract {
   id_warehouse?: number; // Replaces old warehouseId prop
   sectionId?: string | number;
-  sectionIds?: string[] | number[];
+  sectionIds?: (string | number)[];
   isWholeWarehouse?: boolean;
   rentedCapacity?: number;
   monthlyRate?: number;
@@ -104,5 +116,10 @@ export interface CompositeContract extends Contract {
   sentAt?: string;
   acceptedAt?: string;
   renterRejectionReason?: string;
+  // API response fields
+  ownerSigned?: boolean;
+  renterSigned?: boolean;
+  total_price?: number;
+  contractDetails?: ContractDetailDTO[];
 }
 

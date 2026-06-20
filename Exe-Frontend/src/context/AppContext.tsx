@@ -13,6 +13,7 @@ import {
   bookmarksAPI,
   usersAPI
 } from '../services/apiClient';
+import { renterService } from '../services/renterService';
 
 interface AppState {
   // Auth
@@ -66,6 +67,8 @@ interface AppContextValue extends AppState {
   createContract: (contract: CompositeContract) => Promise<void>;
   updateContract: (id: string | number, updates: Partial<CompositeContract>) => Promise<void>;
   cancelContract: (id: string | number) => Promise<void>;
+  signContract: (id: number) => Promise<void>;
+  rejectContract: (id: number, reason?: string) => Promise<void>;
 
   // Rating actions
   submitRating: (rating: Rating) => Promise<void>;
@@ -149,8 +152,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshContracts = async () => {
     setState(prev => ({ ...prev, loading: { ...prev.loading, contracts: true } }));
     try {
-      const contracts = await contractsAPI.getAll();
-      setState(prev => ({ ...prev, contracts }));
+      const { content } = await renterService.getMyContracts(0, 100);
+      setState(prev => ({ ...prev, contracts: content }));
     } finally {
       setState(prev => ({ ...prev, loading: { ...prev.loading, contracts: false } }));
     }
@@ -220,6 +223,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshContracts();
   };
 
+  const signContract = async (id: number) => {
+    await renterService.signContract(id);
+    await refreshContracts();
+  };
+
+  const rejectContract = async (id: number, reason?: string) => {
+    await renterService.rejectContract(id, reason);
+    await refreshContracts();
+  };
+
   // Rating actions
   const submitRating = async (rating: Rating) => {
     await ratingsAPI.create(rating as any);
@@ -274,6 +287,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     createContract,
     updateContract,
     cancelContract,
+    signContract,
+    rejectContract,
     submitRating,
     updateRating,
     deleteRating,
