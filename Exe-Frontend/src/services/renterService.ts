@@ -1,6 +1,7 @@
 import { api } from './asus_api';
 import { WarehouseResponseDTO } from '../types/employee';
 import type { CompositeWarehouse } from '../types';
+import type { AiSubscriptionTier } from '../types/public';
 
 export interface FilterMetaResponseDTO {
     locations: string[];
@@ -37,11 +38,23 @@ const mapPriceTiers = (tiers: any[]) => {
 
         return {
             ...pt,
-            timeUnit: timeUnit, // explicitly set derived time unit
+            timeUnit: timeUnit,
             areaUnit: pt.areaUnit || pt.area_unit || 'm3',
         };
     });
 };
+
+const mapAiTierResponse = (t: any): AiSubscriptionTier => ({
+    id_ai_subscription: t.id ?? t.id_ai_subscription,
+    label: t.label ?? '',
+    desciption: t.description ?? t.desciption ?? '',
+    token_input: t.tokenInput ?? t.token_input ?? 0,
+    token_output: t.tokenOutput ?? t.token_output ?? 0,
+    price: t.price ?? 0,
+    unit: t.unit ?? 'VND',
+    create_at: t.createdAt ?? t.create_at ?? '',
+    update_at: t.updatedAt ?? t.update_at ?? '',
+});
 
 const mapWarehouseResponse = (w: any): CompositeWarehouse => {
     return {
@@ -205,6 +218,43 @@ export const renterService = {
         const response = await api.patch(`/renters/contracts/${contractId}/reject`, { reason });
         console.log('[API RESPONSE]', response.data);
         return mapContractResponse(response.data);
+    },
+
+    // AI SUBSCRIPTION
+    getAiTiers: async (): Promise<AiSubscriptionTier[]> => {
+        console.log('[API CALL] GET /renters/ai-tiers');
+        const response = await api.get('/renters/ai-tiers');
+        console.log('[API RESPONSE]', response.data);
+        return (response.data || []).map(mapAiTierResponse);
+    },
+
+    buyAiTier: async (tierId: number): Promise<{ paymentUrl?: string }> => {
+        console.log(`[API CALL] POST /renters/ai-tiers/${tierId}/pay`);
+        const response = await api.post(`/renters/ai-tiers/${tierId}/pay`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+
+    getMyActiveAiSubscription: async (): Promise<any | null> => {
+        console.log('[API CALL] GET /renters/ai-subscription');
+        try {
+            const response = await api.get('/renters/ai-subscription');
+            console.log('[API RESPONSE]', response.data);
+            return response.data;
+        } catch (err: any) {
+            if (err?.response?.status === 404) return null;
+            throw err;
+        }
+    },
+
+    getRenterAiSubscriptionStatus: async (): Promise<{ hasActiveTier: boolean; tierLabel?: string }> => {
+        try {
+            const stats = await api.get<RenterStatisticResponseDTO>('/renters/statistics', { params: { expireDays: 0 } });
+            const hasActiveTier = stats.data.aiSubscriptionInUse !== 'Chưa đăng ký' && !!stats.data.aiSubscriptionInUse;
+            return { hasActiveTier, tierLabel: stats.data.aiSubscriptionInUse };
+        } catch {
+            return { hasActiveTier: false };
+        }
     },
 };
 

@@ -18,6 +18,7 @@ import WarehouseDetail from './pages/renter/WarehouseDetail';
 import RentedProperties from './pages/renter/RentedProperties';
 import Bookmarks from './pages/renter/Bookmarks';
 import RentalRequests from './pages/renter/RentalRequests';
+import AISubscriptionPage from './pages/renter/AISubscriptionPage';
 
 // Warehouse owner pages
 import WarehouseDashboard from './pages/warehouse/WarehouseDashboard';
@@ -84,6 +85,7 @@ export const router = createBrowserRouter([
       { path: '/renter/bookmarks', Component: Bookmarks },
       { path: '/renter/search', Component: SearchWarehouse },
       { path: '/renter/ai-search', Component: AISearchWarehouse },
+      { path: '/renter/ai-subscription', Component: AISubscriptionPage },
       { path: '/renter/warehouse/:id', Component: WarehouseDetail },
     ],
   },

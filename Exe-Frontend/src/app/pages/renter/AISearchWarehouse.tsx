@@ -66,6 +66,7 @@ export default function AISearchWarehouse() {
     const [chatInput, setChatInput] = useState("");
     const [chatLoading, setChatLoading] = useState(false);
     const [warehousesRevealed, setWarehousesRevealed] = useState(false);
+    const [hasActiveTier, setHasActiveTier] = useState<boolean | null>(null);
 
     const [_aiPayload, setAiPayload] = useState<AIRequestPayload | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
@@ -85,6 +86,10 @@ export default function AISearchWarehouse() {
             })
             .catch((err) => console.error("Failed to load filter metadata:", err))
             .finally(() => setMetaLoading(false));
+
+        renterService.getRenterAiSubscriptionStatus()
+            .then(({ hasActiveTier }) => setHasActiveTier(hasActiveTier))
+            .catch(() => setHasActiveTier(false));
     }, []);
 
     useEffect(() => {
@@ -125,9 +130,34 @@ export default function AISearchWarehouse() {
 
     const totalSelected = Object.values(selections).flat().length;
 
+    const validationErrors = (() => {
+        const errors: Record<string, string> = {};
+        const minCap = selections["minCapacity"]?.[0];
+        const maxCap = selections["maxCapacity"]?.[0];
+        const minPrice = selections["minPrice"]?.[0];
+        const maxPrice = selections["maxPrice"]?.[0];
+        if (minCap && Number(minCap) < 1) errors["minCapacity"] = "Phải từ 1 trở lên";
+        if (maxCap && Number(maxCap) < 1) errors["maxCapacity"] = "Phải từ 1 trở lên";
+        if (minPrice && Number(minPrice) < 10000) errors["minPrice"] = "Phải từ 10.000đ trở lên";
+        if (maxPrice && Number(maxPrice) < 10000) errors["maxPrice"] = "Phải từ 10.000đ trở lên";
+        return errors;
+    })();
+    const hasValidationErrors = Object.keys(validationErrors).length > 0;
+
     const handleToggle = (attrId: string, value: string, mode: SelectMode) => {
         setSelections((prev) => {
             const cur = prev[attrId] ?? [];
+            if (attrId === "certifications") {
+                if (value === "none") {
+                    return cur.includes("none")
+                        ? { ...prev, [attrId]: [] }
+                        : { ...prev, [attrId]: ["none"] };
+                }
+                const withoutNone = cur.filter((v) => v !== "none");
+                return withoutNone.includes(value)
+                    ? { ...prev, [attrId]: withoutNone.filter((v) => v !== value) }
+                    : { ...prev, [attrId]: [...withoutNone, value] };
+            }
             const next =
                 mode === "single"
                     ? cur.includes(value) ? [] : [value]
@@ -291,6 +321,21 @@ export default function AISearchWarehouse() {
         return (
             <div className="min-h-screen bg-[var(--color-bg)]">
                 <Navbar />
+                {hasActiveTier === false && (
+                    <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
+                        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+                            <p className="text-sm text-amber-800">
+                                Bạn chưa đăng ký gói AI. Hãy nâng cấp để sử dụng trợ lý tìm kiếm thông minh.
+                            </p>
+                            <a
+                                href="/renter/ai-subscription"
+                                className="shrink-0 text-sm font-semibold px-4 py-1.5 bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                            >
+                                Nâng cấp gói AI
+                            </a>
+                        </div>
+                    </div>
+                )}
                 <AISearchCriteria
                     selections={selections}
                     usage={usage}
@@ -300,6 +345,7 @@ export default function AISearchWarehouse() {
                     onReset={() => setSelections({})}
                     onSearch={handleInitialSearch}
                     filterMeta={filterMeta}
+                    validationErrors={validationErrors}
                 />
                 <Footer />
             </div>

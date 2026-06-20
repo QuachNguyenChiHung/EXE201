@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Sparkles, RotateCcw, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Sparkles, RotateCcw, ChevronDown, ChevronUp, Info, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Attribute, AttrOption, SelectMode, getAttributes } from "../../pages/renter/aiSearchData";
+import { Attribute, AttrOption, SelectMode, getAttributes, CustomComponentProps } from "../../pages/renter/aiSearchData";
 import { FilterMetaResponseDTO } from "../../../services/renterService";
+import { buildCriteriaPrompt } from "../../pages/renter/aiSearchUtils";
 
 function OptionChip({ option, selected, onClick }: { option: AttrOption; selected: boolean; onClick: () => void }) {
     const [hovered, setHovered] = useState(false);
@@ -76,17 +77,80 @@ function AttrSection({ attr, selections, onToggle }: { attr: Attribute; selectio
     );
 }
 
-function RangeAttrSection({ attr, selections, onSetSelection }: { attr: Attribute; selections: Record<string, string[]>; onSetSelection: (id: string, v: string[]) => void }) {
+function CustomAttrSection({ attr, selections, onToggle, onReset }: {
+    attr: Attribute;
+    selections: Record<string, string[]>;
+    onToggle: (id: string, v: string, m: SelectMode) => void;
+    onReset: () => void;
+}) {
     const [collapsed, setCollapsed] = useState(false);
-    
+    const selected = selections[attr.id] ?? [];
+    const Component = attr.customComponent!;
+
+    const handleCustomToggle = (value: string) => onToggle(attr.id, value, attr.mode);
+    const handleClearAll = () => {
+        selected.forEach((v) => onToggle(attr.id, v, attr.mode));
+    };
+
+    return (
+        <div className="border-b border-[var(--color-border)] last:border-b-0">
+            <button
+                type="button"
+                onClick={() => setCollapsed((c) => !c)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left bg-[var(--color-surface)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className={`w-7 h-7 flex items-center justify-center text-white shrink-0 ${selected.length > 0 ? "bg-[var(--color-primary)]" : "bg-[var(--color-text-muted)]"}`}>
+                        {attr.icon}
+                    </div>
+                    <span className="text-sm font-semibold">{attr.label}</span>
+                    {selected.length > 0 && (
+                        <span className="bg-[var(--color-primary)] text-white text-xs px-1.5 py-0.5 leading-none">{selected.length}</span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 text-[var(--color-text-muted)] shrink-0">
+                    <span className="text-xs hidden sm:inline">Chọn nhiều</span>
+                    {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </div>
+            </button>
+            {!collapsed && (
+                <div className="px-5 pb-5 bg-[var(--color-surface)]">
+                    <div className="flex items-start gap-2 mt-0 mb-4 bg-[var(--color-bg-secondary)] px-3 py-2.5">
+                        <Info className="h-3.5 w-3.5 text-[var(--color-info)] shrink-0 mt-0.5" />
+                        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">{attr.explanation}</p>
+                    </div>
+                    <Component
+                        selected={selected}
+                        onToggle={handleCustomToggle}
+                        onClearAll={handleClearAll}
+                        provinces={[]}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function RangeAttrSection({ attr, selections, onSetSelection, validationErrors }: {
+    attr: Attribute;
+    selections: Record<string, string[]>;
+    onSetSelection: (id: string, v: string[]) => void;
+    validationErrors?: Record<string, string>;
+}) {
+    const [collapsed, setCollapsed] = useState(false);
+
     if (!attr.rangeIds) return null;
     const minId = attr.rangeIds[0];
     const maxId = attr.rangeIds[1];
 
     const minVal = selections[minId]?.[0] || "";
     const maxVal = selections[maxId]?.[0] || "";
-    
+
     const hasValue = minVal !== "" || maxVal !== "";
+    const minError = validationErrors?.[minId];
+    const maxError = validationErrors?.[maxId];
+    const isPrice = minId === "minPrice";
+    const step = isPrice ? "1000" : "1";
 
     return (
         <div className="border-b border-[var(--color-border)] last:border-b-0">
@@ -118,21 +182,27 @@ function RangeAttrSection({ attr, selections, onSetSelection }: { attr: Attribut
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
                         <div>
                             <label className="text-xs text-[var(--color-text-muted)] block mb-1">Tối thiểu</label>
-                            <Input 
-                                type="number" 
-                                placeholder="0" 
+                            <Input
+                                type="number"
+                                step={step}
+                                placeholder="0"
                                 value={minVal}
                                 onChange={(e) => onSetSelection(minId, e.target.value ? [e.target.value] : [])}
+                                className={minError ? "border-[var(--color-error)] focus:border-[var(--color-error)]" : ""}
                             />
+                            {minError && <p className="text-xs text-[var(--color-error)] mt-1">{minError}</p>}
                         </div>
                         <div>
                             <label className="text-xs text-[var(--color-text-muted)] block mb-1">Tối đa</label>
-                            <Input 
-                                type="number" 
-                                placeholder="Không giới hạn" 
+                            <Input
+                                type="number"
+                                step={step}
+                                placeholder="Không giới hạn"
                                 value={maxVal}
                                 onChange={(e) => onSetSelection(maxId, e.target.value ? [e.target.value] : [])}
+                                className={maxError ? "border-[var(--color-error)] focus:border-[var(--color-error)]" : ""}
                             />
+                            {maxError && <p className="text-xs text-[var(--color-error)] mt-1">{maxError}</p>}
                         </div>
                     </div>
                 </div>
@@ -149,12 +219,44 @@ interface AISearchCriteriaProps {
     onSetSelection?: (id: string, v: string[]) => void;
     onReset: () => void;
     onSearch: () => void;
+    onSearchResult?: (responseText: string) => void;
     filterMeta: FilterMetaResponseDTO | null;
+    validationErrors?: Record<string, string>;
 }
 
-export function AISearchCriteria({ selections, usage, totalSelected, onToggle, onSetSelection, onReset, onSearch, filterMeta }: AISearchCriteriaProps) {
+export function AISearchCriteria({ selections, usage, totalSelected, onToggle, onSetSelection, onReset, onSearch, onSearchResult, filterMeta, validationErrors }: AISearchCriteriaProps) {
     const attributes = filterMeta ? getAttributes(filterMeta) : [];
     const fmtCurrency = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+    const hasValidationErrors = Object.keys(validationErrors ?? {}).length > 0;
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    const handleSearch = async () => {
+        if (searchLoading) return;
+        const prompt = buildCriteriaPrompt(selections, filterMeta ?? {} as FilterMetaResponseDTO);
+        onSearch();
+        setSearchLoading(true);
+        try {
+            const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+            const token = user?.token;
+            const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
+            const res = await fetch(`${API_BASE}/ai/chat`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ query: prompt }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                onSearchResult?.(data.response);
+            }
+        } catch {
+            // search continues with normal flow
+        } finally {
+            setSearchLoading(false);
+        }
+    };
 
     return (
         <div className="bento-container">
@@ -207,8 +309,8 @@ export function AISearchCriteria({ selections, usage, totalSelected, onToggle, o
                             <RotateCcw className="h-3 w-3" /> Đặt lại
                         </button>
                     )}
-                    <Button onClick={onSearch} className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] h-9 text-sm px-4">
-                        {totalSelected === 0 ? "Xem tất cả kho →" : `Xem kết quả (${totalSelected} tiêu chí) →`}
+                    <Button onClick={handleSearch} disabled={hasValidationErrors || searchLoading} className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] h-9 text-sm px-4 disabled:opacity-50">
+                        {searchLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Đang gửi…</> : totalSelected === 0 ? "Tiếp →" : `Xem kết quả (${totalSelected} tiêu chí) →`}
                     </Button>
                 </div>
             </div>
@@ -217,7 +319,10 @@ export function AISearchCriteria({ selections, usage, totalSelected, onToggle, o
             <div className="border border-[var(--color-border)] bg-[var(--color-surface)] mb-6">
                 {attributes.map((attr) => {
                     if (attr.mode === "range" && onSetSelection) {
-                        return <RangeAttrSection key={attr.id} attr={attr} selections={selections} onSetSelection={onSetSelection} />;
+                        return <RangeAttrSection key={attr.id} attr={attr} selections={selections} onSetSelection={onSetSelection} validationErrors={validationErrors} />;
+                    }
+                    if (attr.customComponent) {
+                        return <CustomAttrSection key={attr.id} attr={attr} selections={selections} onToggle={onToggle} onReset={onReset} />;
                     }
                     return <AttrSection key={attr.id} attr={attr} selections={selections} onToggle={onToggle} />;
                 })}
@@ -239,8 +344,8 @@ export function AISearchCriteria({ selections, usage, totalSelected, onToggle, o
                     <Button variant="outline" onClick={onReset} disabled={totalSelected === 0} className="rounded-none border border-[var(--color-border)]">
                         <RotateCcw className="h-4 w-4 mr-2" /> Đặt lại
                     </Button>
-                    <Button onClick={onSearch} className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)]">
-                        {totalSelected === 0 ? "Xem tất cả kho →" : "Xem kết quả & Chat AI →"}
+                    <Button onClick={handleSearch} disabled={hasValidationErrors || searchLoading} className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50">
+                        {searchLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Đang gửi…</> : totalSelected === 0 ? "Tiếp →" : "Xem kết quả & Chat AI →"}
                     </Button>
                 </div>
             </div>

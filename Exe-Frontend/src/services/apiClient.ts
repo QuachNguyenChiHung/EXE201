@@ -2,6 +2,7 @@
  * apiClient.ts — Mock data client.
  * All data operations now use in-memory mock data.
  */
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
 import type {
   User,
   CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating,
@@ -231,13 +232,22 @@ let conversations: CompositeAiConversations[] = [];
 
 export const aiAPI = {
   chat: async (payload: AIRequestPayload): Promise<AIResponsePayload> => {
-    await delay(500);
-    // Mock AI response
-    return {
-      text: 'Đây là phản hồi mô phỏng từ AI. Trong môi trường thực tế, đây sẽ là phản hồi từ Claude AI.',
-      refinedWarehouseIds: payload.matchingWarehouses.slice(0, 3).map((w: any) => w.id),
-      usage: { input_tokens: 100, output_tokens: 50 },
-    };
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const token = user?.token;
+    const res = await fetch(`${API_BASE}/ai/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ query: payload.prompt }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return { text: data.response, usage: payload.isInitialHandshake ? { input_tokens: 0, output_tokens: 0 } : undefined };
   },
 
   status: async (): Promise<AIStatusResult> => {

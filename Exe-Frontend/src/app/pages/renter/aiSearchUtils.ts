@@ -1,4 +1,5 @@
 import { CompositeWarehouse, SUBSCRIPTION_TIERS } from "../../../types";
+import { FilterMetaResponseDTO } from "../../../services/renterService";
 
 export function applyLocalFilter(
     warehouses: CompositeWarehouse[],
@@ -192,4 +193,43 @@ export function buildSearchParams(selections: Record<string, string[]>): any {
     }
 
     return params;
+}
+
+// ── Prompt builder ─────────────────────────────────────────────────────────────
+
+export function buildCriteriaPrompt(selections: Record<string, string[]>, meta: FilterMetaResponseDTO): string {
+    const parts: string[] = [];
+    const locs = (selections["location"] ?? []).filter((v) => v !== "other");
+    if (locs.length > 0) parts.push(`Tôi cần thuê kho ở: **${locs.join(", ")}**.`);
+
+    const minCap = selections["minCapacity"]?.[0];
+    const maxCap = selections["maxCapacity"]?.[0];
+    if (minCap || maxCap) {
+        const range = [minCap ? `từ ${minCap} m²` : null, maxCap ? `đến ${maxCap} m²` : null].filter(Boolean).join(" ");
+        parts.push(`Công suất cần thiết: **${range}**.`);
+    }
+
+    const minPrice = selections["minPrice"]?.[0];
+    const maxPrice = selections["maxPrice"]?.[0];
+    if (minPrice || maxPrice) {
+        const fmt = (v: string) =>
+            new Intl.NumberFormat("vi-VN").format(Number(v)) + "đ";
+        const range = [minPrice ? `tối thiểu ${fmt(minPrice)}` : null, maxPrice ? `tối đa ${fmt(maxPrice)}` : null].filter(Boolean).join(", ");
+        parts.push(`Mức giá chấp nhận: **${range}/m²/tháng**.`);
+    }
+
+    const certs = (selections["certifications"] ?? []).filter((v) => v !== "none");
+    const certMeta = meta?.certifications ?? [];
+    if (certs.length > 0) {
+        const labels = certs.map((id) => certMeta.find((c: any) => c.certID.toString() === id)?.label ?? id).filter(Boolean);
+        if (labels.length > 0) parts.push(`Kho phải có chứng nhận: **${labels.join(", ")}**.`);
+    }
+    if ((selections["certifications"] ?? []).includes("none")) {
+        parts.push(`**Không yêu cầu** chứng nhận đặc biệt nào.`);
+    }
+
+    if (parts.length === 0) {
+        return "Xin chào! Tôi muốn thuê kho lạnh.";
+    }
+    return parts.join(" ");
 }
