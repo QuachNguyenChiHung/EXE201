@@ -71,7 +71,7 @@ export const getAttributes = (meta: FilterMetaResponseDTO): Attribute[] => {
       label: "Khoảng công suất (m²)",
       mode: "range",
       explanation:
-        "Nhập khoảng công suất tối thiểu và tối đa bạn muốn tìm kiếm. Bỏ trống để không giới hạn.",
+        "Nhập khoảng công suất tối thiểu và tối đa bạn muốn tìm kiếm.",
       options: [],
       rangeIds: ["minCapacity", "maxCapacity"],
     },
@@ -81,7 +81,7 @@ export const getAttributes = (meta: FilterMetaResponseDTO): Attribute[] => {
       label: "Giá (VNĐ/m²/tháng)",
       mode: "range",
       explanation:
-        "Nhập mức giá tối thiểu và tối đa để tìm kho phù hợp với ngân sách của bạn. Bỏ trống để không giới hạn.",
+        "Nhập mức giá tối thiểu và tối đa để tìm kho phù hợp với ngân sách của bạn.",
       options: [],
       rangeIds: ["minPrice", "maxPrice"],
     },

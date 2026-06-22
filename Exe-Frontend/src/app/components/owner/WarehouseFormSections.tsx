@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { CompositeWarehouseSection, PriceTier } from "../../../types";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
@@ -15,7 +15,7 @@ interface Props {
   onChange: (sections: CompositeWarehouseSection[]) => void;
 }
 
-export function WarehouseFormSections({ sections, onChange }: Props) {
+function WarehouseFormSectionsInner({ sections, onChange }: Props) {
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<number>>(new Set(sections.map(s => s.id_section)));
 
   const toggleSection = (id: number) => {
@@ -42,7 +42,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
         hasCertification: true,
         availability: "available",
         priceTiers: [
-          { id_price_tier: Date.now() + 1, unit: "month", label: "Giá theo tháng", value: 0, area_unit: "m3" }
+          { id_price_tier: Date.now() + 1, unit: "month", label: "Giá theo tháng", value: 0, areaUnit: "m3" }
         ]
       }
     ]);
@@ -75,7 +75,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
             label: "Giá theo ngày",
             unit: "day",
             value: 0,
-            area_unit: "m3"
+            areaUnit: "m3"
           };
           return { ...s, priceTiers: [...(s.priceTiers || []), newTier] };
         }
@@ -227,7 +227,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                         className="mt-1"
                       />
                     </div>
-                    </div>
+                  </div>
 
                   {/* Price Tiers */}
                   <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
@@ -247,7 +247,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                         <Plus className="h-3 w-3" /> Thêm mốc giá
                       </Button>
                     </div>
-                    
+
                     {s.priceTiers && s.priceTiers.length > 0 ? (
                       <div className="space-y-3">
                         {s.priceTiers.map((tier) => (
@@ -259,7 +259,7 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                                   const option = PRICE_TIER_OPTIONS.find(o => o.unit === val);
                                   updatePriceTier(s.id_section, tier.id_price_tier, {
                                     unit: val,
-                                    label: option?.label || val
+                                    label: (option?.label || val)
                                   });
                                 }}
                               >
@@ -277,18 +277,16 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
                               <Input
                                 type="text"
                                 placeholder="Nhập giá"
-                                value={tier.value ? tier.value.toLocaleString('vi-VN') : ""}
+                                value={tier.value ? (tier.value.toLocaleString('vi-VN')) : ""}
                                 onChange={(e) => {
                                   const rawValue = e.target.value.replace(/\D/g, '');
                                   updatePriceTier(s.id_section, tier.id_price_tier, { value: rawValue ? parseInt(rawValue, 10) : 0 });
                                 }}
                                 className="h-9 pr-6"
                               />
-                              <span className="absolute right-2 text-xs font-semibold text-gray-500 pointer-events-none">₫</span>
+                              <span className="absolute right-2 text-xs font-semibold text-gray-500 pointer-events-none">₫ / m³</span>
                             </div>
-                            <div className="flex items-center px-3 h-9 bg-gray-50 border rounded-md text-sm text-gray-600 shrink-0">
-                              / {UNIT_SHORT[tier.unit] || tier.unit} / {UNIT_AREA_SHORT[tier.area_unit] || tier.area_unit}
-                            </div>
+
                             <Button
                               type="button"
                               variant="ghost"
@@ -327,3 +325,5 @@ export function WarehouseFormSections({ sections, onChange }: Props) {
     </Card>
   );
 }
+
+export const WarehouseFormSections = memo(WarehouseFormSectionsInner);

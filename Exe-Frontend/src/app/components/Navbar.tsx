@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { useState, useEffect } from "react";
 import { getUser, setUser, getBookmarks } from "../../utils/auth";
 import { authService } from "../../services/authService";
+import { userService } from "../../services/userService";
 import { toast } from "sonner";
 import {
   Warehouse,
@@ -17,6 +18,7 @@ import {
   Bell,
   FileText,
   Crown,
+  UserCircle,
 } from "lucide-react";
 import logoUrl from "../../assets/logo.jpg";
 import {
@@ -111,11 +113,21 @@ export function Navbar() {
       setBookmarkCount(getBookmarks().length);
     };
     window.addEventListener('storage', handleStorageChange);
-    const interval = setInterval(handleStorageChange, 500);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
+  }, []);
+
+  // Hydrate user profile on mount so the greeting shows the real name
+  // even when the page is loaded directly (e.g. refresh, deep link, or a
+  // localStorage entry from the old partial-login flow).
+  useEffect(() => {
+    const current = getUser();
+    if (current?.token && !current.name) {
+      userService.getMyProfile()
+        .then(() => setUserState(getUser()))
+        .catch(() => { /* profile fetch failure is non-fatal for the Navbar */ });
+    }
   }, []);
 
   const handleLogout = async () => {
@@ -311,12 +323,20 @@ export function Navbar() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-none gap-2"
+                      className="rounded-none gap-2 min-w-0 px-2"
                     >
-                      <div className="w-6 h-6 bg-[var(--color-primary-100)] flex items-center justify-center">
-                        <User className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                      </div>
-                      <span className="hidden sm:inline">{user.name}</span>
+                      {user.img_link ? (
+                        <img
+                          src={user.img_link}
+                          alt={user.name}
+                          className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-primary-100)] flex items-center justify-center shrink-0">
+                          <User className="h-4 w-4 text-[var(--color-primary)]" />
+                        </div>
+                      )}
+                      <span className="hidden sm:inline truncate max-w-[120px]">{user.name}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -331,6 +351,13 @@ export function Navbar() {
                     >
                       <LayoutDashboard className="h-4 w-4 mr-2" />
                       Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/profile')}
+                      className="rounded-none"
+                    >
+                      <UserCircle className="h-4 w-4 mr-2" />
+                      Hồ sơ
                     </DropdownMenuItem>
 
                     {role === "renter" && (

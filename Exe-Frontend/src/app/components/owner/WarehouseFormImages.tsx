@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card } from "../../components/ui/card";
 import { ImageUploader } from "../../components/ImageUploader";
 import { Image as ImageIcon } from "lucide-react";
@@ -8,7 +9,7 @@ interface Props {
   onChange: (images: (string | File)[]) => void;
 }
 
-export function WarehouseFormImages({ images, onChange }: Props) {
+function WarehouseFormImagesInner({ images, onChange }: Props) {
   // Normalize images
   const imgItems = images.map(img => {
     if (typeof img === 'string') return img;
@@ -31,3 +32,5 @@ export function WarehouseFormImages({ images, onChange }: Props) {
     </Card>
   );
 }
+
+export const WarehouseFormImages = memo(WarehouseFormImagesInner);

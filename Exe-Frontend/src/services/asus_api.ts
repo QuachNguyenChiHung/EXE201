@@ -15,6 +15,15 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  // When sending FormData, let axios/browser auto-generate the multipart boundary header.
+  // Otherwise the global `Content-Type: application/json` would be sent, which the backend rejects.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+    }
+  }
+
   return config;
 });
 

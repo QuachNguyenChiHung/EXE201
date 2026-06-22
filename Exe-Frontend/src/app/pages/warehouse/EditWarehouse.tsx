@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
-import { storageAPI } from "../../../services/apiClient";
 import { ownerService } from "../../../services/ownerService";
-import { CompositeWarehouse, CompositeWarehouseSection, WarehouseImage } from "../../../types";
+import { PRICE_TIER_OPTIONS } from "../../components/owner/WarehouseFormUtils";
+ import { CompositeWarehouse, CompositeWarehouseSection } from "../../../types";
 import { Button } from "../../components/ui/button";
 import { Save, ArrowLeft, Loader2, RotateCcw, EyeOff, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ export default function WarehouseForm() {
 
   // Additional transient states not directly inside `warehouse` object or requiring specific handling
   const [certFiles, setCertFiles] = useState<CertFile[]>([]);
+  // Tracks which existing image IDs were removed via the form, so backend can delete them
+  const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -56,7 +58,20 @@ export default function WarehouseForm() {
           location_lat: locationData.locationLat || data.location_lat,
           location_long: locationData.locationLong || data.location_long,
           address: rawAddress,
-          sections: data.sections || [],
+          sections: (data.sections || []).map((sec: any) => ({
+            ...sec,
+            priceTiers: (sec.priceTiers || []).map((pt: any) => {
+              const byLabel = PRICE_TIER_OPTIONS.find(o => o.label === pt.label);
+              const byUnit = PRICE_TIER_OPTIONS.find(o => o.unit === pt.unit);
+              const match = byLabel || byUnit;
+              return {
+                ...pt,
+                unit: match?.unit || pt.unit || "month",
+                label: match?.label || pt.label,
+                areaUnit: pt.areaUnit || "m3"
+              };
+            })
+          })),
           images: data.images || [],
           certifications: data.certifications || [],
           stats: data.stats || {
@@ -75,19 +90,50 @@ export default function WarehouseForm() {
     fetchWarehouse();
   }, [id, navigate]);
 
-  const updateField = (key: keyof CompositeWarehouse, val: any) => {
+  // ── Stable callbacks (memoized so child React.memo wrappers actually skip) ──
+  const updateField = useCallback((key: keyof CompositeWarehouse, val: any) => {
     setWarehouse((prev) => prev ? { ...prev, [key]: val } : null);
-  };
+  }, []);
 
-  const updateMultipleFields = (updates: Partial<CompositeWarehouse>) => {
+  const updateMultipleFields = useCallback((updates: Partial<CompositeWarehouse>) => {
     setWarehouse((prev) => prev ? { ...prev, ...updates } : null);
-  };
+  }, []);
 
-  const updateSections = (sections: CompositeWarehouseSection[]) => {
+  const updateSections = useCallback((sections: CompositeWarehouseSection[]) => {
     setWarehouse((prev) => prev ? { ...prev, sections } : null);
-  };
+  }, []);
 
-  const handleToggleStatus = async () => {
+  // Normalized image handling: WarehouseFormImages returns mixed (string | File)[].
+  // We need to know which original WarehouseImage entries were removed so backend can delete them.
+  const handleImagesChange = useCallback((next: (string | File)[]) => {
+    setWarehouse((prev) => {
+      if (!prev) return prev;
+      const allPrev: any[] = (prev.images as any[]) || [];
+      // Only the original warehouse images (those that have an id from the backend) are deletable
+      const deletableOriginals = allPrev.filter((img: any) => img && typeof img === 'object' && !(img instanceof File) && img.id !== undefined);
+      const nextUrls = next.map((it) => (it instanceof File ? it.name : it));
+
+      const removedIds: number[] = [];
+      deletableOriginals.forEach((img: any) => {
+        const url = img.image_url;
+        if (typeof url === 'string' && !nextUrls.includes(url)) {
+          removedIds.push(img.id);
+        }
+      });
+
+      if (removedIds.length > 0) {
+        setDeletedImageIds((prevIds) => Array.from(new Set([...prevIds, ...removedIds])));
+      }
+
+      return { ...prev, images: next as any };
+    });
+  }, []);
+
+  const setExistingCerts = useCallback((certs: any[]) => {
+    setWarehouse((prev) => prev ? { ...prev, certifications: certs } : null);
+  }, []);
+
+  const handleToggleStatus = useCallback(async () => {
     if (!warehouse) return;
     setIsTogglingStatus(true);
     try {
@@ -106,7 +152,7 @@ export default function WarehouseForm() {
     } finally {
       setIsTogglingStatus(false);
     }
-  };
+  }, [warehouse]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +160,11 @@ export default function WarehouseForm() {
 
     if (!warehouse.name) {
       toast.error("Vui lòng nhập tên kho lạnh");
+      return;
+    }
+
+    if (certFiles.some((cert) => !cert.certTypeId)) {
+      toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
       return;
     }
 
@@ -137,18 +188,27 @@ export default function WarehouseForm() {
           tempMax: parseFloat(String(sec.temp_max)) || 0,
           humidity: parseFloat(String(sec.humidity)) || 0,
           hasCertification: sec.hasCertification,
-          priceTiers: (sec.priceTiers || []).map((pt: any) => ({
-            label: pt.label,
-            value: pt.value,
-            unit: pt.unit,
-            areaUnit: pt.area_unit
-          }))
-        }))
+          priceTiers: (sec.priceTiers || []).map((pt: any) => {
+            const byLabel = PRICE_TIER_OPTIONS.find(o => o.label === pt.label);
+            const byUnit = PRICE_TIER_OPTIONS.find(o => o.unit === pt.unit);
+            const match = byLabel || byUnit;
+            return {
+              label: match?.label || pt.label,
+              value: pt.value,
+              unit: match?.unit || pt.unit || "month",
+              areaUnit: pt.areaUnit || "m3"
+            };
+          })
+        })),
+        // The service will pull out new File objects and append them as multipart parts
+        images: warehouse.images || [],
+        // The service will pull out new cert files and append them as multipart parts
+        certFiles,
       };
 
       console.log("[WarehouseForm] Submitting update for:", warehouse.id_warehouse, dto);
       try {
-        await ownerService.updateWarehouse(warehouse.id_warehouse, dto);
+        await ownerService.updateWarehouse(warehouse.id_warehouse, dto, false, deletedImageIds);
       } catch (err: any) {
         const msg = err?.response?.data?.message || err?.response?.data || "";
         if (typeof msg === 'string' && msg.includes('force=true')) {
@@ -159,7 +219,7 @@ export default function WarehouseForm() {
             setSaving(false);
             return;
           }
-          await ownerService.updateWarehouse(warehouse.id_warehouse, dto, true);
+          await ownerService.updateWarehouse(warehouse.id_warehouse, dto, true, deletedImageIds);
         } else {
           throw err;
         }
@@ -168,7 +228,8 @@ export default function WarehouseForm() {
       navigate("/warehouse/my-warehouses");
     } catch (err: any) {
       console.error("[WarehouseForm] Error updating warehouse:", err);
-      toast.error("Cập nhật thất bại. Vui lòng thử lại.");
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+      toast.error(serverMsg ? `Cập nhật thất bại: ${serverMsg}` : "Cập nhật thất bại. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -252,7 +313,7 @@ export default function WarehouseForm() {
 
           <WarehouseFormImages
             images={warehouse.images || []}
-            onChange={(imgs) => updateField("images", imgs)}
+            onChange={handleImagesChange}
           />
 
           <WarehouseFormSections
@@ -264,7 +325,7 @@ export default function WarehouseForm() {
             certFiles={certFiles}
             setCertFiles={setCertFiles}
             existingCerts={warehouse.certifications || []}
-            setExistingCerts={(certs) => updateField("certifications", certs)}
+            setExistingCerts={setExistingCerts}
           />
 
           {/* ── Submit Buttons ── */}

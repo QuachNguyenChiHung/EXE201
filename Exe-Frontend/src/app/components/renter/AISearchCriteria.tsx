@@ -233,6 +233,7 @@ export function AISearchCriteria({ selections, usage, totalSelected, onToggle, o
     const handleSearch = async () => {
         if (searchLoading) return;
         const prompt = buildCriteriaPrompt(selections, filterMeta ?? {} as FilterMetaResponseDTO);
+        console.log("prompt: "+ prompt);
         onSearch();
         setSearchLoading(true);
         try {

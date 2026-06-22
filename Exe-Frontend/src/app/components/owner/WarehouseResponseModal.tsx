@@ -3,6 +3,7 @@ import { Package, Tag, Calendar, Snowflake, CheckCircle, XCircle, DollarSign, X 
 import { toast } from 'sonner';
 import { CompositeWarehouse } from '../../../types/warehouse';
 import { IncomingRequest, CARGO_LABEL, fmtDate, fmtCurrency } from './WarehouseRequestUtils';
+import { PRICE_TIER_OPTIONS } from './WarehouseFormUtils';
 
 export interface ResponseModalProps {
   request: IncomingRequest;
@@ -21,7 +22,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
 
   const section = warehouse?.sections?.find(s => s.id_section === request.sectionId);
   const suggestedBasePrice = section
-    ? (section.priceTiers?.find(t => t.unit === 'month')?.value ?? warehouse?.pricePerCubicMeter ?? request.priceTierValue)
+    ? (section.priceTiers?.find(t => t.label === 'Giá theo tháng' || t.unit === 'month')?.value ?? warehouse?.pricePerCubicMeter ?? request.priceTierValue)
     : (warehouse?.pricePerCubicMeter ?? request.priceTierValue);
   const suggestedTotalPrice = (suggestedBasePrice || 0) * (request.requestedCapacity || 1) * (parseInt(request.durationLabel || '') || 1);
 

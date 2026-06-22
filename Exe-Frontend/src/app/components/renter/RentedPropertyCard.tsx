@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { CompositeContract, CompositeWarehouse, ContractDetailDTO } from '../../../types';
 import { ContractStatus, STATUS_CONFIG, fmtCurrency, fmtDate, mapBackendStatus } from './RentedPropertyUtils';
+import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
 
 interface RentedPropertyCardProps {
     contract: CompositeContract;
@@ -41,11 +42,11 @@ export function RentedPropertyCard({
                 sectionName: s.name ?? s.label ?? `Phân khu ${s.sector}`,
                 sector: s.sector,
                 rentedArea: s.available_capacity ?? 0,
-                areaUnit: tier?.area_unit ?? 'm³',
+                areaUnit: tier?.areaUnit ?? 'm³',
                 priceTierId: tier?.id_price_tier ?? 0,
                 priceTierLabel: tier?.label,
                 priceTierValue: tier?.value ?? 0,
-                priceTierUnit: tier?.unit ?? 'tháng',
+                priceTierUnit: PRICE_TIER_OPTIONS.find(o => o.unit === tier?.unit)?.label ?? tier?.label ?? 'tháng',
             };
         });
     })();

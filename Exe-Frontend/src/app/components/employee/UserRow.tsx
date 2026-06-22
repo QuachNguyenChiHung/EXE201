@@ -168,8 +168,8 @@ export default function UserRow({ user, onEdit, onViewConversations, onToggleSta
                                 {/* USER INFO CARD */}
                                 {(() => {
                                     const detailUser = ownerDetail?.userInfo || renterDetail?.userInfo;
-                                    const companyName = detailUser?.company?.name || user.company?.company_name;
-                                    const taxCode = detailUser?.company?.taxCode;
+                                    const companyName = detailUser?.company?.companyName || user.company?.company_name;
+                                    const taxCode = detailUser?.company?.companyTaxCode;
                                     const userPhone = detailUser?.phone || user.phone;
                                     const userEmail = detailUser?.email || user.email;
 

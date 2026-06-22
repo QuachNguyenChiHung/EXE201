@@ -5,13 +5,16 @@ import {
 import { CompositeWarehouse } from '../../../types';
 import { WarehouseMapDisplay } from '../owner/WarehouseMapDisplay';
 import { renterService } from '../../../services/renterService';
+import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
 
 interface WarehouseDetailInfoProps {
     warehouse: CompositeWarehouse;
+    selectedTiers: Record<string, number>;
+    selectedSectionIds: string[];
 }
 
-export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
-    const [fetchedLocation, setFetchedLocation] = useState<{lat: number, long: number} | null>(null);
+export function WarehouseDetailInfo({ warehouse, selectedTiers, selectedSectionIds }: WarehouseDetailInfoProps) {
+    const [fetchedLocation, setFetchedLocation] = useState<{ lat: number, long: number } | null>(null);
 
     useEffect(() => {
         if (warehouse.id_warehouse) {
@@ -121,24 +124,45 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
                                         <div className="flex justify-between mt-1 text-[10px] text-[var(--color-text-muted)]">
                                             <span>Đã dùng {used}%</span>
                                         </div>
-                                        
+
                                         {sec.priceTiers && sec.priceTiers.length > 0 && (
                                             <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-                                                <p className="text-[10px] uppercase text-[var(--color-text-muted)] mb-2 font-semibold">Bảng giá tham khảo</p>
-                                                <div className="space-y-2">
-                                                    {sec.priceTiers.map(tier => (
-                                                        <div key={tier.id_price_tier || Math.random()} className="flex justify-between items-center bg-[var(--color-bg-secondary)] px-3 py-2 rounded-md">
-                                                            <span className="text-xs font-medium">{tier.label || "Giá thuê"}</span>
-                                                            <div className="text-right">
-                                                                <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
-                                                                    {tier.value ? tier.value.toLocaleString('vi-VN') : 0} ₫
-                                                                </span>
-                                                                <span className="text-xs text-[var(--color-text-muted)] ml-1">
-                                                                    / {tier.unit === 'month' ? 'tháng' : tier.unit === 'day' ? 'ngày' : tier.unit} / {tier.area_unit === 'm3' ? 'm³' : tier.area_unit === 'm2' ? 'm²' : tier.area_unit}
-                                                                </span>
+                                                <p className="text-[10px] uppercase text-[var(--color-text-muted)] mb-2 font-semibold">Chọn gói giá thuê</p>
+                                                <div className="grid grid-cols-1 gap-2 mt-1 relative z-10">
+                                                    {sec.priceTiers.map((tier, tierIdx) => {
+                                                        const sectionId = sec.id_section?.toString() ?? '';
+                                                        const isSelected = selectedTiers[sectionId] === tierIdx;
+                                                        const tierUnit = tier.unit || 'month';
+                                                        const unitLabel = PRICE_TIER_OPTIONS.find(o => o.unit === tierUnit)?.label?.replace('Giá theo ', '') ?? tierUnit;
+                                                        return (
+                                                            <div
+                                                                key={tierIdx}
+                                                                className="relative opacity-60"
+                                                                style={{
+                                                                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                                                    justifyContent: 'center', gap: '2px', padding: '12px 8px',
+                                                                    minHeight: '56px', width: '100%', borderWidth: '2px',
+                                                                    borderStyle: 'solid', borderRadius: '8px', textAlign: 'center',
+                                                                    borderColor: 'var(--color-border)',
+                                                                    backgroundColor: 'var(--color-bg-secondary)',
+                                                                    cursor: 'default',
+                                                                }}
+                                                            >
+                                                                {isSelected && (
+                                                                    <div style={{ position: 'absolute', top: '-1px', right: '-1px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '9px', fontWeight: 700 }}>
+                                                                        ✓
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3, color: 'var(--color-text-muted)' }}>{tier.value ? tier.value.toLocaleString('vi-VN') : 0} ₫</span>
+                                                                    <span style={{ fontSize: '10px', fontWeight: 600, lineHeight: 1.3, color: 'var(--color-text-muted)' }}>
+                                                                        / {unitLabel} / {tier.areaUnit === 'm3' ? 'm³' : tier.areaUnit === 'm2' ? 'm²' : tier.areaUnit}
+                                                                    </span>
+                                                                </div>
+
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
@@ -201,10 +225,10 @@ export function WarehouseDetailInfo({ warehouse }: WarehouseDetailInfoProps) {
             {/* ── Location Map ── */}
             <div id="section-location" style={{ order: 6, scrollMarginTop: '80px' }}>
                 {fetchedLocation ? (
-                    <WarehouseMapDisplay 
-                        lat={fetchedLocation.lat} 
-                        long={fetchedLocation.long} 
-                        addressText={[warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", ")} 
+                    <WarehouseMapDisplay
+                        lat={fetchedLocation.lat}
+                        long={fetchedLocation.long}
+                        addressText={[warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", ")}
                         obfuscateLocation={true}
                     />
                 ) : (

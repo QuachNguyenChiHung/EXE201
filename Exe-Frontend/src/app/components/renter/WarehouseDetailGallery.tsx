@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, AlertTriangle, CheckCircle, Heart, Share2, MapPin } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Heart, Share2, MapPin, Image as ImageIcon } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types';
 
 interface WarehouseDetailGalleryProps {
@@ -14,6 +14,12 @@ const FALLBACK_GALLERY = [
     "https://images.unsplash.com/photo-1758789667762-56175fe4601c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080",
 ];
 
+const getImageUrl = (img: string | { image_url?: string } | undefined): string | undefined => {
+    if (!img) return undefined;
+    if (typeof img === 'string') return img;
+    return (img as any).image_url || (img as any).imageUrl;
+};
+
 export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookmark }: WarehouseDetailGalleryProps) {
     const navigate = useNavigate();
     const [activeImage, setActiveImage] = useState(0);
@@ -21,6 +27,18 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
     const galleryImages = warehouse.images && warehouse.images.length > 0
         ? warehouse.images
         : FALLBACK_GALLERY;
+
+    // Reset to first image whenever the warehouse changes
+    useEffect(() => {
+        setActiveImage(0);
+    }, [warehouse.id_warehouse]);
+
+    const totalImages = galleryImages.length;
+    const hasMultiple = totalImages > 1;
+    const currentImage = getImageUrl(galleryImages[activeImage] as any) || FALLBACK_GALLERY[0];
+
+    const goPrev = () => setActiveImage((i) => (i - 1 + totalImages) % totalImages);
+    const goNext = () => setActiveImage((i) => (i + 1) % totalImages);
 
     return (
         <>
@@ -46,11 +64,11 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
                 {/* ─── HERO GALLERY ─── */}
                 <div
-                    className="relative rounded-2xl overflow-hidden mb-6 bg-black"
+                    className="relative rounded-2xl overflow-hidden mb-4 bg-black"
                     style={{ height: "480px" }}
                 >
                     <img
-                        src={typeof galleryImages[activeImage] === 'string' ? galleryImages[activeImage] as string : (galleryImages[activeImage] as any).image_url}
+                        src={currentImage}
                         alt={`${warehouse.name} - ảnh ${activeImage + 1}`}
                         className="w-full h-full object-cover transition-all duration-500"
                     />
@@ -58,32 +76,30 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                     {/* Overlay gradient */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-                    {/* Navigation arrows */}
-                    <button
-                        onClick={() =>
-                            setActiveImage(
-                                (i) => (i - 1 + galleryImages.length) % galleryImages.length
-                            )
-                        }
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                        onClick={() =>
-                            setActiveImage(
-                                (i) => (i + 1) % galleryImages.length
-                            )
-                        }
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all"
-                    >
-                        <ChevronRight className="h-5 w-5" />
-                    </button>
+                    {/* Navigation arrows (only when multiple images) */}
+                    {hasMultiple && (
+                        <>
+                            <button
+                                onClick={goPrev}
+                                aria-label="Ảnh trước"
+                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all"
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={goNext}
+                                aria-label="Ảnh tiếp theo"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all"
+                            >
+                                <ChevronRight className="h-5 w-5" />
+                            </button>
+                        </>
+                    )}
 
                     {/* Image counter */}
                     <div className="absolute top-4 right-4 flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
                         <Eye className="h-3.5 w-3.5" />
-                        {activeImage + 1} / {galleryImages.length}
+                        {activeImage + 1} / {totalImages}
                     </div>
 
                     {/* Bottom info overlay */}
@@ -124,6 +140,47 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                         </div>
                     </div>
                 </div>
+
+                {/* ─── THUMBNAIL STRIP ─── */}
+                {hasMultiple && (
+                    <div className="mb-8">
+                        <div className="flex items-center gap-2 mb-3 text-sm text-[var(--color-text-secondary)]">
+                            <ImageIcon className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
+                            <span className="font-medium">Hình ảnh kho lạnh</span>
+                            <span className="text-xs text-[var(--color-text-muted)]">({totalImages} ảnh)</span>
+                        </div>
+                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                            {galleryImages.map((img, idx) => {
+                                const url = getImageUrl(img as any) || FALLBACK_GALLERY[0];
+                                const isActive = idx === activeImage;
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => setActiveImage(idx)}
+                                        aria-label={`Xem ảnh ${idx + 1}`}
+                                        aria-current={isActive ? 'true' : undefined}
+                                        className={`relative shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                                            isActive
+                                                ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)] ring-offset-1'
+                                                : 'border-transparent hover:border-[var(--color-border)] opacity-75 hover:opacity-100'
+                                        }`}
+                                        style={{ width: '120px', height: '90px' }}
+                                    >
+                                        <img
+                                            src={url}
+                                            alt={`Thumbnail ${idx + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        {isActive && (
+                                            <div className="absolute inset-0 bg-[var(--color-primary)]/10" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );

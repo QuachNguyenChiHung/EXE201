@@ -1,5 +1,4 @@
 import { api } from './asus_api';
-import { storageAPI } from './apiClient';
 import type { CompositeWarehouse } from '../types';
 
 export interface OwnerStatisticResponseDTO {
@@ -107,33 +106,47 @@ export const ownerService = {
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },
-  updateWarehouse: async (id: number, payload: any, force = false): Promise<any> => {
-    // Separate new File objects from existing image URLs
+  updateWarehouse: async (id: number, payload: any, force = false, deletedImageIds?: number[]): Promise<any> => {
+    // Separate new File objects from existing image URLs/objects
     const newImageFiles: File[] = [];
-    const imageUrls: string[] = [];
     if (Array.isArray(payload.images)) {
       payload.images.forEach((img: any) => {
         if (img instanceof File) {
           newImageFiles.push(img);
-        } else {
-          imageUrls.push(img);
         }
       });
     }
 
-    // Upload new image files and collect their URLs
-    for (const file of newImageFiles) {
-      const url = await storageAPI.uploadImage(file);
-      imageUrls.push(url);
+    // Strip image files from the JSON payload — backend reconstructs from existing URLs + new files
+    const { images: _ignored, ...payloadWithoutImages } = payload;
+
+    const formData = new FormData();
+    formData.append(
+      "warehouse",
+      new Blob([JSON.stringify(payloadWithoutImages)], { type: "application/json" })
+    );
+
+    newImageFiles.forEach((file) => {
+      formData.append("images", file);
+    });
+
+    if (Array.isArray(payload.certFiles)) {
+      payload.certFiles.forEach((cert: any) => {
+        if (cert?.file) {
+          formData.append("certFiles", cert.file);
+          if (cert.certTypeId !== undefined && cert.certTypeId !== null) {
+            formData.append("certTypeIds", String(cert.certTypeId));
+          }
+        }
+      });
     }
 
-    const payloadWithUrls = {
-      ...payload,
-      images: imageUrls,
-    };
+    if (deletedImageIds && deletedImageIds.length > 0) {
+      deletedImageIds.forEach((id) => formData.append("deletedImageIds", String(id)));
+    }
 
     console.log(`[API CALL] PUT /owners/warehouses/${id}?force=${force}`);
-    const response = await api.put(`/owners/warehouses/${id}?force=${force}`, payloadWithUrls);
+    const response = await api.put(`/owners/warehouses/${id}?force=${force}`, formData);
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },

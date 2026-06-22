@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { CompositeWarehouse } from "../../../types";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
@@ -54,7 +54,7 @@ function LocationMarker({ position, onDragEnd }: { position: L.LatLngExpression;
   );
 }
 
-export function WarehouseFormLocation({ warehouse, onChange }: Props) {
+function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
   const [mapCenter, setMapCenter] = useState<[number, number]>(HCMC_CENTER);
   const [mapZoom, setMapZoom] = useState(13);
   const [searchingLocation, setSearchingLocation] = useState(false);
@@ -427,3 +427,5 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
     </Card>
   );
 }
+
+export const WarehouseFormLocation = memo(WarehouseFormLocationInner);

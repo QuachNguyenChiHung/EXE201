@@ -1,5 +1,6 @@
 import { CompositeWarehouse } from '../../types';
 import { Button } from './ui/button';
+import { PRICE_TIER_OPTIONS } from './owner/WarehouseFormUtils';
 import {
   MapPin,
   Thermometer,
@@ -461,7 +462,7 @@ export function WarehouseCard({
                 }}
               >
                 <Tag className="h-2.5 w-2.5" />
-                {tier.label}: <strong>{formatPrice(tier.value)}</strong>/{tier.unit === 'month' ? 'tháng' : tier.unit === 'day' ? 'ngày' : 'năm'}
+                {tier.label}: <strong>{formatPrice(tier.value)}</strong>/{PRICE_TIER_OPTIONS.find(o => o.unit === tier.unit)?.label ?? tier.label ?? tier.unit}
               </span>
             ))}
           </div>

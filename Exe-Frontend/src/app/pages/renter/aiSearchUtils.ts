@@ -149,7 +149,15 @@ export function buildSearchParams(selections: Record<string, string[]>): any {
     }
 
     const caps = selections["capacity"] ?? [];
-    if (caps.length > 0) {
+    const customMinCap = selections["minCapacity"]?.[0];
+    const customMaxCap = selections["maxCapacity"]?.[0];
+
+    if (customMinCap || customMaxCap) {
+        const minVal = Number(customMinCap) || 0;
+        const maxVal = customMaxCap ? Number(customMaxCap) : Infinity;
+        if (minVal > 0) params.minArea = minVal;
+        if (maxVal < Infinity) params.maxArea = maxVal;
+    } else if (caps.length > 0) {
         const ranges: Record<string, [number, number]> = {
             xs: [0, 200],
             sm: [200, 500],
@@ -169,7 +177,15 @@ export function buildSearchParams(selections: Record<string, string[]>): any {
     }
 
     const budgets = selections["budget"] ?? [];
-    if (budgets.length > 0 && !budgets.includes("any")) {
+    const customMinPrice = selections["minPrice"]?.[0];
+    const customMaxPrice = selections["maxPrice"]?.[0];
+
+    if (customMinPrice || customMaxPrice) {
+        const minVal = Number(customMinPrice) || 0;
+        const maxVal = customMaxPrice ? Number(customMaxPrice) : Infinity;
+        if (minVal > 0) params.minPrice = minVal;
+        if (maxVal < Infinity) params.maxPrice = maxVal;
+    } else if (budgets.length > 0 && !budgets.includes("any")) {
         const budgetRanges: Record<string, [number, number]> = {
             budget: [0, 200000],
             mid: [200001, 350000],
@@ -200,7 +216,11 @@ export function buildSearchParams(selections: Record<string, string[]>): any {
 export function buildCriteriaPrompt(selections: Record<string, string[]>, meta: FilterMetaResponseDTO): string {
     const parts: string[] = [];
     const locs = (selections["location"] ?? []).filter((v) => v !== "other");
-    if (locs.length > 0) parts.push(`Tôi cần thuê kho ở: **${locs.join(", ")}**.`);
+    if (locs.length > 0) {
+        parts.push(`Tôi cần thuê kho ở: **${locs.join(", ")}**.`);
+    } else {
+        parts.push(`**Không yêu cầu** thành phố cụ thể — có thể ở bất kỳ đâu.`);
+    }
 
     const minCap = selections["minCapacity"]?.[0];
     const maxCap = selections["maxCapacity"]?.[0];

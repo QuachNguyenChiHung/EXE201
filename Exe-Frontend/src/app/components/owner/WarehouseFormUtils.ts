@@ -137,7 +137,6 @@ export const UNIT_SHORT: Record<string, string> = {
   month: "tháng",
   week: "tuần",
   day: "ngày",
-  hour: "giờ",
   year: "năm",
 };
 

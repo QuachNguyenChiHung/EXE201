@@ -46,7 +46,7 @@ export interface PriceTier {
   value: number;
   unit: string;
   timeUnit?: string;
-  area_unit: string;
+  areaUnit: string;
 }
 
 export interface CertificationType {

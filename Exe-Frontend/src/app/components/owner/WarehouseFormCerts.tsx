@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
@@ -14,7 +14,7 @@ interface Props {
   setExistingCerts: (certs: any[]) => void;
 }
 
-export function WarehouseFormCerts({ certFiles, setCertFiles, existingCerts, setExistingCerts }: Props) {
+function WarehouseFormCertsInner({ certFiles, setCertFiles, existingCerts, setExistingCerts }: Props) {
   const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
 
   useEffect(() => {
@@ -188,6 +188,8 @@ export function WarehouseFormCerts({ certFiles, setCertFiles, existingCerts, set
     </Card>
   );
 }
+
+export const WarehouseFormCerts = memo(WarehouseFormCertsInner);
 
 function ExternalLinkIcon() {
   return (

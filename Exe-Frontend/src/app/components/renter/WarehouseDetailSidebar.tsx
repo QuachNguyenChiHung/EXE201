@@ -1,313 +1,290 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router';
-import { Send, LayoutGrid, Check, Calendar as CalendarIcon } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar as CalendarComponent } from '../ui/calendar';
-import { CompositeWarehouse, User } from '../../../types';
-import { toast } from 'sonner';
-// import { useApp } from '../../../context/AppContext';
-import { renterService } from '../../../services/renterService';
-import { getUser } from '../../../utils/auth';
+import { Send } from 'lucide-react';
+import { CompositeWarehouse } from '../../../types';
+import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
 
-interface InquiryForm {
-    name: string;
-    phone: string;
-    email: string;
-    isWholeWarehouse: boolean;
-    selectedSectionIds: string[];
-    cargoType: string;
-    sectionCapacities: Record<string, string>;
-    durationValue: string;
-    durationUnit: string;
-    startDate: string;
-    endDate: string;
-    message: string;
-    renterOfferedPrice: string;
-}
+// ─── Time unit constants & conversion ─────────────────────────────────────────
 
-const PRICE_TIER_LABELS: Record<string, string> = {
-    day: 'Ngày',
-    week: 'Tuần',
-    month: 'Tháng',
-    year: 'Năm',
+const DAYS_PER_UNIT: Record<string, number> = {
+    day: 1, week: 7, month: 30, year: 365,
 };
 
-const UNIT_MULTIPLIERS: Record<string, number> = {
-    day: 1,
-    week: 7,
-    month: 30,
-    year: 365,
+const UNIT_CONVERSION: Record<string, Record<string, number>> = {
+    day:   { day: 1,     week: 1/7,   month: 1/30,  year: 1/365 },
+    week:  { day: 7,     week: 1,     month: 7/30,  year: 7/365 },
+    month: { day: 30,    week: 30/7,  month: 1,     year: 1/12  },
+    year:  { day: 365,   week: 365/7, month: 12,    year: 1     },
 };
 
-function getTierValue(priceTiers: { unit?: string; timeUnit?: string; value?: number }[] | undefined, unit: string): number {
-    if (!priceTiers) return 0;
-    const tier = priceTiers.find(t => (t.unit || t.timeUnit) === unit);
-    if (tier?.value != null) return tier.value;
-    const dayTier = priceTiers.find(t => (t.unit || t.timeUnit) === 'day');
-    if (dayTier?.value != null && UNIT_MULTIPLIERS[unit]) {
-        return dayTier.value * UNIT_MULTIPLIERS[unit];
-    }
-    return 0;
+const TIER_RANK: Record<string, number> = { day: 0, week: 1, month: 2, year: 3 };
+
+function getRestrictiveTierUnit(selectedSections: any[], selectedTiers: Record<string, number>): string {
+    const hasUnit = (unit: string) =>
+        selectedSections.some(sec => {
+            const sid = sec.id_section?.toString() || '';
+            const tierIdx = selectedTiers[sid];
+            if (tierIdx === undefined) return false;
+            const tier = sec.priceTiers?.[tierIdx];
+            if (!tier) return false;
+            return (tier.unit || 'month') === unit;
+        });
+
+    if (hasUnit('year'))  return 'year';
+    if (hasUnit('month')) return 'month';
+    if (hasUnit('week'))  return 'week';
+    return 'day';
 }
 
-interface WarehouseDetailSidebarProps {
+function getAllowedDurationUnits(restrictiveUnit: string): string[] {
+    const unitOrder = ['day', 'week', 'month', 'year'];
+    const restrictiveRank = TIER_RANK[restrictiveUnit] ?? 0;
+    return unitOrder.filter(u => (TIER_RANK[u] ?? 0) >= restrictiveRank);
+}
+
+function calcSectionCost(
+    tierValue: number, tierUnit: string,
+    durValue: number, durUnit: string, rentedArea: number
+): number {
+    const conversion = UNIT_CONVERSION[durUnit]?.[tierUnit] ?? 1;
+    return tierValue * durValue * conversion * rentedArea;
+}
+
+function rentalDays(value: number, unit: string): number {
+    return value * (DAYS_PER_UNIT[unit] ?? 1);
+}
+
+function rentalMonths(value: number, unit: string): number {
+    return rentalDays(value, unit) / 30;
+}
+
+// ─── Component props ───────────────────────────────────────────────────────────
+
+export interface WarehouseDetailSidebarProps {
     warehouse: CompositeWarehouse;
+    selectedTiers: Record<string, number>;
+    selectedSectionIds: string[];
+    onSelectSectionIds: (ids: string[], clearedTierIds: string[]) => void;
+    // Section capacities shared with the modal
+    sectionCapacities: Record<string, string>;
+    onSectionCapacitiesChange: (caps: Record<string, string>) => void;
+    // Trigger to open the rental modal
+    onOpenRentalModal: () => void;
 }
 
-export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProps) {
-    const user = useMemo(() => getUser(), []);
-    const navigate = useNavigate();
-    const [submitting, setSubmitting] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
+// ─── Component ─────────────────────────────────────────────────────────────────
 
-    const [form, setForm] = useState<InquiryForm>({
-        name: user?.name ?? "",
-        phone: user?.phone ?? "",
-        email: user?.email ?? "",
-        isWholeWarehouse: false,
-        selectedSectionIds: [],
-        cargoType: "",
-        sectionCapacities: {},
-        durationValue: "",
-        durationUnit: "day",
-        startDate: "",
-        endDate: "",
-        message: "",
-        renterOfferedPrice: "",
-    });
+export function WarehouseDetailSidebar({
+    warehouse,
+    selectedTiers,
+    selectedSectionIds,
+    onSelectSectionIds,
+    sectionCapacities,
+    onSectionCapacitiesChange,
+    onOpenRentalModal,
+}: WarehouseDetailSidebarProps) {
 
-    const availableUnits = React.useMemo(() => {
-        if (!warehouse.sections && !warehouse.priceTiers) return [];
-        const allPriceTiers = warehouse.priceTiers || [];
-        for (const sec of (warehouse.sections || [])) {
-            if (form.selectedSectionIds.includes(sec.id_section?.toString() || '')) {
-                allPriceTiers.push(...(sec.priceTiers || []));
-            }
-        }
-        const units = allPriceTiers.map(pt => pt.timeUnit || pt.unit).filter(Boolean) as string[];
-        return Array.from(new Set(units)).sort((a, b) => {
-            const order = ['day', 'week', 'month', 'year'];
-            return (order.indexOf(a) - order.indexOf(b));
-        });
-    }, [warehouse, form.selectedSectionIds]);
-
-    useEffect(() => {
-        if (!form.durationUnit) {
-            setForm(f => ({ ...f, durationUnit: 'day' }));
-        }
-    }, [form.durationUnit]);
-
-    useEffect(() => {
-        if (!form.startDate || !form.durationValue) return;
-        const val = parseInt(form.durationValue, 10);
-        if (isNaN(val) || val <= 0) return;
-        const end = new Date(form.startDate);
-        const unitStr = form.durationUnit.toLowerCase();
-        if (unitStr === 'day') end.setDate(end.getDate() + val);
-        if (unitStr === 'week') end.setDate(end.getDate() + val * 7);
-        if (unitStr === 'month') end.setMonth(end.getMonth() + val);
-        if (unitStr === 'year') end.setFullYear(end.getFullYear() + val);
-        setForm(f => ({ ...f, endDate: end.toISOString().split('T')[0] }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [form.startDate, form.durationValue, form.durationUnit]);
-
-    // Pre-fill sectionCapacities with each section's available_capacity when sections are selected
-    useEffect(() => {
-        if (!form.selectedSectionIds.length || !warehouse.sections) return;
-        setForm(f => {
-            const updated = { ...f.sectionCapacities };
-            form.selectedSectionIds.forEach(id => {
-                if (!updated[id]) {
-                    const sec = warehouse.sections!.find(s => (s.id_section?.toString() || '') === id);
-                    if (sec) updated[id] = String(sec.available_capacity || 0);
-                }
-            });
-            return { ...f, sectionCapacities: updated };
-        });
-    }, [form.selectedSectionIds]);
-
-    // Populate initial form fields once on mount (user is memoized)
-    useEffect(() => {
-        if (user) {
-            setForm(f => ({
-                ...f,
-                name: f.name || user.name || "",
-                phone: f.phone || user.phone || "",
-                email: f.email || user.email || "",
-            }));
-        }
-    }, []);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) {
-            toast.error("Vui lòng đăng nhập để gửi yêu cầu thuê kho");
-            navigate("/login");
-            return;
-        }
-        console.log(user)
-        if (user.role?.toUpperCase() !== 'RENTER') {
-            toast.error("Chỉ tài khoản Người Thuê mới có thể gửi yêu cầu thuê kho");
-            return;
-        }
-
-        if (form.selectedSectionIds.length === 0) {
-            toast.error("Vui lòng chọn ít nhất 1 phân khu");
-            return;
-        }
-
-        for (const id of form.selectedSectionIds) {
-            const cap = parseFloat(form.sectionCapacities[id]);
-            const sec = warehouse.sections?.find(s => s.id_section?.toString() === id);
-            if (isNaN(cap) || cap <= 0) {
-                toast.error(`Vui lòng nhập dung tích hợp lệ cho phân khu ${sec?.name || sec?.sector}`);
-                return;
-            }
-            if (sec && cap > sec.available_capacity) {
-                toast.error(`Dung tích yêu cầu cho phân khu ${sec.name || sec.sector} vượt quá khả năng trống (${sec.available_capacity} m³).`);
-                return;
-            }
-        }
-
-        const duration = parseInt(form.durationValue);
-        const du = form.durationUnit;
-
-        let finalDuration = duration;
-
-        setSubmitting(true);
-        try {
-            const targetSections = form.isWholeWarehouse
-                ? (warehouse.sections || [])
-                : (warehouse.sections || []).filter(s => form.selectedSectionIds.includes(s.id_section?.toString() || ''));
-
-            const details = targetSections.map(s => {
-                const requestedArea = parseFloat(form.sectionCapacities[s.id_section?.toString() || '']) || 0;
-                const pt = s.priceTiers?.find(t => t.unit === du || t.timeUnit === du);
-                if (!pt) {
-                    throw new Error(`Phân khu ${s.name || s.sector} không có gói giá phù hợp với thời lượng thuê của bạn (${du}).`);
-                }
-                return {
-                    sectionId: s.id_section,
-                    // Use the price tier ID provided by the backend, or fallback to id_price_tier
-                    priceTierId: pt.id || pt.id_price_tier,
-                    rentedArea: requestedArea,
-                    areaUnit: "m3"
-                };
-            });
-
-            const computedEndDate = (() => {
-                if (!form.startDate || !form.durationValue) return form.endDate;
-                const val = parseInt(form.durationValue, 10);
-                if (isNaN(val) || val <= 0) return form.endDate;
-                const end = new Date(form.startDate);
-                const unitStr = form.durationUnit.toLowerCase();
-                if (unitStr === 'day') end.setDate(end.getDate() + val);
-                if (unitStr === 'week') end.setDate(end.getDate() + val * 7);
-                if (unitStr === 'month') end.setMonth(end.getMonth() + val);
-                if (unitStr === 'year') end.setFullYear(end.getFullYear() + val);
-                return end.toISOString().split('T')[0];
-            })();
-
-            const dto = {
-                warehouseId: warehouse.id_warehouse,
-                cargoDescription: form.cargoType,
-                otherDetail: form.message,
-                duration: finalDuration || 1,
-                durationUnit: du,
-                startDate: form.startDate,
-                endDate: computedEndDate,
-                renterOfferedPrice: form.renterOfferedPrice ? parseFloat(form.renterOfferedPrice) : null,
-                details: details
-            };
-
-            await renterService.createRentRequest(dto);
-            setShowSuccess(true);
-        } catch (error: any) {
-            toast.error(error.message || "Có lỗi xảy ra khi gửi yêu cầu");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    if (showSuccess) {
-        return (
-            <div className="bento-card p-6 text-center border-t-4 border-[var(--color-primary)]">
-                <div className="w-16 h-16 bg-[var(--color-primary-100)] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check className="h-8 w-8 text-[var(--color-primary)]" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Gửi yêu cầu thành công!</h3>
-                <p className="text-sm text-[var(--color-text-secondary)] mb-6">
-                    Chủ kho sẽ sớm liên hệ với bạn để xác nhận và thương lượng giá cả.
-                </p>
-                <button
-                    onClick={() => navigate('/renter/requests')}
-                    className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-opacity"
-                >
-                    Xem yêu cầu của bạn
-                </button>
-            </div>
+    // ── Computed: selected section objects ─────────────────────────────────────
+    const selectedSections = useMemo(() => {
+        return (warehouse.sections || []).filter(s =>
+            selectedSectionIds.includes(s.id_section?.toString() || '')
         );
-    }
+    }, [warehouse.sections, selectedSectionIds]);
 
+    // ── Auto-fill per-section capacities when new sections are added ───────────
+    useEffect(() => {
+        const updated = { ...sectionCapacities };
+        let changed = false;
+        selectedSectionIds.forEach(id => {
+            if (!updated[id]) {
+                const sec = warehouse.sections!.find(
+                    s => (s.id_section?.toString() || '') === id
+                );
+                if (sec) {
+                    updated[id] = String(sec.available_capacity || 0);
+                    changed = true;
+                }
+            }
+        });
+        if (changed) {
+            onSectionCapacitiesChange(updated);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedSectionIds]);
+
+    // ── Price estimate (sidebar preview) ──────────────────────────────────────
+    // Uses the most-permissive duration (month) as a reference preview.
+    const estimateResult = useMemo(() => {
+        const breakdowns = selectedSections
+            .map(sec => {
+                const sectionId = sec.id_section?.toString() ?? '';
+                const tierIdx = selectedTiers[sectionId];
+                if (tierIdx === undefined) return null;
+
+                const tier = sec.priceTiers?.[tierIdx];
+                if (!tier) return null;
+
+                const area = parseFloat(sectionCapacities[sectionId]);
+                if (isNaN(area) || area <= 0) return null;
+
+                // Preview using month as reference duration
+                const cost = calcSectionCost(
+                    tier.value ?? 0,
+                    tier.unit || 'month',
+                    1,
+                    'month',
+                    area
+                );
+
+                return {
+                    sectionId,
+                    sectionName: sec.name || `Phân khu ${sec.sector}`,
+                    area,
+                    tierValue: tier.value ?? 0,
+                    tierUnit: tier.unit || 'month',
+                    cost,
+                };
+            })
+            .filter(Boolean);
+
+        const total = breakdowns.reduce((sum, b) => sum + (b?.cost ?? 0), 0);
+
+        // Available units for the estimate badge
+        const availableUnits = selectedSections.length === 0
+            ? ['day', 'week', 'month', 'year']
+            : getAllowedDurationUnits(getRestrictiveTierUnit(selectedSections, selectedTiers));
+
+        // Default unit for the estimate
+        const defaultUnit = (() => {
+            for (const sec of selectedSections) {
+                const sid = sec.id_section?.toString() || '';
+                const tierIdx = selectedTiers[sid];
+                if (tierIdx !== undefined) {
+                    const tier = sec.priceTiers?.[tierIdx];
+                    if (tier) {
+                        const u = tier.unit || 'month';
+                        if (availableUnits.includes(u)) return u;
+                    }
+                }
+            }
+            const restrictive = getRestrictiveTierUnit(selectedSections, selectedTiers);
+            if (availableUnits.includes(restrictive)) return restrictive;
+            return warehouse.priceTiers?.[0]?.unit || 'month';
+        })();
+
+        return { breakdowns, total, defaultUnit };
+    }, [selectedSections, selectedTiers, sectionCapacities, warehouse.priceTiers]);
+
+    const { breakdowns: sidebarBreakdown, total: sidebarTotal, defaultUnit: sidebarDefaultUnit } = estimateResult;
+
+    const pendingSections = useMemo(() =>
+        selectedSections
+            .filter(s => selectedTiers[s.id_section?.toString() || ''] === undefined)
+            .map(s => s.name || `Phân khu ${s.sector}`),
+        [selectedSections, selectedTiers]
+    );
+
+    const allSectionsHaveCapacity = useMemo(() =>
+        selectedSections.every(s => {
+            const area = parseFloat(sectionCapacities[s.id_section?.toString() || '']);
+            return !isNaN(area) && area > 0;
+        }),
+        [selectedSections, sectionCapacities]
+    );
+
+    const allSectionsHaveTier = useMemo(() =>
+        selectedSections.every(s =>
+            selectedTiers[s.id_section?.toString() || ''] !== undefined
+        ),
+        [selectedSections, selectedTiers]
+    );
+
+    const canOpenModal = selectedSectionIds.length > 0 && allSectionsHaveCapacity && allSectionsHaveTier;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RENDER
+    // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="bento-card sticky top-24 border border-[var(--color-border)] shadow-xl overflow-hidden">
             <div className="p-5 text-white" style={{ background: 'var(--color-primary)' }}>
-                <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Send className="h-5 w-5" /> Đăng ký thuê kho
-                </h3>
+                <h3 className="text-lg font-bold">Kho {warehouse.name || 'Chi tiết kho'}</h3>
+                {selectedSections.length > 0 && (
+                    <p className="text-xs opacity-80 mt-0.5">
+                        {selectedSections.length} phân khu đang chọn
+                    </p>
+                )}
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+
+            <div className="p-5 space-y-4">
+
+                {/* ── Section selector ─────────────────────────────────────────── */}
                 <div>
-                    <label className="block text-xs font-semibold mb-2 text-[var(--color-text-secondary)]">Chọn Phân Khu</label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    <label className="block text-xs font-semibold mb-2 text-[var(--color-text-secondary)]">
+                        Chọn Phân Khu
+                    </label>
+                    <div className="space-y-2 overflow-y-auto pr-2 max-h-64">
                         {warehouse.sections?.map(sec => {
-                            const isSelected = form.selectedSectionIds.includes(sec.id_section?.toString() || '');
+                            const sectionId = sec.id_section?.toString() || '';
+                            const isSelected = selectedSectionIds.includes(sectionId);
+
                             return (
-                                <div key={sec.id_section} className={`p-2 border rounded-md transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'hover:bg-[var(--color-bg-secondary)]'}`}>
+                                <div
+                                    key={sec.id_section}
+                                    className={`p-2 border rounded-md transition-colors ${isSelected
+                                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]'
+                                        : 'hover:bg-[var(--color-bg-secondary)]'
+                                        }`}
+                                >
                                     <label className="flex items-start gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={isSelected}
-                                            onChange={(e) => {
-                                                const val = sec.id_section?.toString() || '';
-                                                setForm(f => ({
-                                                    ...f,
-                                                    selectedSectionIds: e.target.checked
-                                                        ? [...f.selectedSectionIds, val]
-                                                        : f.selectedSectionIds.filter(id => id !== val)
-                                                }));
+                                            onChange={e => {
+                                                const newIds = e.target.checked
+                                                    ? [...selectedSectionIds, sectionId]
+                                                    : selectedSectionIds.filter(id => id !== sectionId);
+                                                const clearedTierIds = e.target.checked ? [] : [sectionId];
+                                                onSelectSectionIds(newIds, clearedTierIds);
                                             }}
                                             className="mt-0.5 accent-[var(--color-primary)]"
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold truncate">{sec.name || `Phân khu ${sec.sector}`}</p>
+                                            <p className="text-sm font-semibold truncate">
+                                                {sec.name || `Phân khu ${sec.sector}`}
+                                            </p>
                                             <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                                                Nhiệt độ: {sec.temp_min}°C ~ {sec.temp_max}°C &bull; Độ ẩm: {sec.humidity}%
+                                                Nhiệt độ: {sec.temp_min}°C ~ {sec.temp_max}°C
+                                                &bull; Độ ẩm: {sec.humidity}%
                                             </p>
                                         </div>
                                     </label>
+
+                                    {/* Capacity input — shown only when selected */}
                                     {isSelected && (() => {
-                                        const valStr = form.sectionCapacities[sec.id_section?.toString() || ''] || '';
-                                        const capVal = parseFloat(valStr);
+                                        const capStr = sectionCapacities[sectionId] || '';
+                                        const capVal = parseFloat(capStr);
                                         const isOverLimit = !isNaN(capVal) && capVal > sec.available_capacity;
 
                                         return (
                                             <div className="mt-3 pl-6">
+                                                <label className="block text-[10px] font-medium mb-1 text-[var(--color-text-muted)]">
+                                                    Dung tích cần thuê
+                                                </label>
                                                 <input
                                                     type="number"
                                                     min="1"
                                                     max={sec.available_capacity}
                                                     required
-                                                    placeholder={`Dung tích cần thuê (tối đa: ${sec.available_capacity} m³)...`}
-                                                    className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none bg-[var(--color-surface)] ${isOverLimit ? 'border-red-500 focus:border-red-500' : 'focus:border-[var(--color-primary)]'}`}
-                                                    value={valStr}
+                                                    placeholder={`Tối đa: ${sec.available_capacity} m³`}
+                                                    className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none bg-[var(--color-surface)] ${isOverLimit
+                                                        ? 'border-red-500 focus:border-red-500'
+                                                        : 'focus:border-[var(--color-primary)]'
+                                                        }`}
+                                                    value={capStr}
                                                     onChange={e => {
-                                                        const val = e.target.value;
-                                                        setForm(f => ({
-                                                            ...f,
-                                                            sectionCapacities: { ...f.sectionCapacities, [sec.id_section?.toString() || '']: val }
-                                                        }));
+                                                        onSectionCapacitiesChange({
+                                                            ...sectionCapacities,
+                                                            [sectionId]: e.target.value,
+                                                        });
                                                     }}
                                                 />
                                                 {isOverLimit && (
@@ -319,174 +296,98 @@ export function WarehouseDetailSidebar({ warehouse }: WarehouseDetailSidebarProp
                                         );
                                     })()}
                                 </div>
-                            )
+                            );
                         })}
                     </div>
                 </div>
-                <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">Loại Hàng</label>
-                    <input
-                        type="text"
-                        required
-                        placeholder="Ví dụ: Hải sản đông lạnh, Trái cây..."
-                        className="w-full text-sm px-3 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent"
-                        value={form.cargoType}
-                        onChange={e => setForm(f => ({ ...f, cargoType: e.target.value }))}
-                    />
-                </div>
 
+                {/* ── Price estimate preview ───────────────────────────────────── */}
+                {selectedSectionIds.length > 0 && sidebarBreakdown.length > 0 && (
+                    <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4">
+                        <p className="text-sm font-semibold text-[var(--color-text)] mb-3">
+                            Dự toán chi phí (tham khảo)
+                        </p>
 
-                <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">Thời Gian Bắt Đầu</label>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <CalendarIcon className="h-4 w-4 text-[var(--color-text-muted)]" />
-                        </div>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <button className="w-full text-sm pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent text-left flex items-center">
-                                    {form.startDate ? format(parseISO(form.startDate), 'dd/MM/yyyy') : <span className="text-[var(--color-text-muted)]">dd/mm/yyyy</span>}
-                                </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-white shadow-md border rounded-md" align="start">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={form.startDate ? parseISO(form.startDate) : undefined}
-                                    onSelect={(date) => setForm(f => ({ ...f, startDate: date ? format(date, 'yyyy-MM-dd') : '' }))}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                </div>
+                        {pendingSections.length > 0 && (
+                            <div className="mb-3 p-3 rounded-md bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]">
+                                <p className="text-xs font-medium text-[var(--color-warning)] mb-1">
+                                    Chưa chọn gói giá
+                                </p>
+                                <p className="text-xs text-[var(--color-text-muted)]">
+                                    Vui lòng chọn gói giá cho: {pendingSections.join(', ')}
+                                </p>
+                            </div>
+                        )}
 
-                <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">Thời Lượng Thuê</label>
-                    <div className="flex gap-2">
-                        <input
-                            type="number"
-                            required
-                            min="1"
-                            placeholder="0"
-                            className="w-20 text-sm px-3 py-2.5 border rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-transparent text-center font-semibold"
-                            value={form.durationValue}
-                            onChange={e => setForm(f => ({ ...f, durationValue: e.target.value }))}
-                        />
-                        <select
-                            className="flex-1 text-sm px-3 py-2.5 border-2 border-black rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-white text-[var(--color-primary)] font-bold shadow-sm cursor-pointer"
-                            value={form.durationUnit}
-                            onChange={e => setForm(f => ({ ...f, durationUnit: e.target.value as any }))}
-                        >
-                            {availableUnits.length > 0
-                                ? availableUnits.map(u => (
-                                    <option key={u} value={u}>{PRICE_TIER_LABELS[u] || u}</option>
-                                ))
-                                : ['day', 'week', 'month', 'year'].map(u => (
-                                    <option key={u} value={u}>{PRICE_TIER_LABELS[u] || u}</option>
-                                ))
-                            }
-                        </select>
-                    </div>
-                    {form.startDate && form.durationValue && (() => {
-                        const end = new Date(form.startDate);
-                        const val = parseInt(form.durationValue, 10);
-                        if (isNaN(val) || val <= 0) return null;
-                        const unitStr = form.durationUnit.toLowerCase();
-                        if (unitStr === 'day') end.setDate(end.getDate() + val);
-                        if (unitStr === 'week') end.setDate(end.getDate() + val * 7);
-                        if (unitStr === 'month') end.setMonth(end.getMonth() + val);
-                        if (unitStr === 'year') end.setFullYear(end.getFullYear() + val);
-                        return (
-                            <p className="mt-1.5 text-xs text-[var(--color-text-muted)] italic">
-                                Ngày kết thúc: <span className="font-medium text-[var(--color-text)]">
-                                    {`0${end.getDate()}`.slice(-2)}/{`0${end.getMonth() + 1}`.slice(-2)}/{end.getFullYear()}
-                                </span>
-                            </p>
-                        );
-                    })()}
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">
-                        Đề xuất tổng giá thuê (tuỳ chọn)
-                    </label>
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Nhập giá bạn muốn đề xuất cho tổng hợp đồng..."
-                            className="w-full text-sm pl-3 pr-12 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent"
-                            value={form.renterOfferedPrice ? Number(form.renterOfferedPrice).toLocaleString('en-US') : ''}
-                            onChange={e => {
-                                const rawValue = e.target.value.replace(/\D/g, '');
-                                setForm(f => ({ ...f, renterOfferedPrice: rawValue }));
-                            }}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-[var(--color-text-muted)] pointer-events-none">
-                            VNĐ
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">Ghi Chú</label>
-                    <textarea
-                        rows={2}
-                        placeholder="Yêu cầu thêm..."
-                        className="w-full text-sm px-3 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent resize-none"
-                        value={form.message}
-                        onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                    />
-                </div>
-
-                {/* Price Estimate Calculation */}
-                {form.selectedSectionIds.length > 0 && form.durationValue && (
-                    <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4 space-y-2 mt-4">
-                        <p className="text-sm font-semibold text-[var(--color-text)] mb-2">Dự toán chi phí gốc</p>
-                        {(() => {
-                            const targetSections = warehouse.sections?.filter(s => form.selectedSectionIds.includes(s.id_section?.toString() || '')) || [];
-                            let totalCost = 0;
+                        {sidebarBreakdown.map(b => {
+                            if (!b) return null;
+                            const unitLabel =
+                                PRICE_TIER_OPTIONS.find(o => o.unit === b.tierUnit)?.label?.replace('Giá theo ', '') ?? b.tierUnit;
 
                             return (
-                                <>
-                                    {targetSections.map(sec => {
-                                        const requestedArea = parseFloat(form.sectionCapacities[sec.id_section?.toString() || '']) || 0;
-                                        const ptValue = getTierValue(sec.priceTiers, form.durationUnit);
-                                        const cost = requestedArea * ptValue;
-                                        totalCost += cost;
-                                        const pt = sec.priceTiers?.find(t => (t.unit || t.timeUnit) === form.durationUnit);
-                                        return (
-                                            <div key={sec.id_section} className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                                                <span>{sec.name} ({requestedArea > 0 ? requestedArea.toFixed(1) : '0'} {pt?.areaUnit || sec.priceTiers?.[0]?.areaUnit || 'm3'})</span>
-                                                <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cost)} / {(PRICE_TIER_LABELS[form.durationUnit] || form.durationUnit).toLowerCase()}</span>
-                                            </div>
-                                        );
-                                    })}
-                                    <div className="border-t border-[var(--color-border)] mt-2 pt-2 flex justify-between font-bold text-[var(--color-text)]">
-                                        <span>Tổng dự kiến:</span>
-                                        <span className="text-[var(--color-primary)]">
-                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalCost * (parseInt(form.durationValue) || 1))}
+                                <div key={b.sectionId} className="mb-2 last:mb-0">
+                                    <div className="flex justify-between items-start mb-0.5">
+                                        <span className="text-xs font-medium text-[var(--color-text)]">
+                                            {b.sectionName}
+                                            <span className="text-[var(--color-text-muted)] font-normal ml-1">
+                                                ({b.area > 0 ? b.area.toFixed(1) : '0'} m³)
+                                            </span>
+                                        </span>
+                                        <span className="text-xs font-semibold text-[var(--color-text)]">
+                                            {new Intl.NumberFormat('vi-VN', {
+                                                style: 'currency',
+                                                currency: 'VND',
+                                            }).format(b.cost)}
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-[var(--color-text-muted)] italic mt-1">* Ước tính dựa trên tổng thời lượng thuê</p>
-                                </>
+                                    <div className="text-[10px] text-[var(--color-text-muted)]">
+                                        {b.tierValue?.toLocaleString('vi-VN')} đ/{unitLabel}/m³
+                                        <span className="mx-1">·</span>
+                                        1 {unitLabel}
+                                    </div>
+                                </div>
                             );
-                        })()}
+                        })}
+
+                        <div className="border-t border-[var(--color-border)] mt-2 pt-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs font-semibold text-[var(--color-text)]">
+                                    Tổng/tháng (ước tính)
+                                </span>
+                                <span className="text-base font-bold text-[var(--color-primary)]">
+                                    {new Intl.NumberFormat('vi-VN', {
+                                        style: 'currency',
+                                        currency: 'VND',
+                                    }).format(sidebarTotal)}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                                Giá chính xác phụ thuộc vào thời hạn thuê thực tế
+                            </p>
+                        </div>
                     </div>
                 )}
 
-                <div className="pt-2 border-t border-[var(--color-border)]">
+                {/* ── CTA button ───────────────────────────────────────────────── */}
+                <div className="pt-2 border-t bg-white border-[var(--color-border)]">
                     <button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:bg-[var(--color-primary-dark)] transition-colors disabled:opacity-50"
+                        type="button"
+                        onClick={onOpenRentalModal}
+                        disabled={!canOpenModal}
+                        className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                     >
-                        {submitting ? 'Đang gửi...' : 'Gửi Yêu Cầu Thuê Kho'}
+                        <Send className="h-4 w-4" />
+                        Đăng ký thuê kho
                     </button>
-                    <p className="text-[10px] text-center mt-2 text-[var(--color-text-muted)]">
-                        Sau khi gửi yêu cầu, chủ kho sẽ liên hệ qua SĐT/Email để thỏa thuận.
-                    </p>
+                    {!canOpenModal && selectedSectionIds.length > 0 && (
+                        <p className="text-[10px] text-center mt-2 text-[var(--color-warning)]">
+                            {!allSectionsHaveCapacity
+                                ? 'Vui lòng nhập dung tích cho các phân khu đã chọn'
+                                : 'Vui lòng chọn gói giá cho các phân khu đã chọn'}
+                        </p>
+                    )}
                 </div>
-            </form>
+            </div>
         </div>
     );
 }

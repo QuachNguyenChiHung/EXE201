@@ -12,8 +12,8 @@ export interface UserDTO {
 
 export interface CompanyResponseDTO {
   id: number;
-  name: string;
-  taxCode: string;
+  companyName: string;
+  companyTaxCode: string;
 }
 
 export interface UserProfileDTO {
@@ -24,7 +24,7 @@ export interface UserProfileDTO {
   avatarUrl: string;
   role: string;
   status: string;
-  company: CompanyResponseDTO;
+  company: CompanyResponseDTO | null;
 }
 
 export interface CertificationSubmitDTO {

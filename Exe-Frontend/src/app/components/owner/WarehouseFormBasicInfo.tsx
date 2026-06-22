@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CompositeWarehouse } from "../../../types";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
@@ -12,7 +13,7 @@ interface Props {
   onChange: (key: keyof CompositeWarehouse, val: any) => void;
 }
 
-export function WarehouseFormBasicInfo({ warehouse, onChange }: Props) {
+function WarehouseFormBasicInfoInner({ warehouse, onChange }: Props) {
   const stats = warehouse.stats || {};
   return (
     <>
@@ -49,3 +50,5 @@ export function WarehouseFormBasicInfo({ warehouse, onChange }: Props) {
     </>
   );
 }
+
+export const WarehouseFormBasicInfo = memo(WarehouseFormBasicInfoInner);

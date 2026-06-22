@@ -12,6 +12,7 @@ import { renterService } from "../../../services/renterService";
 import { WarehouseDetailGallery } from "../../components/renter/WarehouseDetailGallery";
 import { WarehouseDetailInfo } from "../../components/renter/WarehouseDetailInfo";
 import { WarehouseDetailSidebar } from "../../components/renter/WarehouseDetailSidebar";
+import { RentalRequestModal } from "../../components/renter/RentalRequestModal";
 import { AIChatPanel } from "../../components/renter/AIChatPanel";
 
 export default function WarehouseDetail() {
@@ -24,6 +25,14 @@ export default function WarehouseDetail() {
     const [warehouse, setWarehouse] = useState<CompositeWarehouse | null>(null);
     const [loading, setLoading] = useState(true);
     const [quickNavOpen, setQuickNavOpen] = useState(false);
+    /** sectionId → selected tier index in that section's priceTiers array */
+    const [selectedTiers, setSelectedTiers] = useState<Record<string, number>>({});
+    /** IDs of sections the user has checked in the sidebar form */
+    const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
+    /** sectionId → capacity string for the rental form */
+    const [sectionCapacities, setSectionCapacities] = useState<Record<string, string>>({});
+    /** Whether the rental request modal is open */
+    const [rentalModalOpen, setRentalModalOpen] = useState(false);
 
     // Ratings for this warehouse
     const warehouseRatings = allRatings.filter(r => r.warehouse_id?.toString() === id);
@@ -36,7 +45,9 @@ export default function WarehouseDetail() {
         setLoading(true);
         renterService.getWarehouseDetail(id)
             .then(data => {
-                if (data) setWarehouse(data);
+                if (data) {
+                    setWarehouse(data);
+                }
                 else { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); }
             })
             .catch(() => { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); })
@@ -145,15 +156,46 @@ export default function WarehouseDetail() {
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                     {/* Left Column (Info) */}
                     <div className="lg:col-span-3">
-                        <WarehouseDetailInfo warehouse={warehouse} />
+                        <WarehouseDetailInfo
+                            warehouse={warehouse}
+                            selectedTiers={selectedTiers}
+                            selectedSectionIds={selectedSectionIds}
+                        />
                     </div>
 
                     {/* Right Column (Sidebar) */}
                     <div className="lg:col-span-2">
-                        <WarehouseDetailSidebar warehouse={warehouse} />
+                        <WarehouseDetailSidebar
+                            warehouse={warehouse}
+                            selectedTiers={selectedTiers}
+                            selectedSectionIds={selectedSectionIds}
+                            onSelectSectionIds={(ids, clearedTierIds) => {
+                                const tierCopy = { ...selectedTiers };
+                                clearedTierIds.forEach(id => { delete tierCopy[id]; });
+                                setSelectedTiers(tierCopy);
+                                setSelectedSectionIds(ids);
+                            }}
+                            sectionCapacities={sectionCapacities}
+                            onSectionCapacitiesChange={setSectionCapacities}
+                            onOpenRentalModal={() => setRentalModalOpen(true)}
+                        />
                     </div>
                 </div>
             </div>
+
+            {/* ── Rental Request Modal ── */}
+            <RentalRequestModal
+                open={rentalModalOpen}
+                onOpenChange={setRentalModalOpen}
+                warehouse={warehouse}
+                selectedSections={(warehouse.sections || []).filter(s =>
+                    selectedSectionIds.includes(s.id_section?.toString() || '')
+                )}
+                selectedTiers={selectedTiers}
+                onSelectedTiersChange={setSelectedTiers}
+                sectionCapacities={sectionCapacities}
+                onSectionCapacitiesChange={setSectionCapacities}
+            />
             <Footer />
         </div>
     );

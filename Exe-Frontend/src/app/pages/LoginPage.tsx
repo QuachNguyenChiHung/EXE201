@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { bookmarksAPI } from "../../services/apiClient";
 import { authService } from "../../services/authService";
+import { userService } from "../../services/userService";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "../../assets/logo.jpg";
+import type { User } from "../../types/public";
 
 
 export default function LoginPage() {

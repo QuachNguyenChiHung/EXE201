@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
 import { ownerService } from "../../../services/ownerService";
+import { PRICE_TIER_OPTIONS } from "../../components/owner/WarehouseFormUtils";
 import { CompositeWarehouse, CompositeWarehouseSection } from "../../../types";
 import { Button } from "../../components/ui/button";
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
@@ -82,18 +83,23 @@ export default function AddWarehouse() {
           tempMax: parseFloat(String(sec.temp_max)) || 0,
           humidity: parseFloat(String(sec.humidity)) || 0,
           hasCertification: sec.hasCertification,
-          priceTiers: (sec.priceTiers || []).map((pt: any) => ({
-            label: pt.label,
-            value: pt.value,
-            unit: pt.unit,
-            areaUnit: pt.area_unit
-          }))
+          priceTiers: (sec.priceTiers || []).map((pt: any) => {
+            const byLabel = PRICE_TIER_OPTIONS.find(o => o.label === pt.label);
+            const byUnit = PRICE_TIER_OPTIONS.find(o => o.unit === pt.unit);
+            const match = byLabel || byUnit;
+            return {
+              label: match?.label || pt.label,
+              value: pt.value,
+              unit: match?.unit || pt.unit || "month",
+              areaUnit: pt.areaUnit || "m3"
+            };
+          })
         }))
       };
 
       // 2. Construct FormData
       const formData = new FormData();
-      
+
       // We append the JSON DTO as a Blob so the backend can parse it as application/json
       formData.append(
         "warehouse",
@@ -153,28 +159,28 @@ export default function AddWarehouse() {
 
         {/* ── Main Form ── */}
         <form onSubmit={handleSave} className="space-y-6">
-          
-          <WarehouseFormBasicInfo 
-            warehouse={warehouse as CompositeWarehouse} 
-            onChange={updateField} 
+
+          <WarehouseFormBasicInfo
+            warehouse={warehouse as CompositeWarehouse}
+            onChange={updateField}
           />
 
-          <WarehouseFormLocation 
-            warehouse={warehouse as CompositeWarehouse} 
-            onChange={updateMultipleFields} 
+          <WarehouseFormLocation
+            warehouse={warehouse as CompositeWarehouse}
+            onChange={updateMultipleFields}
           />
 
-          <WarehouseFormImages 
-            images={warehouse.images || []} 
-            onChange={(imgs) => updateField("images", imgs)} 
+          <WarehouseFormImages
+            images={warehouse.images || []}
+            onChange={(imgs) => updateField("images", imgs)}
           />
 
-          <WarehouseFormSections 
-            sections={warehouse.sections || []} 
-            onChange={updateSections} 
+          <WarehouseFormSections
+            sections={warehouse.sections || []}
+            onChange={updateSections}
           />
 
-          <WarehouseFormCerts 
+          <WarehouseFormCerts
             certFiles={certFiles}
             setCertFiles={setCertFiles}
             existingCerts={warehouse.certifications || []}

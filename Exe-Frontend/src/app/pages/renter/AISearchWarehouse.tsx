@@ -136,10 +136,14 @@ export default function AISearchWarehouse() {
         const maxCap = selections["maxCapacity"]?.[0];
         const minPrice = selections["minPrice"]?.[0];
         const maxPrice = selections["maxPrice"]?.[0];
-        if (minCap && Number(minCap) < 1) errors["minCapacity"] = "Phải từ 1 trở lên";
-        if (maxCap && Number(maxCap) < 1) errors["maxCapacity"] = "Phải từ 1 trở lên";
-        if (minPrice && Number(minPrice) < 10000) errors["minPrice"] = "Phải từ 10.000đ trở lên";
-        if (maxPrice && Number(maxPrice) < 10000) errors["maxPrice"] = "Phải từ 10.000đ trở lên";
+        if (!minCap) errors["minCapacity"] = "Bắt buộc nhập";
+        else if (Number(minCap) < 1) errors["minCapacity"] = "Phải từ 1 trở lên";
+        if (!maxCap) errors["maxCapacity"] = "Bắt buộc nhập";
+        else if (Number(maxCap) < 1) errors["maxCapacity"] = "Phải từ 1 trở lên";
+        if (!minPrice) errors["minPrice"] = "Bắt buộc nhập";
+        else if (Number(minPrice) < 10000) errors["minPrice"] = "Phải từ 10.000đ trở lên";
+        if (!maxPrice) errors["maxPrice"] = "Bắt buộc nhập";
+        else if (Number(maxPrice) < 10000) errors["maxPrice"] = "Phải từ 10.000đ trở lên";
         return errors;
     })();
     const hasValidationErrors = Object.keys(validationErrors).length > 0;
