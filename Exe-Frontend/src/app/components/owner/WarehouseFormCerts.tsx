@@ -12,9 +12,10 @@ interface Props {
   setCertFiles: (files: CertFile[]) => void;
   existingCerts: any[];
   setExistingCerts: (certs: any[]) => void;
+  setDeletedCertIds?: (ids: number[]) => void;
 }
 
-function WarehouseFormCertsInner({ certFiles, setCertFiles, existingCerts, setExistingCerts }: Props) {
+function WarehouseFormCertsInner({ certFiles, setCertFiles, existingCerts, setExistingCerts, setDeletedCertIds }: Props) {
   const [certTypes, setCertTypes] = useState<CertificationType[]>([]);
 
   useEffect(() => {
@@ -51,7 +52,12 @@ function WarehouseFormCertsInner({ certFiles, setCertFiles, existingCerts, setEx
   };
 
   const removeExistingCert = (idx: number) => {
+    const removed = existingCerts[idx];
+    const removedId = removed?.id_cerfSubmit ?? removed?.id;
     setExistingCerts(existingCerts.filter((_, i) => i !== idx));
+    if (removedId !== undefined && removedId !== null && setDeletedCertIds) {
+      setDeletedCertIds([removedId]);
+    }
   };
 
   return (

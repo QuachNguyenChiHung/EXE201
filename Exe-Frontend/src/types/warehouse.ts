@@ -6,6 +6,7 @@ export interface Warehouse {
   description: string;
   location_address_text: string;
   location_province: string;
+  location_district?: string;
   location_commune: string;
   location_long: number;
   location_lat: number;

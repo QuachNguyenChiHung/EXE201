@@ -7,11 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { MapPin, Search, Loader2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { vietnamProvinces } from "../../../data/mockWarehouses";
+import districtsDataRaw from "../../../data/vietnamDistricts.json";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { nominatimSearch, parseAddress, createWarehouseIcon, nominatimReverse } from "./WarehouseFormUtils";
 import { toast } from "sonner";
+
+const VIETNAM_DISTRICTS: Record<string, string[]> = districtsDataRaw;
 
 interface Props {
   warehouse: CompositeWarehouse;
@@ -66,23 +69,52 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
   const [provincesData, setProvincesData] = useState<any[]>([]);
   const [districtsData, setDistrictsData] = useState<any[]>([]);
 
+  const normalizeProvinceKey = (name: string) => {
+    if (!name) return "";
+    return name
+      .replace(/^(Thành phố trực thuộc trung ương|Thủ đô|Thành phố|Tỉnh)\s+/i, "")
+      .replace(/\s*\(cũ\)$/i, "")
+      .trim();
+  };
+
+  const districtOptions = useMemo(() => {
+    const provKey = normalizeProvinceKey(warehouse.location_province).toLowerCase();
+    if (!provKey) return [];
+    const directMatch = Object.keys(VIETNAM_DISTRICTS).find(
+      (k) => k.toLowerCase() === provKey
+    );
+    if (directMatch) return VIETNAM_DISTRICTS[directMatch];
+    return Object.keys(VIETNAM_DISTRICTS).find((k) => k.toLowerCase().includes(provKey))
+      ? VIETNAM_DISTRICTS[
+          Object.keys(VIETNAM_DISTRICTS).find((k) => k.toLowerCase().includes(provKey))!
+        ]
+      : [];
+  }, [warehouse.location_province]);
+
   useEffect(() => {
     import("../../MapData/sapnhap-bando-vn.json").then((module) => {
       const data = (module.default || module) as any[];
       setProvincesData(data.filter((d: any) => d.kind === "province"));
-      setDistrictsData(data.filter((d: any) => d.kind === "district" || d.kind === "commune"));
+      // Post-2025 admin merger: provinces subdivide directly into communes
+      // (phường/xã). There is no `district` kind in the dataset anymore.
+      setDistrictsData(data.filter((d: any) => d.kind === "commune"));
     }).catch(e => console.error("Failed to load map data", e));
   }, []);
 
   const provinceNames = useMemo(() => Array.from(new Set([...vietnamProvinces, ...provincesData.map(p => p.ten)])).sort(), [provincesData]);
   
   const filteredDistricts = useMemo(() => {
-    if (!warehouse.location_province) return Array.from(new Set(districtsData.map(d => d.ten))).sort();
-    const provMatch = warehouse.location_province.toLowerCase().replace(/^(thành phố|tỉnh|thủ đô)\s+/i, '').trim();
+    if (!warehouse.location_province) return [];
+    const provKey = normalizeProvinceKey(warehouse.location_province).toLowerCase();
+    if (!provKey) return [];
     return Array.from(new Set(
       districtsData
-        .filter(d => d.parent_ten && d.parent_ten.toLowerCase().includes(provMatch))
-        .map(d => d.ten)
+        .filter((d: any) => {
+          if (!d.parent_ten) return false;
+          const parentNorm = normalizeProvinceKey(d.parent_ten).toLowerCase();
+          return parentNorm === provKey || parentNorm.includes(provKey) || provKey.includes(parentNorm);
+        })
+        .map((d: any) => d.ten)
     )).sort();
   }, [districtsData, warehouse.location_province]);
 
@@ -276,6 +308,56 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
 
       <div className="flex flex-col gap-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Row 1: Tỉnh/Thành phố + Quận/Huyện */}
+          <div>
+            <Label htmlFor="province">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
+            <Input
+              id="province"
+              list="provinces-list"
+              placeholder="VD: Thành phố Hồ Chí Minh"
+              value={warehouse.location_province || ""}
+              required
+              onChange={(e) => {
+                 updateLocationField("location_province", e.target.value);
+                 handleInputSearch(warehouse.address || "", warehouse.location_commune || "", e.target.value);
+              }}
+              className="mt-1"
+            />
+            <datalist id="provinces-list">
+              {provinceNames.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </div>
+          <div>
+            <Label htmlFor="district">Quận/Huyện <span className="text-red-500">*</span></Label>
+            <Select
+              value={(warehouse as any).location_district || ""}
+              onValueChange={(val) => {
+                 updateLocationField("location_district" as any, val);
+                 handleInputSearch(warehouse.address || "", warehouse.location_commune || "", warehouse.location_province || "");
+              }}
+            >
+              <SelectTrigger id="district" className="mt-1">
+                <SelectValue placeholder="Chọn Quận/Huyện" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64 overflow-y-auto">
+                {districtOptions.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-[var(--color-text-muted)]">
+                    Chọn Tỉnh/Thành phố trước
+                  </p>
+                ) : (
+                  districtOptions.map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {d}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Row 2: Số nhà + Đường/Phố + Phường/Xã */}
           <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="col-span-1">
               <Label htmlFor="houseNumber">Số nhà/Ngõ</Label>
@@ -312,62 +394,33 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
             </div>
             <div className="col-span-1">
               <Label htmlFor="ward">Phường/Xã <span className="text-red-500">*</span></Label>
-              <Input
-                id="ward"
-                placeholder="VD: Phường Tây Thạnh"
+              <Select
                 value={ward}
-                required
-                onChange={(e) => {
-                  const val = e.target.value;
+                onValueChange={(val) => {
                   setWard(val);
                   const combined = [houseNumber, street, val].filter(Boolean).join(", ");
                   updateLocationField("address", combined);
                   handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
                 }}
-                className="mt-1"
-              />
+              >
+                <SelectTrigger id="ward" className="mt-1">
+                  <SelectValue placeholder="Chọn Phường/Xã" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64 overflow-y-auto">
+                  {filteredDistricts.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-[var(--color-text-muted)]">
+                      Chọn Tỉnh/Thành phố trước
+                    </p>
+                  ) : (
+                    filteredDistricts.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <div>
-            <Label htmlFor="province">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
-            <Input
-              id="province"
-              list="provinces-list"
-              placeholder="VD: Thành phố Hồ Chí Minh"
-              value={warehouse.location_province || ""}
-              required
-              onChange={(e) => {
-                 updateLocationField("location_province", e.target.value);
-                 handleInputSearch(warehouse.address || "", warehouse.location_commune || "", e.target.value);
-              }}
-              className="mt-1"
-            />
-            <datalist id="provinces-list">
-              {provinceNames.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <Label htmlFor="commune">Quận/Huyện <span className="text-red-500">*</span></Label>
-            <Input
-              id="commune"
-              list="districts-list"
-              placeholder="VD: Quận 7"
-              value={warehouse.location_commune || ""}
-              required
-              onChange={(e) => {
-                const val = e.target.value;
-                updateLocationField("location_commune", val);
-                handleInputSearch(warehouse.address || "", val, warehouse.location_province || "");
-              }}
-              className="mt-1"
-            />
-            <datalist id="districts-list">
-              {filteredDistricts.map((d) => (
-                <option key={d} value={d} />
-              ))}
-            </datalist>
           </div>
           <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
             <Button

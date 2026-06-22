@@ -29,6 +29,8 @@ export default function WarehouseForm() {
   const [certFiles, setCertFiles] = useState<CertFile[]>([]);
   // Tracks which existing image IDs were removed via the form, so backend can delete them
   const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
+  // Tracks which existing certification IDs were removed via the form, so backend can delete them
+  const [deletedCertIds, setDeletedCertIds] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -133,6 +135,13 @@ export default function WarehouseForm() {
     setWarehouse((prev) => prev ? { ...prev, certifications: certs } : null);
   }, []);
 
+  // Adapter: WarehouseFormCerts passes a freshly-removed cert id whenever a
+  // user clicks the X on an existing cert row. We accumulate those ids and
+  // send them to the backend as `deletedCertIds` on save.
+  const onRemoveExistingCert = useCallback((removedId: number) => {
+    setDeletedCertIds((prev) => (prev.includes(removedId) ? prev : [...prev, removedId]));
+  }, []);
+
   const handleToggleStatus = useCallback(async () => {
     if (!warehouse) return;
     setIsTogglingStatus(true);
@@ -208,7 +217,7 @@ export default function WarehouseForm() {
 
       console.log("[WarehouseForm] Submitting update for:", warehouse.id_warehouse, dto);
       try {
-        await ownerService.updateWarehouse(warehouse.id_warehouse, dto, false, deletedImageIds);
+        await ownerService.updateWarehouse(warehouse.id_warehouse, dto, false, deletedImageIds, deletedCertIds);
       } catch (err: any) {
         const msg = err?.response?.data?.message || err?.response?.data || "";
         if (typeof msg === 'string' && msg.includes('force=true')) {
@@ -219,7 +228,7 @@ export default function WarehouseForm() {
             setSaving(false);
             return;
           }
-          await ownerService.updateWarehouse(warehouse.id_warehouse, dto, true, deletedImageIds);
+          await ownerService.updateWarehouse(warehouse.id_warehouse, dto, true, deletedImageIds, deletedCertIds);
         } else {
           throw err;
         }
@@ -326,6 +335,7 @@ export default function WarehouseForm() {
             setCertFiles={setCertFiles}
             existingCerts={warehouse.certifications || []}
             setExistingCerts={setExistingCerts}
+            setDeletedCertIds={onRemoveExistingCert}
           />
 
           {/* ── Submit Buttons ── */}

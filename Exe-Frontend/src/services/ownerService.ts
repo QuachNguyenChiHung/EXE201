@@ -106,7 +106,7 @@ export const ownerService = {
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },
-  updateWarehouse: async (id: number, payload: any, force = false, deletedImageIds?: number[]): Promise<any> => {
+  updateWarehouse: async (id: number, payload: any, force = false, deletedImageIds?: number[], deletedCertIds?: number[]): Promise<any> => {
     // Separate new File objects from existing image URLs/objects
     const newImageFiles: File[] = [];
     if (Array.isArray(payload.images)) {
@@ -143,6 +143,10 @@ export const ownerService = {
 
     if (deletedImageIds && deletedImageIds.length > 0) {
       deletedImageIds.forEach((id) => formData.append("deletedImageIds", String(id)));
+    }
+
+    if (deletedCertIds && deletedCertIds.length > 0) {
+      deletedCertIds.forEach((id) => formData.append("deletedCertIds", String(id)));
     }
 
     console.log(`[API CALL] PUT /owners/warehouses/${id}?force=${force}`);
