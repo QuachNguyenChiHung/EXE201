@@ -174,10 +174,11 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
                 <div className="p-4 border-t border-[var(--color-border)] bg-white/50 space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label>Tổng sức chứa (m³)</Label>
+                      <Label>Tổng sức chứa (m³)<span className="text-red-500">*</span></Label>
                       <Input
                         type="text"
                         placeholder="VD: 500"
+                        required
                         value={s.total_capacity ? s.total_capacity.toLocaleString('vi-VN') : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/\D/g, '');
@@ -188,10 +189,11 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
                     </div>
 
                     <div>
-                      <Label>Nhiệt độ tối thiểu (°C)</Label>
+                      <Label>Nhiệt độ tối thiểu (°C)<span className="text-red-500">*</span></Label>
                       <Input
                         type="text"
                         placeholder="VD: -20"
+                        required
                         value={s.temp_min !== undefined ? s.temp_min : ""}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9.-]/g, '');
@@ -201,10 +203,11 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
                       />
                     </div>
                     <div>
-                      <Label>Nhiệt độ tối đa (°C)</Label>
+                      <Label>Nhiệt độ tối đa (°C)<span className="text-red-500">*</span></Label>
                       <Input
                         type="text"
                         placeholder="VD: -15"
+                        required
                         value={s.temp_max !== undefined ? s.temp_max : ""}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9.-]/g, '');
@@ -215,10 +218,11 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
                     </div>
 
                     <div>
-                      <Label>Độ ẩm tiêu chuẩn (%)</Label>
+                      <Label>Độ ẩm tiêu chuẩn (%)<span className="text-red-500">*</span></Label>
                       <Input
                         type="text"
                         placeholder="VD: 85"
+                        required
                         value={s.humidity !== undefined ? s.humidity : ""}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9.-]/g, '');

@@ -3,6 +3,22 @@ import { Send } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types';
 import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
 
+// ─── Time unit helpers ─────────────────────────────────────────────────────────
+
+/** Extract time unit key (day/week/month/year) from a tier label like "Giá theo tháng" */
+function tierTimeUnit(label: string | undefined): string {
+    if (!label) return 'month';
+    const match = PRICE_TIER_OPTIONS.find(o => o.label === label);
+    return match?.unit || 'month';
+}
+
+/** Human-readable period short label from a tier label, e.g. "Giá theo tháng" → "tháng" */
+function tierPeriodLabel(label: string | undefined): string {
+    if (!label) return 'tháng';
+    const matched = PRICE_TIER_OPTIONS.find(o => o.label === label);
+    return matched ? matched.label.replace('Giá theo ', '') : label.replace('Giá theo ', '') || 'tháng';
+}
+
 // ─── Time unit constants & conversion ─────────────────────────────────────────
 
 const DAYS_PER_UNIT: Record<string, number> = {
@@ -10,10 +26,10 @@ const DAYS_PER_UNIT: Record<string, number> = {
 };
 
 const UNIT_CONVERSION: Record<string, Record<string, number>> = {
-    day:   { day: 1,     week: 1/7,   month: 1/30,  year: 1/365 },
-    week:  { day: 7,     week: 1,     month: 7/30,  year: 7/365 },
-    month: { day: 30,    week: 30/7,  month: 1,     year: 1/12  },
-    year:  { day: 365,   week: 365/7, month: 12,    year: 1     },
+    day: { day: 1, week: 1 / 7, month: 1 / 30, year: 1 / 365 },
+    week: { day: 7, week: 1, month: 7 / 30, year: 7 / 365 },
+    month: { day: 30, week: 30 / 7, month: 1, year: 1 / 12 },
+    year: { day: 365, week: 365 / 7, month: 12, year: 1 },
 };
 
 const TIER_RANK: Record<string, number> = { day: 0, week: 1, month: 2, year: 3 };
@@ -23,15 +39,14 @@ function getRestrictiveTierUnit(selectedSections: any[], selectedTiers: Record<s
         selectedSections.some(sec => {
             const sid = sec.id_section?.toString() || '';
             const tierIdx = selectedTiers[sid];
-            if (tierIdx === undefined) return false;
-            const tier = sec.priceTiers?.[tierIdx];
-            if (!tier) return false;
-            return (tier.unit || 'month') === unit;
+            const tier = sec.priceTiers?.[tierIdx as number];
+            if (tierIdx === undefined || !tier) return false;
+            return tierTimeUnit(tier.label) === unit;
         });
 
-    if (hasUnit('year'))  return 'year';
+    if (hasUnit('year')) return 'year';
     if (hasUnit('month')) return 'month';
-    if (hasUnit('week'))  return 'week';
+    if (hasUnit('week')) return 'week';
     return 'day';
 }
 
@@ -64,9 +79,11 @@ export interface WarehouseDetailSidebarProps {
     selectedTiers: Record<string, number>;
     selectedSectionIds: string[];
     onSelectSectionIds: (ids: string[], clearedTierIds: string[]) => void;
-    // Section capacities shared with the modal
+    // Capacity strings — used only for the sidebar price estimate
     sectionCapacities: Record<string, string>;
     onSectionCapacitiesChange: (caps: Record<string, string>) => void;
+    // Tier selection — shared so sidebar can drive canOpenModal
+    onSelectedTiersChange: (tiers: Record<string, number>) => void;
     // Trigger to open the rental modal
     onOpenRentalModal: () => void;
 }
@@ -80,6 +97,7 @@ export function WarehouseDetailSidebar({
     onSelectSectionIds,
     sectionCapacities,
     onSectionCapacitiesChange,
+    onSelectedTiersChange,
     onOpenRentalModal,
 }: WarehouseDetailSidebarProps) {
 
@@ -118,18 +136,17 @@ export function WarehouseDetailSidebar({
             .map(sec => {
                 const sectionId = sec.id_section?.toString() ?? '';
                 const tierIdx = selectedTiers[sectionId];
-                if (tierIdx === undefined) return null;
-
-                const tier = sec.priceTiers?.[tierIdx];
-                if (!tier) return null;
+                const tier = sec.priceTiers?.[tierIdx as number];
+                if (tierIdx === undefined || !tier) return null;
 
                 const area = parseFloat(sectionCapacities[sectionId]);
                 if (isNaN(area) || area <= 0) return null;
 
+                const timeUnit = tierTimeUnit(tier.label);
                 // Preview using month as reference duration
                 const cost = calcSectionCost(
                     tier.value ?? 0,
-                    tier.unit || 'month',
+                    timeUnit,
                     1,
                     'month',
                     area
@@ -140,7 +157,7 @@ export function WarehouseDetailSidebar({
                     sectionName: sec.name || `Phân khu ${sec.sector}`,
                     area,
                     tierValue: tier.value ?? 0,
-                    tierUnit: tier.unit || 'month',
+                    tierUnit: timeUnit,
                     cost,
                 };
             })
@@ -158,17 +175,15 @@ export function WarehouseDetailSidebar({
             for (const sec of selectedSections) {
                 const sid = sec.id_section?.toString() || '';
                 const tierIdx = selectedTiers[sid];
-                if (tierIdx !== undefined) {
-                    const tier = sec.priceTiers?.[tierIdx];
-                    if (tier) {
-                        const u = tier.unit || 'month';
-                        if (availableUnits.includes(u)) return u;
-                    }
+                const tier = sec.priceTiers?.[tierIdx as number];
+                if (tierIdx !== undefined && tier) {
+                    const u = tierTimeUnit(tier.label);
+                    if (availableUnits.includes(u)) return u;
                 }
             }
             const restrictive = getRestrictiveTierUnit(selectedSections, selectedTiers);
             if (availableUnits.includes(restrictive)) return restrictive;
-            return warehouse.priceTiers?.[0]?.unit || 'month';
+            return tierTimeUnit(warehouse.priceTiers?.[0]?.label);
         })();
 
         return { breakdowns, total, defaultUnit };
@@ -183,22 +198,8 @@ export function WarehouseDetailSidebar({
         [selectedSections, selectedTiers]
     );
 
-    const allSectionsHaveCapacity = useMemo(() =>
-        selectedSections.every(s => {
-            const area = parseFloat(sectionCapacities[s.id_section?.toString() || '']);
-            return !isNaN(area) && area > 0;
-        }),
-        [selectedSections, sectionCapacities]
-    );
-
-    const allSectionsHaveTier = useMemo(() =>
-        selectedSections.every(s =>
-            selectedTiers[s.id_section?.toString() || ''] !== undefined
-        ),
-        [selectedSections, selectedTiers]
-    );
-
-    const canOpenModal = selectedSectionIds.length > 0 && allSectionsHaveCapacity && allSectionsHaveTier;
+    const canOpenModal = selectedSectionIds.length > 0
+        && selectedSections.every(s => selectedTiers[s.id_section?.toString() || ''] !== undefined);
 
     // ─────────────────────────────────────────────────────────────────────────
     // RENDER
@@ -258,40 +259,12 @@ export function WarehouseDetailSidebar({
                                         </div>
                                     </label>
 
-                                    {/* Capacity input — shown only when selected */}
-                                    {isSelected && (() => {
-                                        const capStr = sectionCapacities[sectionId] || '';
-                                        const capVal = parseFloat(capStr);
-                                        const isOverLimit = !isNaN(capVal) && capVal > sec.available_capacity;
-
+                                    {/* Tier selector — shown when section is selected */}
+                                    {isSelected && sec.priceTiers && sec.priceTiers.length > 0 && (() => {
+                                        const tierIdx = selectedTiers[sectionId];
                                         return (
                                             <div className="mt-3 pl-6">
-                                                <label className="block text-[10px] font-medium mb-1 text-[var(--color-text-muted)]">
-                                                    Dung tích cần thuê
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max={sec.available_capacity}
-                                                    required
-                                                    placeholder={`Tối đa: ${sec.available_capacity} m³`}
-                                                    className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none bg-[var(--color-surface)] ${isOverLimit
-                                                        ? 'border-red-500 focus:border-red-500'
-                                                        : 'focus:border-[var(--color-primary)]'
-                                                        }`}
-                                                    value={capStr}
-                                                    onChange={e => {
-                                                        onSectionCapacitiesChange({
-                                                            ...sectionCapacities,
-                                                            [sectionId]: e.target.value,
-                                                        });
-                                                    }}
-                                                />
-                                                {isOverLimit && (
-                                                    <p className="text-[10px] text-red-500 mt-1">
-                                                        Vượt quá sức chứa tối đa ({sec.available_capacity} m³)
-                                                    </p>
-                                                )}
+
                                             </div>
                                         );
                                     })()}
@@ -301,91 +274,19 @@ export function WarehouseDetailSidebar({
                     </div>
                 </div>
 
-                {/* ── Price estimate preview ───────────────────────────────────── */}
-                {selectedSectionIds.length > 0 && sidebarBreakdown.length > 0 && (
-                    <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4">
-                        <p className="text-sm font-semibold text-[var(--color-text)] mb-3">
-                            Dự toán chi phí (tham khảo)
-                        </p>
 
-                        {pendingSections.length > 0 && (
-                            <div className="mb-3 p-3 rounded-md bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]">
-                                <p className="text-xs font-medium text-[var(--color-warning)] mb-1">
-                                    Chưa chọn gói giá
-                                </p>
-                                <p className="text-xs text-[var(--color-text-muted)]">
-                                    Vui lòng chọn gói giá cho: {pendingSections.join(', ')}
-                                </p>
-                            </div>
-                        )}
-
-                        {sidebarBreakdown.map(b => {
-                            if (!b) return null;
-                            const unitLabel =
-                                PRICE_TIER_OPTIONS.find(o => o.unit === b.tierUnit)?.label?.replace('Giá theo ', '') ?? b.tierUnit;
-
-                            return (
-                                <div key={b.sectionId} className="mb-2 last:mb-0">
-                                    <div className="flex justify-between items-start mb-0.5">
-                                        <span className="text-xs font-medium text-[var(--color-text)]">
-                                            {b.sectionName}
-                                            <span className="text-[var(--color-text-muted)] font-normal ml-1">
-                                                ({b.area > 0 ? b.area.toFixed(1) : '0'} m³)
-                                            </span>
-                                        </span>
-                                        <span className="text-xs font-semibold text-[var(--color-text)]">
-                                            {new Intl.NumberFormat('vi-VN', {
-                                                style: 'currency',
-                                                currency: 'VND',
-                                            }).format(b.cost)}
-                                        </span>
-                                    </div>
-                                    <div className="text-[10px] text-[var(--color-text-muted)]">
-                                        {b.tierValue?.toLocaleString('vi-VN')} đ/{unitLabel}/m³
-                                        <span className="mx-1">·</span>
-                                        1 {unitLabel}
-                                    </div>
-                                </div>
-                            );
-                        })}
-
-                        <div className="border-t border-[var(--color-border)] mt-2 pt-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-semibold text-[var(--color-text)]">
-                                    Tổng/tháng (ước tính)
-                                </span>
-                                <span className="text-base font-bold text-[var(--color-primary)]">
-                                    {new Intl.NumberFormat('vi-VN', {
-                                        style: 'currency',
-                                        currency: 'VND',
-                                    }).format(sidebarTotal)}
-                                </span>
-                            </div>
-                            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                                Giá chính xác phụ thuộc vào thời hạn thuê thực tế
-                            </p>
-                        </div>
-                    </div>
-                )}
 
                 {/* ── CTA button ───────────────────────────────────────────────── */}
                 <div className="pt-2 border-t bg-white border-[var(--color-border)]">
                     <button
                         type="button"
                         onClick={onOpenRentalModal}
-                        disabled={!canOpenModal}
                         className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                     >
                         <Send className="h-4 w-4" />
                         Đăng ký thuê kho
                     </button>
-                    {!canOpenModal && selectedSectionIds.length > 0 && (
-                        <p className="text-[10px] text-center mt-2 text-[var(--color-warning)]">
-                            {!allSectionsHaveCapacity
-                                ? 'Vui lòng nhập dung tích cho các phân khu đã chọn'
-                                : 'Vui lòng chọn gói giá cho các phân khu đã chọn'}
-                        </p>
-                    )}
+
                 </div>
             </div>
         </div>

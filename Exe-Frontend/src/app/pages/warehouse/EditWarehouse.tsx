@@ -4,7 +4,7 @@ import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
 import { ownerService } from "../../../services/ownerService";
 import { PRICE_TIER_OPTIONS } from "../../components/owner/WarehouseFormUtils";
- import { CompositeWarehouse, CompositeWarehouseSection } from "../../../types";
+import { CompositeWarehouse, CompositeWarehouseSection } from "../../../types";
 import { Button } from "../../components/ui/button";
 import { Save, ArrowLeft, Loader2, RotateCcw, EyeOff, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -47,11 +47,33 @@ export default function WarehouseForm() {
         const locationData = await ownerService.getWarehouseLocation(Number(id));
 
         let rawAddress = data.location_address_text || data.address || "";
+        console.log("[EditWarehouse] rawAddress:", rawAddress);
+        // Strip trailing "commune, district, province, commune, province" duplication from corrupted records
+        const addrParts = rawAddress.split(",").map(p => p.trim()).filter(Boolean);
+        if (
+          addrParts.length >= 5 &&
+          addrParts[addrParts.length - 1] === addrParts[addrParts.length - 3] &&
+          addrParts[addrParts.length - 2] === addrParts[addrParts.length - 4]
+        ) {
+          rawAddress = addrParts.slice(0, -2).join(", ");
+        }
+
+        // Strip trailing "commune, province" segments (from cleaned or uncorrupted addresses)
         if (data.location_province && rawAddress.endsWith(`, ${data.location_province}`)) {
           rawAddress = rawAddress.slice(0, -(`, ${data.location_province}`.length));
         }
         if (data.location_commune && rawAddress.endsWith(`, ${data.location_commune}`)) {
           rawAddress = rawAddress.slice(0, -(`, ${data.location_commune}`.length));
+        }
+
+        // Parse ward from location_address_text:
+        // Format is "... street, ward, quanhuyen, province"
+        let parsedWard = "";
+        if (data.location_address_text) {
+          const cleanAddrParts = data.location_address_text.split(",").map(p => p.trim()).filter(Boolean);
+          if (cleanAddrParts.length >= 4) {
+            parsedWard = cleanAddrParts[cleanAddrParts.length - 3] || "";
+          }
         }
 
         // Setup default arrays if null
@@ -60,6 +82,8 @@ export default function WarehouseForm() {
           location_lat: locationData.locationLat || data.location_lat,
           location_long: locationData.locationLong || data.location_long,
           address: rawAddress,
+          // Pass parsed ward so WarehouseFormLocation pre-selects it in the Khu phố field
+          location_commune: parsedWard || data.location_commune,
           sections: (data.sections || []).map((sec: any) => ({
             ...sec,
             priceTiers: (sec.priceTiers || []).map((pt: any) => {
@@ -172,8 +196,20 @@ export default function WarehouseForm() {
       return;
     }
 
+    const hasCerts = certFiles.length > 0 || (warehouse.certifications && warehouse.certifications.length > 0);
+    if (!hasCerts) {
+      toast.error("Vui lòng tải lên ít nhất một chứng chỉ");
+      return;
+    }
+
     if (certFiles.some((cert) => !cert.certTypeId)) {
       toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
+      return;
+    }
+
+    const sectionWithoutTier = (warehouse.sections || []).find(s => !s.priceTiers || s.priceTiers.length === 0);
+    if (sectionWithoutTier) {
+      toast.error("Mỗi phân khu phải có ít nhất một mốc giá");
       return;
     }
 
@@ -183,7 +219,7 @@ export default function WarehouseForm() {
       const dto = {
         name: warehouse.name,
         description: warehouse.description,
-        locationAddressText: [warehouse.address, warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", "),
+        locationAddressText: warehouse.address,
         locationProvince: warehouse.location_province,
         locationCommune: warehouse.location_commune,
         locationLong: warehouse.location_long,

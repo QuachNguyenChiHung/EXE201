@@ -116,7 +116,7 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                                     <div className="flex items-center gap-1.5">
                                         <MapPin className="h-4 w-4" />
                                         <span>
-                                            {warehouse.address}, {warehouse.location_commune}, {warehouse.location_province}
+                                            {warehouse.location_address_text}
                                         </span>
                                     </div>
                                 </div>
@@ -160,11 +160,10 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                                         onClick={() => setActiveImage(idx)}
                                         aria-label={`Xem ảnh ${idx + 1}`}
                                         aria-current={isActive ? 'true' : undefined}
-                                        className={`relative shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
-                                            isActive
+                                        className={`relative shrink-0 rounded-lg overflow-hidden border-2 transition-all ${isActive
                                                 ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)] ring-offset-1'
                                                 : 'border-transparent hover:border-[var(--color-border)] opacity-75 hover:opacity-100'
-                                        }`}
+                                            }`}
                                         style={{ width: '120px', height: '90px' }}
                                     >
                                         <img

@@ -7,6 +7,13 @@ import { WarehouseMapDisplay } from '../owner/WarehouseMapDisplay';
 import { renterService } from '../../../services/renterService';
 import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
 
+/** Extract time unit key (day/week/month/year) from a tier label like "Giá theo tháng" */
+function tierTimeUnit(label: string | undefined): string {
+    if (!label) return 'month';
+    const match = PRICE_TIER_OPTIONS.find(o => o.label === label);
+    return match?.unit || 'month';
+}
+
 interface WarehouseDetailInfoProps {
     warehouse: CompositeWarehouse;
     selectedTiers: Record<string, number>;
@@ -132,8 +139,11 @@ export function WarehouseDetailInfo({ warehouse, selectedTiers, selectedSectionI
                                                     {sec.priceTiers.map((tier, tierIdx) => {
                                                         const sectionId = sec.id_section?.toString() ?? '';
                                                         const isSelected = selectedTiers[sectionId] === tierIdx;
-                                                        const tierUnit = tier.unit || 'month';
-                                                        const unitLabel = PRICE_TIER_OPTIONS.find(o => o.unit === tierUnit)?.label?.replace('Giá theo ', '') ?? tierUnit;
+                                                        const tierUnit = tierTimeUnit(tier.label);
+                                                        const matchedOpt = PRICE_TIER_OPTIONS.find(o => o.label === tier.label);
+                                                        const unitLabel = matchedOpt
+                                                            ? matchedOpt.label.replace('Giá theo ', '')
+                                                            : (tier.label?.replace('Giá theo ', '') ?? 'tháng');
                                                         return (
                                                             <div
                                                                 key={tierIdx}

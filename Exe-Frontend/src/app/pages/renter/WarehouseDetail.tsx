@@ -177,6 +177,7 @@ export default function WarehouseDetail() {
                             }}
                             sectionCapacities={sectionCapacities}
                             onSectionCapacitiesChange={setSectionCapacities}
+                            onSelectedTiersChange={setSelectedTiers}
                             onOpenRentalModal={() => setRentalModalOpen(true)}
                         />
                     </div>

@@ -53,10 +53,10 @@ const LANG = { headers: { "Accept-Language": "vi" } };
 export async function nominatimSearch(
   houseNumber: string,
   street: string,
-  city: string,
-  state: string,
+  quanhuyen: string,
+  province: string,
 ): Promise<NominatimResult[]> {
-  const qParts = [houseNumber, street, city, state].filter(Boolean);
+  const qParts = [houseNumber, street, quanhuyen, province].filter(Boolean);
   if (qParts.length === 0) return [];
 
   const params = new URLSearchParams({

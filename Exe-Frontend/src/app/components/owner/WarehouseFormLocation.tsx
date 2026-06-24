@@ -1,20 +1,16 @@
-import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { CompositeWarehouse } from "../../../types";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
 import { Card } from "../../components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { MapPin, Search, Loader2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { vietnamProvinces } from "../../../data/mockWarehouses";
-import districtsDataRaw from "../../../data/vietnamDistricts.json";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { nominatimSearch, parseAddress, createWarehouseIcon, nominatimReverse } from "./WarehouseFormUtils";
 import { toast } from "sonner";
-
-const VIETNAM_DISTRICTS: Record<string, string[]> = districtsDataRaw;
 
 interface Props {
   warehouse: CompositeWarehouse;
@@ -34,7 +30,7 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
 function LocationMarker({ position, onDragEnd }: { position: L.LatLngExpression; onDragEnd: (lat: number, lng: number) => void }) {
   const markerRef = useRef<L.Marker>(null);
   const icon = createWarehouseIcon();
-  
+
   const eventHandlers = useMemo(() => ({
     dragend() {
       const marker = markerRef.current;
@@ -44,7 +40,6 @@ function LocationMarker({ position, onDragEnd }: { position: L.LatLngExpression;
       }
     },
   }), [onDragEnd]);
-
   // @ts-ignore - Leaflet types might clash
   return (
     <Marker
@@ -57,7 +52,7 @@ function LocationMarker({ position, onDragEnd }: { position: L.LatLngExpression;
   );
 }
 
-function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
+export function WarehouseFormLocation({ warehouse, onChange }: Props) {
   const [mapCenter, setMapCenter] = useState<[number, number]>(HCMC_CENTER);
   const [mapZoom, setMapZoom] = useState(13);
   const [searchingLocation, setSearchingLocation] = useState(false);
@@ -67,56 +62,45 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
   const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const [provincesData, setProvincesData] = useState<any[]>([]);
-  const [districtsData, setDistrictsData] = useState<any[]>([]);
-
-  const normalizeProvinceKey = (name: string) => {
-    if (!name) return "";
-    return name
-      .replace(/^(Thành phố trực thuộc trung ương|Thủ đô|Thành phố|Tỉnh)\s+/i, "")
-      .replace(/\s*\(cũ\)$/i, "")
-      .trim();
-  };
-
-  const districtOptions = useMemo(() => {
-    const provKey = normalizeProvinceKey(warehouse.location_province).toLowerCase();
-    if (!provKey) return [];
-    const directMatch = Object.keys(VIETNAM_DISTRICTS).find(
-      (k) => k.toLowerCase() === provKey
-    );
-    if (directMatch) return VIETNAM_DISTRICTS[directMatch];
-    return Object.keys(VIETNAM_DISTRICTS).find((k) => k.toLowerCase().includes(provKey))
-      ? VIETNAM_DISTRICTS[
-          Object.keys(VIETNAM_DISTRICTS).find((k) => k.toLowerCase().includes(provKey))!
-        ]
-      : [];
-  }, [warehouse.location_province]);
+  const [quanhuyenData, setQuanhuyenData] = useState<any[]>([]);
+  const [xaphuongData, setXaphuongData] = useState<any[]>([]);
 
   useEffect(() => {
     import("../../MapData/sapnhap-bando-vn.json").then((module) => {
       const data = (module.default || module) as any[];
       setProvincesData(data.filter((d: any) => d.kind === "province"));
-      // Post-2025 admin merger: provinces subdivide directly into communes
-      // (phường/xã). There is no `district` kind in the dataset anymore.
-      setDistrictsData(data.filter((d: any) => d.kind === "commune"));
+      setQuanhuyenData(data.filter((d: any) => d.kind === "district"));
+      setXaphuongData(data.filter((d: any) => d.kind === "commune"));
     }).catch(e => console.error("Failed to load map data", e));
   }, []);
 
   const provinceNames = useMemo(() => Array.from(new Set([...vietnamProvinces, ...provincesData.map(p => p.ten)])).sort(), [provincesData]);
-  
-  const filteredDistricts = useMemo(() => {
+
+  const filteredQuanhuyen = useMemo(() => {
     if (!warehouse.location_province) return [];
-    const provKey = normalizeProvinceKey(warehouse.location_province).toLowerCase();
-    if (!provKey) return [];
+    const provMatch = warehouse.location_province
+      .toLowerCase().replace(/^(thành phố|tỉnh|thủ đô)\s+/i, "").trim();
     return Array.from(new Set(
-      districtsData
-        .filter((d: any) => {
-          if (!d.parent_ten) return false;
-          const parentNorm = normalizeProvinceKey(d.parent_ten).toLowerCase();
-          return parentNorm === provKey || parentNorm.includes(provKey) || provKey.includes(parentNorm);
-        })
-        .map((d: any) => d.ten)
+      quanhuyenData
+        .filter(d => d.parent_ten && d.parent_ten.toLowerCase().includes(provMatch))
+        .map(d => d.ten_short || d.ten)
     )).sort();
-  }, [districtsData, warehouse.location_province]);
+  }, [quanhuyenData, warehouse.location_province]);
+
+  const filteredXaphuong = useMemo(() => {
+    if (!warehouse.location_commune) return [];
+    const qhMatch = (warehouse.location_commune || "")
+      .toLowerCase().replace(/^(quận|huyện|thành phố|tỉnh|thị xã|thị trấn)\s+/i, "").trim();
+    return Array.from(new Set(
+      xaphuongData
+        .filter(c => {
+          const cParentNorm = (c.parent_ten || "")
+            .toLowerCase().replace(/^(Ủy ban nhân dân |UBND )\s*/i, "").trim();
+          return cParentNorm === qhMatch;
+        })
+        .map(c => c.ten_short || c.ten)
+    )).sort();
+  }, [xaphuongData, warehouse.location_commune]);
 
   const normalizeProvince = (name: string) => {
     if (!name) return "";
@@ -125,24 +109,24 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
     return match || name;
   };
 
-  const handleInputSearch = (addressStr: string, c: string, p: string) => {
+  const handleInputSearch = (addressStr: string, quanhuyen: string, province: string) => {
     if (typingTimeout) clearTimeout(typingTimeout);
     setTypingTimeout(setTimeout(async () => {
-       if (addressStr || c || p) {
-         try {
-           const results = await nominatimSearch("", addressStr, c, p);
-           if (results && results.length > 0) {
-             const best = results[0];
-             const lat = parseFloat(best.lat);
-             const lon = parseFloat(best.lon);
-             setMapCenter([lat, lon]);
-             setMapZoom(17);
-             onChange({ location_lat: lat, location_long: lon });
-           }
-         } catch (err) {
-           // Silent
-         }
-       }
+      if (addressStr || quanhuyen || province) {
+        try {
+          const results = await nominatimSearch("", addressStr, quanhuyen, province);
+          if (results && results.length > 0) {
+            const best = results[0];
+            const lat = parseFloat(best.lat);
+            const lon = parseFloat(best.lon);
+            setMapCenter([lat, lon]);
+            setMapZoom(17);
+            onChange({ location_lat: lat, location_long: lon });
+          }
+        } catch (err) {
+          // Silent
+        }
+      }
     }, 800));
   };
 
@@ -204,13 +188,13 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
 
         setMapCenter([lat, lon]);
         setMapZoom(17);
-        
+
         onChange({
           location_lat: lat,
           location_long: lon,
           location_address_text: best.display_name,
           location_province: normalizeProvince(parsed.city || warehouse.location_province),
-          location_commune: parsed.district || warehouse.location_commune,
+          location_commune: parsed.district || parsed.ward || warehouse.location_commune,
           address: [parsed.houseNumber, parsed.street, parsed.ward].filter(Boolean).join(", "),
         });
 
@@ -232,7 +216,7 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
 
     try {
       const data = await nominatimReverse(lat, lon);
-      
+
       console.log("[Map Pin Drop Result]:", {
         lat, lon,
         reverseGeocodeData: data
@@ -240,33 +224,32 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
 
       let newAddressText = data?.display_name || "";
       let newProvince = warehouse.location_province;
-      let newCommune = warehouse.location_commune;
+      let newQuanhuyen = warehouse.location_commune;
       let newAddress = warehouse.address;
 
       if (data) {
         const parsed = parseAddress(data.address, data.display_name);
-        // Use Nominatim's parsed data as the primary source
         newProvince = normalizeProvince(parsed.city || newProvince);
-        newCommune = parsed.district || newCommune;
+        newQuanhuyen = parsed.district || parsed.ward || newQuanhuyen;
         newAddress = [parsed.houseNumber, parsed.street, parsed.ward].filter(Boolean).join(", ");
-        
+
         setHouseNumber(parsed.houseNumber || "");
         setStreet(parsed.street || "");
         setWard(parsed.ward || "");
-        
+
+        onChange({
+          location_address_text: newAddressText,
+          location_province: newProvince,
+          location_commune: newQuanhuyen,
+          address: newAddress,
+        });
+
         if (parsed.district || parsed.city) {
-           toast.success(`Xác định được khu vực: ${parsed.district ? parsed.district + ", " : ""}${parsed.city || newProvince}`);
+          toast.success(`Xác định được khu vực: ${parsed.district ? parsed.district + ", " : ""}${parsed.city || newProvince}`);
         } else {
-           toast.success("Đã thả ghim vị trí.");
+          toast.success("Đã thả ghim vị trí.");
         }
       }
-
-      onChange({
-        location_address_text: newAddressText,
-        location_province: newProvince,
-        location_commune: newCommune,
-        address: newAddress,
-      });
 
     } catch (err) {
       console.error("Geocoding error:", err);
@@ -307,8 +290,90 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
       </h2>
 
       <div className="flex flex-col gap-6 mb-6">
+        {/* Row 1: Số nhà | Đường | Khu phố */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="houseNumber">Số nhà/Ngõ<span className="text-red-500">*</span></Label>
+            <Input
+              id="houseNumber"
+              placeholder="VD: 123A"
+              required
+              value={houseNumber}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHouseNumber(val);
+                const combined = [val, street, ward].filter(Boolean).join(", ");
+                updateLocationField("address", combined);
+                handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
+              }}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="street">Đường<span className="text-red-500">*</span></Label>
+            <Input
+              id="street"
+              placeholder="VD: Nguyễn Văn Linh"
+              value={street}
+              required
+              onChange={(e) => {
+                const val = e.target.value;
+                setStreet(val);
+                const combined = [houseNumber, val, ward].filter(Boolean).join(", ");
+                updateLocationField("address", combined);
+                handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
+              }}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="xaphuong"> Xã / Phường <span className="text-red-500">*</span></Label>
+            <Input
+              id="xaphuong"
+              list="xaphuong-list"
+              placeholder="VD: Phường Tây Thạnh, Xã Bình Hưng"
+              value={ward}
+              required
+              onChange={(e) => {
+                const val = e.target.value;
+                setWard(val);
+                const combined = [houseNumber, street, val].filter(Boolean).join(", ");
+                updateLocationField("address", combined);
+                handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
+              }}
+              className="mt-1"
+            />
+            <datalist id="xaphuong-list">
+              {filteredXaphuong.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+
+        {/* Row 2: Quận/Huyện | Tỉnh/Thành phố */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Row 1: Tỉnh/Thành phố + Quận/Huyện */}
+          <div>
+            <Label htmlFor="quanhuyen">Quận/Huyện/Thành phố trực thuộc thành phố <span className="text-red-500">*</span></Label>
+            <Input
+              id="quanhuyen"
+              list="quanhuyen-list"
+              placeholder="VD: Quận Tân Phú, TP Thủ Đức, Huyện Cái Bè"
+              value={warehouse.location_commune || ""}
+              required
+              onChange={(e) => {
+                const val = e.target.value;
+                updateLocationField("location_commune", val);
+                handleInputSearch(warehouse.address || "", val, warehouse.location_province || "");
+              }}
+              className="mt-1"
+            />
+            <datalist id="quanhuyen-list">
+              {filteredQuanhuyen.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+          </div>
           <div>
             <Label htmlFor="province">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
             <Input
@@ -318,8 +383,9 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
               value={warehouse.location_province || ""}
               required
               onChange={(e) => {
-                 updateLocationField("location_province", e.target.value);
-                 handleInputSearch(warehouse.address || "", warehouse.location_commune || "", e.target.value);
+                updateLocationField("location_province", e.target.value);
+                updateLocationField("location_commune", "");
+                handleInputSearch(warehouse.address || "", "", e.target.value);
               }}
               className="mt-1"
             />
@@ -329,128 +395,34 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
               ))}
             </datalist>
           </div>
-          <div>
-            <Label htmlFor="district">Quận/Huyện <span className="text-red-500">*</span></Label>
-            <Select
-              value={(warehouse as any).location_district || ""}
-              onValueChange={(val) => {
-                 updateLocationField("location_district" as any, val);
-                 handleInputSearch(warehouse.address || "", warehouse.location_commune || "", warehouse.location_province || "");
-              }}
-            >
-              <SelectTrigger id="district" className="mt-1">
-                <SelectValue placeholder="Chọn Quận/Huyện" />
-              </SelectTrigger>
-              <SelectContent className="max-h-64 overflow-y-auto">
-                {districtOptions.length === 0 ? (
-                  <p className="px-3 py-2 text-sm text-[var(--color-text-muted)]">
-                    Chọn Tỉnh/Thành phố trước
-                  </p>
-                ) : (
-                  districtOptions.map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {d}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Row 2: Số nhà + Đường/Phố + Phường/Xã */}
-          <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="col-span-1">
-              <Label htmlFor="houseNumber">Số nhà/Ngõ</Label>
-              <Input
-                id="houseNumber"
-                placeholder="VD: 123A"
-                value={houseNumber}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setHouseNumber(val);
-                  const combined = [val, street, ward].filter(Boolean).join(", ");
-                  updateLocationField("address", combined);
-                  handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
-                }}
-                className="mt-1"
-              />
-            </div>
-            <div className="col-span-1">
-              <Label htmlFor="street">Đường/Phố <span className="text-red-500">*</span></Label>
-              <Input
-                id="street"
-                placeholder="VD: Nguyễn Văn Linh"
-                value={street}
-                required
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setStreet(val);
-                  const combined = [houseNumber, val, ward].filter(Boolean).join(", ");
-                  updateLocationField("address", combined);
-                  handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
-                }}
-                className="mt-1"
-              />
-            </div>
-            <div className="col-span-1">
-              <Label htmlFor="ward">Phường/Xã <span className="text-red-500">*</span></Label>
-              <Select
-                value={ward}
-                onValueChange={(val) => {
-                  setWard(val);
-                  const combined = [houseNumber, street, val].filter(Boolean).join(", ");
-                  updateLocationField("address", combined);
-                  handleInputSearch(combined, warehouse.location_commune || "", warehouse.location_province || "");
-                }}
-              >
-                <SelectTrigger id="ward" className="mt-1">
-                  <SelectValue placeholder="Chọn Phường/Xã" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64 overflow-y-auto">
-                  {filteredDistricts.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-[var(--color-text-muted)]">
-                      Chọn Tỉnh/Thành phố trước
-                    </p>
-                  ) : (
-                    filteredDistricts.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClearLocation}
-            >
-              Xóa trắng
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSearchLocation}
-              disabled={searchingLocation}
-            >
-              {searchingLocation ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4 mr-2" />
-              )}
-              {searchingLocation ? "Đang tìm kiếm..." : "Tìm vị trí trên bản đồ"}
-            </Button>
-          </div>
-          {warehouse.location_address_text && (
-            <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-[var(--color-bg-secondary)] rounded-md border border-[var(--color-border)]">
-              <Label className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1 block">Địa chỉ được ghim:</Label>
-              <p className="text-sm font-medium">{warehouse.location_address_text}</p>
-            </div>
-          )}
         </div>
 
+        {/* Buttons */}
+        <div className="flex items-center gap-3">
+          <Button type="button" variant="outline" onClick={handleClearLocation}>
+            Xóa trắng
+          </Button>
+          <Button type="button" onClick={handleSearchLocation} disabled={searchingLocation}>
+            {searchingLocation ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4 mr-2" />
+            )}
+            {searchingLocation ? "Đang tìm kiếm..." : "Tìm vị trí trên bản đồ"}
+          </Button>
+        </div>
+
+        {/* Pinned address preview */}
+        {warehouse.location_address_text && (
+          <div className="p-3 bg-[var(--color-bg-secondary)] rounded-md border border-[var(--color-border)]">
+            <Label className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1 block">Địa chỉ được ghim:</Label>
+            <p className="text-sm font-medium">
+              {[warehouse.address, warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", ") || warehouse.location_address_text}
+            </p>
+          </div>
+        )}
+
+        {/* Map */}
         <div className="h-[500px] w-full rounded-xl overflow-hidden border-2 border-[var(--color-border)] relative">
           {/* @ts-ignore */}
           <MapContainer
@@ -480,5 +452,3 @@ function WarehouseFormLocationInner({ warehouse, onChange }: Props) {
     </Card>
   );
 }
-
-export const WarehouseFormLocation = memo(WarehouseFormLocationInner);

@@ -109,22 +109,22 @@ export type SubscriptionTierLevel = 'free' | 'silver' | 'gold' | 'platinum';
 
 
 export interface SubscriptionTierConfig {
-    level: SubscriptionTierLevel;
-    label: string;
-    labelVi: string;
-    color: string;
-    bgColor: string;
-    icon: string;
-    boostFactor: number;
-    monthlyPrice: number;
-    benefits: string[];
+  level: SubscriptionTierLevel;
+  label: string;
+  labelVi: string;
+  color: string;
+  bgColor: string;
+  icon: string;
+  boostFactor: number;
+  monthlyPrice: number;
+  benefits: string[];
 }
 
 export const SUBSCRIPTION_TIERS: Record<SubscriptionTierLevel, SubscriptionTierConfig> = {
-    free: { level: 'free', label: 'Free', labelVi: 'Miễn phí', color: '#6b7280', bgColor: '#f3f4f6', icon: '📦', boostFactor: 1.0, monthlyPrice: 0, benefits: [] },
-    silver: { level: 'silver', label: 'Silver', labelVi: 'Bạc', color: '#6b7280', bgColor: '#e8ecf1', icon: '🥈', boostFactor: 1.5, monthlyPrice: 500000, benefits: [] },
-    gold: { level: 'gold', label: 'Gold', labelVi: 'Vàng', color: '#b45309', bgColor: '#fef3c7', icon: '🥇', boostFactor: 2.5, monthlyPrice: 1500000, benefits: [] },
-    platinum: { level: 'platinum', label: 'Platinum', labelVi: 'Bạch kim', color: '#7c3aed', bgColor: '#ede9fe', icon: '💎', boostFactor: 4.0, monthlyPrice: 3500000, benefits: [] },
+  free: { level: 'free', label: 'Free', labelVi: 'Miễn phí', color: '#6b7280', bgColor: '#f3f4f6', icon: '📦', boostFactor: 1.0, monthlyPrice: 0, benefits: [] },
+  silver: { level: 'silver', label: 'Silver', labelVi: 'Bạc', color: '#6b7280', bgColor: '#e8ecf1', icon: '🥈', boostFactor: 1.5, monthlyPrice: 500000, benefits: [] },
+  gold: { level: 'gold', label: 'Gold', labelVi: 'Vàng', color: '#b45309', bgColor: '#fef3c7', icon: '🥇', boostFactor: 2.5, monthlyPrice: 1500000, benefits: [] },
+  platinum: { level: 'platinum', label: 'Platinum', labelVi: 'Bạch kim', color: '#7c3aed', bgColor: '#ede9fe', icon: '💎', boostFactor: 4.0, monthlyPrice: 3500000, benefits: [] },
 };
 
 

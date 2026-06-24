@@ -12,7 +12,7 @@ interface Props {
   setCertFiles: (files: CertFile[]) => void;
   existingCerts: any[];
   setExistingCerts: (certs: any[]) => void;
-  setDeletedCertIds?: (ids: number[]) => void;
+  setDeletedCertIds?: (removedId: number) => void;
 }
 
 function WarehouseFormCertsInner({ certFiles, setCertFiles, existingCerts, setExistingCerts, setDeletedCertIds }: Props) {

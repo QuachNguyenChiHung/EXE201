@@ -75,6 +75,10 @@ function rentalMonths(value: number, unit: string): number {
     return rentalDays(value, unit) / 30;
 }
 
+function unitLabel(unit: string): string {
+    return PRICE_TIER_OPTIONS.find(o => o.unit === unit)?.label?.replace('Giá theo ', '') ?? unit;
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface InquiryForm {
@@ -195,6 +199,7 @@ export function RentalRequestModal({
         return rentalDays(val, form.durationUnit);
     }, [form.durationValue, form.durationUnit]);
 
+    // ── Per-section breakdown (with duration — used for submit validation) ───
     const sectionBreakdown = useMemo(() => {
         const durVal = parseFloat(form.durationValue);
         if (isNaN(durVal) || durVal <= 0) return [];
@@ -230,6 +235,40 @@ export function RentalRequestModal({
             })
             .filter(Boolean);
     }, [selectedSections, selectedTiers, form.sectionCapacities, form.durationValue, form.durationUnit]);
+
+    // ── Sidebar-style breakdown (1-month preview — no duration required) ───────
+    const sidebarBreakdown = useMemo(() => {
+        return selectedSections
+            .map(sec => {
+                const sectionId = sec.id_section?.toString() ?? '';
+                const tierIdx = selectedTiers[sectionId];
+                if (tierIdx === undefined) return null;
+
+                const tier = sec.priceTiers?.[tierIdx];
+                if (!tier) return null;
+
+                const area = parseFloat(sectionCapacities[sectionId]);
+                if (isNaN(area) || area <= 0) return null;
+
+                const tUnit = tier.unit || 'month';
+                const cost = tier.value * area;
+
+                return {
+                    sectionId,
+                    sectionName: sec.name || `Phân khu ${sec.sector}`,
+                    area,
+                    tierValue: tier.value ?? 0,
+                    tierUnit: tUnit,
+                    cost,
+                };
+            })
+            .filter(Boolean);
+    }, [selectedSections, selectedTiers, sectionCapacities]);
+
+    const sidebarTotal = useMemo(
+        () => sidebarBreakdown.reduce((sum, b) => sum + (b?.cost ?? 0), 0),
+        [sidebarBreakdown]
+    );
 
     const pendingSections = useMemo(() =>
         selectedSections
@@ -328,9 +367,9 @@ export function RentalRequestModal({
     if (showSuccess) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="min-w-[60%] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+                <DialogContent className="min-w-[60%] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0 bg-[var(--color-bg-secondary)]">
                     <div className="text-center py-8 px-6 overflow-y-auto flex-1">
-                        <div className="w-16 h-16 bg-[var(--color-primary-100)] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-16 h-16 bg-[var(--color-primary-300)] rounded-full flex items-center justify-center mx-auto mb-4">
                             <Check className="h-8 w-8 text-[var(--color-primary)]" />
                         </div>
                         <h3 className="text-xl font-bold mb-2">Gửi yêu cầu thành công!</h3>
@@ -442,7 +481,7 @@ export function RentalRequestModal({
                                                             {sec.priceTiers.map((tier, idx) => {
                                                                 const isSelected = tierIdx === idx;
                                                                 const tierUnit = tier.unit || 'month';
-                                                                const unitLabel = PRICE_TIER_OPTIONS.find(o => o.unit === tierUnit)?.label?.replace('Giá theo ', '') ?? tierUnit;
+                                                                const tUnitLabel = unitLabel(tierUnit);
                                                                 return (
                                                                     <button
                                                                         key={idx}
@@ -484,7 +523,7 @@ export function RentalRequestModal({
                                                                             {tier.value ? tier.value.toLocaleString('vi-VN') : 0} ₫
                                                                         </span>
                                                                         <span style={{ fontSize: '9px', fontWeight: 600, lineHeight: 1.3, color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                                                                            / {unitLabel} / {tier.areaUnit === 'm3' ? 'm³' : tier.areaUnit === 'm2' ? 'm²' : tier.areaUnit}
+                                                                            / {tUnitLabel} / {tier.areaUnit === 'm3' ? 'm³' : tier.areaUnit === 'm2' ? 'm²' : tier.areaUnit}
                                                                         </span>
                                                                     </button>
                                                                 );
@@ -530,6 +569,64 @@ export function RentalRequestModal({
                                         </div>
                                     );
                                 })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Price estimate preview ─────────────────────────────────── */}
+                    {selectedSectionIds.length > 0 && sidebarBreakdown.length > 0 && (
+                        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4">
+                            <p className="text-sm font-semibold text-[var(--color-text)] mb-3">
+                                Dự toán chi phí (tham khảo)
+                            </p>
+
+                            {pendingSections.length > 0 && (
+                                <div className="mb-3 p-3 rounded-md bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]">
+                                    <p className="text-xs font-medium text-[var(--color-warning)] mb-1">Chưa chọn gói giá</p>
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        Vui lòng chọn gói giá cho: {pendingSections.join(', ')}
+                                    </p>
+                                </div>
+                            )}
+
+                            {sidebarBreakdown.map(b => {
+                                if (!b) return null;
+                                const ul = unitLabel(b.tierUnit);
+
+                                return (
+                                    <div key={b.sectionId} className="mb-2 last:mb-0">
+                                        <div className="flex justify-between items-start mb-0.5">
+                                            <span className="text-xs font-medium text-[var(--color-text)]">
+                                                {b.sectionName}
+                                                <span className="text-[var(--color-text-muted)] font-normal ml-1">
+                                                    ({b.area > 0 ? b.area.toFixed(1) : '0'} m³)
+                                                </span>
+                                            </span>
+                                            <span className="text-xs font-semibold text-[var(--color-text)]">
+                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.cost)}
+                                            </span>
+                                        </div>
+                                        <div className="text-[10px] text-[var(--color-text-muted)]">
+                                            {b.tierValue?.toLocaleString('vi-VN')} đ/{ul}/m³
+                                            <span className="mx-1">·</span>
+                                            1 {ul}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            <div className="border-t border-[var(--color-border)] mt-2 pt-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-[var(--color-text)]">
+                                        Tổng/tháng (ước tính)
+                                    </span>
+                                    <span className="text-base font-bold text-[var(--color-primary)]">
+                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(sidebarTotal)}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                                    Giá chính xác phụ thuộc vào thời hạn thuê thực tế
+                                </p>
                             </div>
                         </div>
                     )}
@@ -614,6 +711,7 @@ export function RentalRequestModal({
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <CalendarComponent
                                             mode="single"
+                                            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md"
                                             selected={form.startDate ? parseISO(form.startDate) : undefined}
                                             onSelect={date => setForm(f => ({ ...f, startDate: date ? format(date, 'yyyy-MM-dd') : '' }))}
                                             initialFocus
@@ -644,7 +742,7 @@ export function RentalRequestModal({
                                 >
                                     {availableUnits.map(u => (
                                         <option key={u} value={u}>
-                                            {PRICE_TIER_OPTIONS.find(o => o.unit === u)?.label?.replace('Giá theo ', '') ?? u}
+                                            {unitLabel(u)}
                                         </option>
                                     ))}
                                 </select>
@@ -657,7 +755,7 @@ export function RentalRequestModal({
                                         {form.endDate.split('-').reverse().join('/')}
                                     </span>
                                     {' '}({form.durationValue}{' '}
-                                    {PRICE_TIER_OPTIONS.find(o => o.unit === form.durationUnit)?.label?.replace('Giá theo ', '') ?? form.durationUnit}
+                                    {unitLabel(form.durationUnit)}
                                     {' '}= {durationDays.toLocaleString('vi-VN')} ngày)
                                 </p>
                             )}
@@ -699,69 +797,6 @@ export function RentalRequestModal({
                             onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                         />
                     </div>
-
-                    {/* ── Price estimate ─────────────────────────────────────────── */}
-                    {selectedSectionIds.length > 0 && form.durationValue && (
-                        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4">
-                            <p className="text-sm font-semibold text-[var(--color-text)] mb-3">Dự toán chi phí</p>
-
-                            {pendingSections.length > 0 && (
-                                <div className="mb-3 p-3 rounded-md bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]">
-                                    <p className="text-xs font-medium text-[var(--color-warning)] mb-1">Chưa chọn gói giá</p>
-                                    <p className="text-xs text-[var(--color-text-muted)]">
-                                        Vui lòng chọn gói giá cho: {pendingSections.join(', ')}
-                                    </p>
-                                </div>
-                            )}
-
-                            {sectionBreakdown.map(b => {
-                                if (!b) return null;
-                                const unitLabel = PRICE_TIER_OPTIONS.find(o => o.unit === b.tierUnit)?.label?.replace('Giá theo ', '') ?? b.tierUnit;
-                                const durUnitLabel = PRICE_TIER_OPTIONS.find(o => o.unit === form.durationUnit)?.label?.replace('Giá theo ', '') ?? form.durationUnit;
-
-                                return (
-                                    <div key={b.sectionId} className="mb-3 last:mb-0">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="text-xs font-medium text-[var(--color-text)]">
-                                                {b.sectionName}
-                                                <span className="text-[var(--color-text-muted)] font-normal ml-1">
-                                                    ({b.area > 0 ? b.area.toFixed(1) : '0'} m³)
-                                                </span>
-                                            </span>
-                                            <span className="text-xs font-semibold text-[var(--color-text)]">
-                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.cost)}
-                                            </span>
-                                        </div>
-                                        <div className="text-[10px] text-[var(--color-text-muted)]">
-                                            {b.tierValue?.toLocaleString('vi-VN')} đ/{unitLabel}/m³
-                                            <span className="mx-1">·</span>
-                                            Thuê {form.durationValue} {durUnitLabel}
-                                            <span className="mx-1">·</span>
-                                            {rentalMonths(parseFloat(form.durationValue), form.durationUnit).toFixed(2)} tháng
-                                        </div>
-                                    </div>
-                                );
-                            })}
-
-                            {sectionBreakdown.length > 0 && (
-                                <div className="border-t border-[var(--color-border)] mt-3 pt-3">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[10px] text-[var(--color-text-muted)]">
-                                            Thời hạn: {form.durationValue}{' '}
-                                            {PRICE_TIER_OPTIONS.find(o => o.unit === form.durationUnit)?.label?.replace('Giá theo ', '') ?? form.durationUnit}
-                                            {' '}= {durationDays.toLocaleString('vi-VN')} ngày
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs font-semibold text-[var(--color-text)]">Tổng dự kiến</span>
-                                        <span className="text-base font-bold text-[var(--color-primary)]">
-                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalCost)}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {/* ── Submit ─────────────────────────────────────────────────── */}
                     <div className="flex gap-3 pt-2">
