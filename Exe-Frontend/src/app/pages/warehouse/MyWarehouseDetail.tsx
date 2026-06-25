@@ -6,11 +6,12 @@ import { ownerService } from "../../../services/ownerService";
 import { PRICE_TIER_OPTIONS } from "../../components/owner/WarehouseFormUtils";
 import { CompositeWarehouse } from "../../../types";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft, Loader2, Activity, MapPin, LayoutGrid, Star, Building, MessageSquare, ShieldCheck, Thermometer, Droplets, Image as ImageIcon, Tag, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Activity, MapPin, LayoutGrid, Building, ShieldCheck, Thermometer, Droplets, Image as ImageIcon, Tag, FileText } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { toast } from "sonner";
 import { Badge } from "../../components/ui/badge";
 import { WarehouseMapDisplay } from "../../components/owner/WarehouseMapDisplay";
+import { WarehouseReviewsSection } from "../../components/renter/WarehouseReviewsSection";
 
 const FallbackImage = ({ src, alt, className }: { src: string, alt: string, className?: string }) => {
    const [error, setError] = useState(false);
@@ -31,36 +32,6 @@ const FallbackImage = ({ src, alt, className }: { src: string, alt: string, clas
    );
 };
 
-const ReviewItem = ({ rev }: { rev: any }) => {
-   const [expanded, setExpanded] = useState(false);
-
-   return (
-      <div
-         className="bg-[var(--color-bg-secondary)] p-4 rounded-md border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-primary)] transition-colors"
-         onClick={() => setExpanded(!expanded)}
-      >
-         <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold text-sm">{rev.renterName || 'Khách hàng'}</span>
-            <div className="flex text-amber-400">
-               {[1, 2, 3, 4, 5].map(star => (
-                  <Star key={star} className={`h-3 w-3 ${star <= rev.rating ? 'fill-current' : 'text-gray-300'}`} />
-               ))}
-            </div>
-         </div>
-         {expanded && rev.comment && (
-            <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mt-2">
-               "{rev.comment}"
-            </p>
-         )}
-         {rev.comment && (
-            <div className="text-xs text-[var(--color-primary)] mt-1 font-medium">
-               {expanded ? "Thu gọn" : "Xem chi tiết đánh giá"}
-            </div>
-         )}
-      </div>
-   );
-};
-
 export default function MyWarehouseDetail() {
    const { id } = useParams<{ id: string }>();
    const navigate = useNavigate();
@@ -72,8 +43,6 @@ export default function MyWarehouseDetail() {
    const [viewStats, setViewStats] = useState<any[] | null>(null);
    const [viewStatsDays, setViewStatsDays] = useState<number | 'ALL'>(7);
    const [loadingStats, setLoadingStats] = useState(false);
-
-   const [ratings, setRatings] = useState<any>(null);
 
    // Requests & Contracts
    const [requests, setRequests] = useState<any[]>([]);
@@ -92,11 +61,6 @@ export default function MyWarehouseDetail() {
             // Fetch details
             const detailData = await ownerService.getMyWarehouseDetail(warehouseId);
             setWarehouse(detailData);
-
-            // Fetch ratings
-            ownerService.getWarehouseRatings(warehouseId)
-               .then(setRatings)
-               .catch(e => console.error("Failed to load ratings", e));
 
             // Fetch requests for this warehouse
             ownerService.getWarehouseRentRequests(warehouseId)
@@ -427,38 +391,12 @@ export default function MyWarehouseDetail() {
 
 
 
-                  {/* Ratings - Full Row */}
-                  <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-md">
-                     <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                        <Star className="h-5 w-5 text-[var(--color-primary)]" />
-                        Đánh giá
-                     </h3>
-                     {ratings && ratings.averageRating !== undefined ? (
-                        <>
-                           <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[var(--color-border)]">
-                              <div className="text-4xl font-bold text-[var(--color-text)]">{Number(ratings.averageRating).toFixed(1)}</div>
-                              <div className="flex flex-col">
-                                 <div className="flex text-amber-400">
-                                    {[1, 2, 3, 4, 5].map(star => (
-                                       <Star key={star} className={`h-4 w-4 ${star <= Math.round(ratings.averageRating) ? 'fill-current' : 'text-gray-300'}`} />
-                                    ))}
-                                 </div>
-                                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{ratings.totalReviews || 0} bài đánh giá</p>
-                              </div>
-                           </div>
-
-                           {ratings.reviews && ratings.reviews.length > 0 && (
-                              <div className="space-y-3">
-                                 {ratings.reviews.map((rev: any, idx: number) => (
-                                    <ReviewItem key={idx} rev={rev} />
-                                 ))}
-                              </div>
-                           )}
-                        </>
-                     ) : (
-                        <p className="text-sm text-[var(--color-text-muted)] mb-6">Chưa có đánh giá nào.</p>
-                     )}
-                  </div>
+                  {/* Ratings */}
+                  <WarehouseReviewsSection
+                     warehouseId={warehouse.id_warehouse}
+                     warehouseName={warehouse.name}
+                     canReview={false}
+                  />
                </div>
 
                <div className="space-y-6">

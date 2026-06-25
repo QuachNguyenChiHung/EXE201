@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Star, X, CheckCircle, Edit3, Trash2 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { Star, X, CheckCircle } from 'lucide-react';
+import { renterService } from '../../services/renterService';
 import { Rating } from '../../types';
 import { toast } from 'sonner';
 import { getUser } from '../../utils/auth';
 
 interface Props {
-  warehouseId: string;
+  warehouseId: number | string;
   warehouseName: string;
-  contractId: string;
-  contractRef: string;
-  existingRating?: any;
+  contractId?: string;
+  contractRef?: string;
   onClose: () => void;
 }
 
@@ -21,20 +20,21 @@ export function RateWarehouseModal({
   warehouseName,
   contractId,
   contractRef,
-  existingRating,
   onClose,
 }: Props) {
   const user = getUser();
-  const { ratings, submitRating, updateRating, deleteRating } = useApp();
-  const [allRatings, setAllRatings] = useState(ratings || []);
+  const [allRatings, setAllRatings] = useState<any[]>([]);
 
-  useEffect(() => { setAllRatings(ratings || []); }, [ratings]);
+  useEffect(() => {
+    renterService.getWarehouseRatings(Number(warehouseId))
+      .then(data => setAllRatings(data.reviews || []))
+      .catch(() => {});
+  }, [warehouseId]);
 
-  const [stars, setStars] = useState(existingRating?.rate ?? 0);
+  const [stars, setStars] = useState(0);
   const [hovered, setHovered] = useState(0);
-  const [comment, setComment] = useState(existingRating?.comment ?? '');
+  const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const displayStars = hovered || stars;
 
@@ -45,36 +45,20 @@ export function RateWarehouseModal({
       return;
     }
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 500));
-
-    const now = new Date().toISOString();
-
-    if (existingRating) {
-      await updateRating(existingRating.id_rating, {
-        rate: stars,
-        comment: comment.trim() || undefined,
-      });
-      toast.success('Đã cập nhật đánh giá!');
-    } else {
-      const newRating: any = {
-        id_rating: Date.now(),
-        warehouse_id: parseInt(warehouseId),
-        id_renter: user.id_user,
-        rate: stars,
-        comment: comment.trim() || undefined,
-      };
-      await submitRating(newRating);
+    try {
+      await renterService.createReview(Number(warehouseId), stars, comment.trim() || undefined);
       toast.success('Cảm ơn bạn đã đánh giá kho lạnh!');
+      onClose();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message || '';
+      toast.error(msg || 'Gửi đánh giá thất bại. Vui lòng thử lại.');
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
-    onClose();
   };
 
   const handleDelete = async () => {
-    if (!existingRating) return;
-    await deleteRating(existingRating.id_rating);
-    toast.success('Đã xóa đánh giá.');
+    // Delete not supported by API — just close
+    toast.info('Không thể xóa đánh giá.');
     onClose();
   };
 
@@ -92,10 +76,10 @@ export function RateWarehouseModal({
         >
           <div>
             <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-              {existingRating ? 'Chỉnh sửa đánh giá' : 'Đánh giá kho lạnh'}
+              Đánh giá kho lạnh
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              {warehouseName} · HĐ: <span className="font-mono">{contractRef}</span>
+              {warehouseName}{contractRef ? ` · HĐ: ${contractRef}` : ''}
             </p>
           </div>
           <button onClick={onClose}>
@@ -195,36 +179,6 @@ export function RateWarehouseModal({
           className="px-6 py-4 border-t border-[var(--color-border)] flex items-center gap-3"
           style={{ background: 'var(--color-bg-secondary)' }}
         >
-          {existingRating && !showDeleteConfirm && (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1.5 text-sm px-3 py-2 border transition-colors"
-              style={{ borderColor: 'var(--color-error)', color: 'var(--color-error)' }}
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Xóa
-            </button>
-          )}
-
-          {showDeleteConfirm && (
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-xs" style={{ color: 'var(--color-error)' }}>Xác nhận xóa?</span>
-              <button
-                onClick={handleDelete}
-                className="text-xs px-3 py-1.5 text-white"
-                style={{ background: 'var(--color-error)' }}
-              >
-                Xóa
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-xs px-3 py-1.5 border"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-              >
-                Hủy
-              </button>
-            </div>
-          )}
-
           <div className="flex-1" />
 
           <button
@@ -251,8 +205,8 @@ export function RateWarehouseModal({
               </>
             ) : (
               <>
-                {existingRating ? <Edit3 className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                {existingRating ? 'Cập nhật' : 'Gửi đánh giá'}
+                <CheckCircle className="h-3.5 w-3.5" />
+                Gửi đánh giá
               </>
             )}
           </button>

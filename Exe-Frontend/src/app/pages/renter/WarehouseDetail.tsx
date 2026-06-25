@@ -32,6 +32,12 @@ export default function WarehouseDetail() {
     const [sectionCapacities, setSectionCapacities] = useState<Record<string, string>>({});
     /** Whether the rental request modal is open */
     const [rentalModalOpen, setRentalModalOpen] = useState(false);
+    /** Whether the current renter can review this warehouse (has a contract for it) */
+    const [canReview, setCanReview] = useState(false);
+    const [contractsLoading, setContractsLoading] = useState(false);
+    const [reviewContractId, setReviewContractId] = useState<string | undefined>();
+    const [reviewContractRef, setReviewContractRef] = useState<string | undefined>();
+    const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
 
     useEffect(() => {
         if (!id) return;
@@ -46,6 +52,25 @@ export default function WarehouseDetail() {
             .catch(() => { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); })
             .finally(() => setLoading(false));
     }, [id, navigate]);
+
+    // Check if the logged-in renter has any contract for this warehouse
+    useEffect(() => {
+        if (!warehouse?.id_warehouse || !warehouse?.name) return;
+        setContractsLoading(true);
+        renterService.getMyContracts(0, 100)
+            .then(res => {
+                const matched = (res.content || []).find(
+                    (c: any) => c.warehouseName === warehouse.name
+                );
+                setCanReview(!!matched);
+                if (matched) {
+                    setReviewContractId(String(matched.id_contract));
+                    setReviewContractRef(matched.contractRef ?? String(matched.id_contract));
+                }
+            })
+            .catch(() => setCanReview(false))
+            .finally(() => setContractsLoading(false));
+    }, [warehouse?.id_warehouse]);
 
     if (loading) {
         return (
@@ -159,7 +184,11 @@ export default function WarehouseDetail() {
                         <WarehouseReviewsSection
                             warehouseId={warehouse.id_warehouse}
                             warehouseName={warehouse.name}
-                            canReview={false}
+                            contractId={reviewContractId}
+                            contractRef={reviewContractRef}
+                            canReview={canReview}
+                            refreshKey={reviewRefreshKey}
+                            onReviewSubmitted={() => setReviewRefreshKey(k => k + 1)}
                         />
                     </div>
 

@@ -1,16 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Star, MessageSquare, ChevronDown, ChevronUp, Edit3, PenLine } from 'lucide-react';
+import { Star, MessageSquare, ChevronDown, ChevronUp, PenLine } from 'lucide-react';
 import { renterService } from '../../../services/renterService';
 import { ReviewResponse, WarehouseRatingResponse } from '../../../types/warehouse';
-import { RateWarehouseForm } from './RateWarehouseForm';
+import { RateWarehouseModal } from '../RateWarehouseModal';
 
 interface Props {
   warehouseId: number;
   warehouseName: string;
+  contractId?: string;
+  contractRef?: string;
   /** Whether the current user has rented this warehouse (can write a review) */
   canReview: boolean;
   /** Triggered when the user submits a review — callback to refresh the list */
   onReviewSubmitted?: () => void;
+  /** Extra trigger — bump this to force a re-fetch */
+  refreshKey?: number;
 }
 
 const STAR_LABELS: Record<number, string> = {
@@ -21,12 +25,12 @@ const STAR_LABELS: Record<number, string> = {
   1: 'Rất tệ',
 };
 
-export function WarehouseReviewsSection({ warehouseId, warehouseName, canReview, onReviewSubmitted }: Props) {
+export function WarehouseReviewsSection({ warehouseId, warehouseName, contractId, contractRef, canReview, onReviewSubmitted, refreshKey = 0 }: Props) {
   const [data, setData] = useState<WarehouseRatingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -44,10 +48,10 @@ export function WarehouseReviewsSection({ warehouseId, warehouseName, canReview,
 
   useEffect(() => {
     fetchReviews();
-  }, [fetchReviews]);
+  }, [fetchReviews, refreshKey]);
 
   const handleReviewSubmitted = async () => {
-    setShowForm(false);
+    setShowModal(false);
     await fetchReviews();
     onReviewSubmitted?.();
   };
@@ -79,10 +83,10 @@ export function WarehouseReviewsSection({ warehouseId, warehouseName, canReview,
             </span>
           )}
         </div>
-        {canReview && !showForm && (
+        {canReview && !showModal && (
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={() => setShowModal(true)}
             className="flex items-center gap-1.5 text-sm px-3 py-1.5 border transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
           >
@@ -116,7 +120,7 @@ export function WarehouseReviewsSection({ warehouseId, warehouseName, canReview,
           {canReview && (
             <button
               type="button"
-              onClick={() => setShowForm(true)}
+              onClick={() => setShowModal(true)}
               className="mt-4 flex items-center gap-1.5 text-sm px-4 py-2 text-white transition-opacity"
               style={{ background: 'var(--color-primary)' }}
             >
@@ -175,16 +179,15 @@ export function WarehouseReviewsSection({ warehouseId, warehouseName, canReview,
             </div>
           </div>
 
-          {/* Review form inline */}
-          {showForm && (
-            <div className="border border-[var(--color-primary)] rounded-xl p-4" style={{ background: 'rgba(var(--color-primary-rgb, 59,130,246), 0.03)' }}>
-              <RateWarehouseForm
-                warehouseId={warehouseId}
-                warehouseName={warehouseName}
-                onSubmitted={handleReviewSubmitted}
-                onCancel={() => setShowForm(false)}
-              />
-            </div>
+          {/* Review form modal */}
+          {showModal && (
+            <RateWarehouseModal
+              warehouseId={warehouseId}
+              warehouseName={warehouseName}
+              contractId={contractId}
+              contractRef={contractRef}
+              onClose={handleReviewSubmitted}
+            />
           )}
 
           {/* Review list */}

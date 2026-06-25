@@ -66,17 +66,13 @@ export default function WarehouseForm() {
           rawAddress = rawAddress.slice(0, -(`, ${data.location_commune}`.length));
         }
 
-        // Parse ward and district from location_address_text:
-        // Format is "... street, ward, district, province"
-        // After stripping trailing commune+province, parts are [..., ward, district]
-        // ward is at length-3, district is at length-2 (index from original split)
+        // Parse ward from location_address_text:
+        // Format is "... street, ward, quanhuyen, province"
         let parsedWard = "";
-        let parsedDistrict = "";
         if (data.location_address_text) {
           const cleanAddrParts = data.location_address_text.split(",").map(p => p.trim()).filter(Boolean);
           if (cleanAddrParts.length >= 4) {
             parsedWard = cleanAddrParts[cleanAddrParts.length - 3] || "";
-            parsedDistrict = cleanAddrParts[cleanAddrParts.length - 2] || "";
           }
         }
 
@@ -86,10 +82,8 @@ export default function WarehouseForm() {
           location_lat: locationData.locationLat || data.location_lat,
           location_long: locationData.locationLong || data.location_long,
           address: rawAddress,
-          // Pass parsed ward so WarehouseFormLocation pre-selects it in the Phường/Xã Select
-          // Pass parsed district so the district Select shows the correct value
+          // Pass parsed ward so WarehouseFormLocation pre-selects it in the Khu phố field
           location_commune: parsedWard || data.location_commune,
-          location_district: parsedDistrict,
           sections: (data.sections || []).map((sec: any) => ({
             ...sec,
             priceTiers: (sec.priceTiers || []).map((pt: any) => {
@@ -202,8 +196,20 @@ export default function WarehouseForm() {
       return;
     }
 
+    const hasCerts = certFiles.length > 0 || (warehouse.certifications && warehouse.certifications.length > 0);
+    if (!hasCerts) {
+      toast.error("Vui lòng tải lên ít nhất một chứng chỉ");
+      return;
+    }
+
     if (certFiles.some((cert) => !cert.certTypeId)) {
       toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
+      return;
+    }
+
+    const sectionWithoutTier = (warehouse.sections || []).find(s => !s.priceTiers || s.priceTiers.length === 0);
+    if (sectionWithoutTier) {
+      toast.error("Mỗi phân khu phải có ít nhất một mốc giá");
       return;
     }
 
@@ -215,7 +221,6 @@ export default function WarehouseForm() {
         description: warehouse.description,
         locationAddressText: warehouse.address,
         locationProvince: warehouse.location_province,
-        locationDistrict: warehouse.location_district,
         locationCommune: warehouse.location_commune,
         locationLong: warehouse.location_long,
         locationLat: warehouse.location_lat,

@@ -263,10 +263,12 @@ export const renterService = {
     // ── Reviews ────────────────────────────────────────────────────────────────
 
     getWarehouseRatings: async (warehouseId: number): Promise<WarehouseRatingResponse> => {
-        console.log(`[API CALL] GET /warehouses/${warehouseId}/ratings`);
-        const response = await api.get<WarehouseRatingResponse>(`/warehouses/${warehouseId}/ratings`);
-        console.log('[API RESPONSE]', response.data);
-        return response.data;
+        const response = await api.get<ReviewResponseDTO[]>(`/warehouses/${warehouseId}/reviews`);
+        const reviews = response.data || [];
+        const avg = reviews.length > 0
+            ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
+            : 0;
+        return { averageRating: avg, totalReviews: reviews.length, reviews };
     },
 
     createReview: async (warehouseId: number, rating: number, comment?: string): Promise<Review> => {
@@ -374,7 +376,8 @@ function mapContractResponse(c: any): CompositeContract {
         total_price: c.totalPrice,
         ownerSigned: c.ownerSigned,
         renterSigned: c.renterSigned,
-        id_warehouse: undefined,
+        id_warehouse: c.id_warehouse,
+        warehouseName: c.warehouseName,
         ownerName: c.ownerLegalName,
         renterCompany: c.renterLegalName,
     };

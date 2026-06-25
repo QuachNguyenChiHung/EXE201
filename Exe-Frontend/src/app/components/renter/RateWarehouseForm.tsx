@@ -39,7 +39,7 @@ export function RateWarehouseForm({ warehouseId, warehouseName, onSubmitted, onC
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onClick={e => e.stopPropagation()}>
       <div className="flex items-center justify-between">
         <div>
           <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Viết đánh giá</p>
@@ -47,13 +47,13 @@ export function RateWarehouseForm({ warehouseId, warehouseName, onSubmitted, onC
             {warehouseName}
           </p>
         </div>
-        <button onClick={onCancel} type="button" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+        <button onClick={e => { e.stopPropagation(); onCancel(); }} type="button" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Star selector */}
-      <div className="text-center">
+      <div className="text-center" onClick={e => e.stopPropagation()}>
         <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
           Bạn đánh giá trải nghiệm thuê kho này như thế nào?
         </p>
