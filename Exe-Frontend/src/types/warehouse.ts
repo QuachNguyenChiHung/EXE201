@@ -73,6 +73,28 @@ export interface WarehouseCertification {
   id_cerfSubmit: number; // FK CertificationSubmit
 }
 
+export interface Review {
+  id: number;
+  userId: number;
+  warehouseId: number;
+  renterName?: string;
+  rating: number;
+  comment?: string;
+}
+
+export interface WarehouseRatingResponse {
+  averageRating: number;
+  totalReviews: number;
+  reviews: ReviewResponse[];
+}
+
+export interface ReviewResponse {
+  id: number;
+  renterName: string;
+  rating: number;
+  comment?: string;
+}
+
 export interface Bookmark {
   id_bookmark: number;
   id_user?: number; // FK User

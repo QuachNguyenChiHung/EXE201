@@ -2,6 +2,7 @@ import { api } from './asus_api';
 import { WarehouseResponseDTO } from '../types/employee';
 import type { CompositeWarehouse } from '../types';
 import type { AiSubscriptionTier } from '../types/public';
+import type { WarehouseRatingResponse } from '../types/warehouse';
 
 export interface FilterMetaResponseDTO {
     locations: string[];
@@ -64,7 +65,7 @@ const mapWarehouseResponse = (w: any): CompositeWarehouse => {
         location_commune: w.location_commune || w.locationCommune,
         location_address_text: w.location_address_text || w.locationAddressText,
         status: (w.status || "").toLowerCase(),
-        certifications: w.certifications || w.certificates || [],
+        certifications: w.certifications || w.certificates || w.certificates || [],
         images: (w.images || []).map((img: any) => ({
             ...img,
             image_url: img.image_url || img.imageUrl
@@ -79,6 +80,8 @@ const mapWarehouseResponse = (w: any): CompositeWarehouse => {
             temp_max: s.temp_max || s.tempMax,
             priceTiers: mapPriceTiers(s.priceTiers)
         })),
+        ratingScore: w.averageRating ?? w.ratingScore ?? 0,
+        ratingCount: w.totalReviews ?? w.ratingCount ?? 0,
     };
 };
 
@@ -255,6 +258,29 @@ export const renterService = {
         } catch {
             return { hasActiveTier: false };
         }
+    },
+
+    // ── Reviews ────────────────────────────────────────────────────────────────
+
+    getWarehouseRatings: async (warehouseId: number): Promise<WarehouseRatingResponse> => {
+        console.log(`[API CALL] GET /warehouses/${warehouseId}/ratings`);
+        const response = await api.get<WarehouseRatingResponse>(`/warehouses/${warehouseId}/ratings`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+
+    createReview: async (warehouseId: number, rating: number, comment?: string): Promise<Review> => {
+        console.log(`[API CALL] POST /renters/warehouses/${warehouseId}/ratings`, { rating, comment });
+        const response = await api.post<any>(`/renters/warehouses/${warehouseId}/ratings`, { rating, comment });
+        console.log('[API RESPONSE]', response.data);
+        return {
+            id: response.data.id,
+            userId: 0,
+            warehouseId,
+            renterName: response.data.renterName,
+            rating: response.data.rating,
+            comment: response.data.comment,
+        };
     },
 };
 

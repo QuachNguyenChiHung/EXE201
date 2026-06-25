@@ -1,5 +1,6 @@
 import { api } from './asus_api';
 import type { CompositeWarehouse } from '../types';
+import type { WarehouseRatingResponse } from '../types/warehouse';
 
 export interface OwnerStatisticResponseDTO {
   totalWarehouses: number;
@@ -323,6 +324,13 @@ export const ownerService = {
     const response = await api.post(`/owners/warehouses/${warehouseId}/sponsor`, { sponsorTierId });
     console.log('[API RESPONSE]', response.data);
     return response.data;
-  }
+  },
+
+  getWarehouseRatings: async (warehouseId: number): Promise<WarehouseRatingResponse> => {
+    console.log(`[API CALL] GET /owners/warehouses/${warehouseId}/ratings`);
+    const response = await api.get(`/owners/warehouses/${warehouseId}/ratings`);
+    console.log('[API RESPONSE]', response.data);
+    return response.data;
+  },
 };
 

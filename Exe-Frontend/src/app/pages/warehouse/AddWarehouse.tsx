@@ -58,19 +58,8 @@ export default function AddWarehouse() {
       return;
     }
 
-    if (certFiles.length === 0) {
-      toast.error("Vui lòng tải lên ít nhất một chứng chỉ");
-      return;
-    }
-
     if (certFiles.some((cert) => !cert.certTypeId)) {
       toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
-      return;
-    }
-
-    const sectionWithoutTier = (warehouse.sections || []).find(s => !s.priceTiers || s.priceTiers.length === 0);
-    if (sectionWithoutTier) {
-      toast.error("Mỗi phân khu phải có ít nhất một mốc giá");
       return;
     }
 
@@ -82,6 +71,7 @@ export default function AddWarehouse() {
         description: warehouse.description,
         locationAddressText: warehouse.address,
         locationProvince: warehouse.location_province,
+        locationDistrict: warehouse.location_district,
         locationCommune: warehouse.location_commune,
         locationLong: warehouse.location_long,
         locationLat: warehouse.location_lat,

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from '../../components/Footer';
 import { CompositeWarehouse } from "../../../types";
-import { useApp } from "../../../context/AppContext";
 import { toast } from "sonner";
 import { Star, List, ChevronUp, ChevronDown } from "lucide-react";
 import { useBookmarks } from "../../../hooks/useBookmarks";
@@ -14,12 +13,12 @@ import { WarehouseDetailInfo } from "../../components/renter/WarehouseDetailInfo
 import { WarehouseDetailSidebar } from "../../components/renter/WarehouseDetailSidebar";
 import { RentalRequestModal } from "../../components/renter/RentalRequestModal";
 import { AIChatPanel } from "../../components/renter/AIChatPanel";
+import { WarehouseReviewsSection } from "../../components/renter/WarehouseReviewsSection";
 
 export default function WarehouseDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const { warehouses: warehouseList, ratings: allRatings } = useApp();
     const { bookmarkedIds, toggleBookmark } = useBookmarks();
 
     const [warehouse, setWarehouse] = useState<CompositeWarehouse | null>(null);
@@ -33,12 +32,6 @@ export default function WarehouseDetail() {
     const [sectionCapacities, setSectionCapacities] = useState<Record<string, string>>({});
     /** Whether the rental request modal is open */
     const [rentalModalOpen, setRentalModalOpen] = useState(false);
-
-    // Ratings for this warehouse
-    const warehouseRatings = allRatings.filter(r => r.warehouse_id?.toString() === id);
-    const avgRating = warehouseRatings.length
-        ? warehouseRatings.reduce((sum, r) => sum + r.rate, 0) / warehouseRatings.length
-        : 0;
 
     useEffect(() => {
         if (!id) return;
@@ -104,11 +97,11 @@ export default function WarehouseDetail() {
                     <div>
                         <p className="text-xs text-[var(--color-text-muted)]">Đánh giá</p>
                         <p className="font-bold flex items-center gap-1 mt-0.5">
-                            {warehouseRatings.length > 0 ? (
+                            {(warehouse.ratingScore ?? 0) > 0 ? (
                                 <>
                                     <Star className="h-4 w-4 text-[#f59e0b] fill-[#f59e0b]" />
-                                    {avgRating.toFixed(1)}{' '}
-                                    <span className="text-xs font-normal text-[var(--color-text-muted)]">({warehouseRatings.length})</span>
+                                    {warehouse.ratingScore?.toFixed(1)}{' '}
+                                    <span className="text-xs font-normal text-[var(--color-text-muted)]">({warehouse.ratingCount ?? 0})</span>
                                 </>
                             ) : (
                                 <span className="text-sm font-normal text-[var(--color-text-muted)]">Chưa có đánh giá</span>
@@ -155,11 +148,18 @@ export default function WarehouseDetail() {
                 {/* ── Main Layout ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                     {/* Left Column (Info) */}
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-3 space-y-6">
                         <WarehouseDetailInfo
                             warehouse={warehouse}
                             selectedTiers={selectedTiers}
                             selectedSectionIds={selectedSectionIds}
+                        />
+
+                        {/* ── Reviews Section ── */}
+                        <WarehouseReviewsSection
+                            warehouseId={warehouse.id_warehouse}
+                            warehouseName={warehouse.name}
+                            canReview={false}
                         />
                     </div>
 
