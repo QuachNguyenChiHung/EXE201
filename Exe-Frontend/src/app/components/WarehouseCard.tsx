@@ -1,6 +1,7 @@
 import { CompositeWarehouse } from '../../types';
 import { Button } from './ui/button';
 import { PRICE_TIER_OPTIONS } from './owner/WarehouseFormUtils';
+import { formatShortAddress } from '../utils/addressFormat';
 import {
   MapPin,
   Thermometer,
@@ -337,7 +338,11 @@ export function WarehouseCard({
           >
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
-              {warehouse.location_commune}, {warehouse.location_province}
+              {formatShortAddress({
+                province: warehouse.location_province,
+                commune: warehouse.location_commune,
+                locationAddressText: warehouse.location_address_text,
+              })}
             </span>
           </div>
 

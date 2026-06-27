@@ -236,7 +236,7 @@ export function RentalRequestModal({
             .filter(Boolean);
     }, [selectedSections, selectedTiers, form.sectionCapacities, form.durationValue, form.durationUnit]);
 
-    // ── Sidebar-style breakdown (1-month preview — no duration required) ───────
+    // ── Sidebar-style breakdown (uses the user's selected duration) ──────────────
     const sidebarBreakdown = useMemo(() => {
         return selectedSections
             .map(sec => {
@@ -251,7 +251,15 @@ export function RentalRequestModal({
                 if (isNaN(area) || area <= 0) return null;
 
                 const tUnit = tier.unit || 'month';
-                const cost = tier.value * area;
+                // Apply unit conversion from the selected duration to the tier's unit,
+                // so all sections are normalised to the same cost basis.
+                const cost = calcSectionCost(
+                    tier.value ?? 0,
+                    tUnit,
+                    form.durationValue,
+                    form.durationUnit,
+                    area,
+                );
 
                 return {
                     sectionId,
@@ -263,7 +271,7 @@ export function RentalRequestModal({
                 };
             })
             .filter(Boolean);
-    }, [selectedSections, selectedTiers, sectionCapacities]);
+    }, [selectedSections, selectedTiers, sectionCapacities, form.durationValue, form.durationUnit]);
 
     const sidebarTotal = useMemo(
         () => sidebarBreakdown.reduce((sum, b) => sum + (b?.cost ?? 0), 0),
@@ -609,7 +617,7 @@ export function RentalRequestModal({
                                         <div className="text-[10px] text-[var(--color-text-muted)]">
                                             {b.tierValue?.toLocaleString('vi-VN')} đ/{ul}/m³
                                             <span className="mx-1">·</span>
-                                            1 {ul}
+                                            {form.durationValue} {unitLabel(form.durationUnit)}
                                         </div>
                                     </div>
                                 );
@@ -618,7 +626,7 @@ export function RentalRequestModal({
                             <div className="border-t border-[var(--color-border)] mt-2 pt-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-semibold text-[var(--color-text)]">
-                                        Tổng/tháng (ước tính)
+                                        Tổng ({form.durationValue} {unitLabel(form.durationUnit)})
                                     </span>
                                     <span className="text-base font-bold text-[var(--color-primary)]">
                                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(sidebarTotal)}

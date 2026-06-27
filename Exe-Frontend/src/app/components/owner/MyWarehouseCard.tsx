@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { CompositeWarehouse, SUBSCRIPTION_TIERS } from '../../../types';
 import { SubscriptionTierBadge } from '../SubscriptionTierBadge';
 import { getMinMaxPrice, fmtVnd, Thumb, MainImage } from './MyWarehouseUtils';
+import { formatShortAddress } from '../../utils/addressFormat';
 import {
   Edit, MapPin, Thermometer, Package, Tag, LayoutGrid, Image as ImageIcon,
   EyeOff, RotateCcw, Clock, Shield, Upload, FileText, Plus, Crown, TrendingUp, Eye
@@ -123,7 +124,11 @@ export function MyWarehouseCard({
               <div className="flex items-center gap-1 text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
                 <MapPin className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">
-                  {warehouse.address}, {warehouse.location_commune}, {warehouse.location_province}
+                  {warehouse.address}, {formatShortAddress({
+                    province: warehouse.location_province,
+                    commune: warehouse.location_commune,
+                    locationAddressText: warehouse.location_address_text,
+                  })}
                 </span>
               </div>
             </div>

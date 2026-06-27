@@ -1,4 +1,5 @@
 import { CompositeContract, CompositeWarehouse } from "../../../types";
+import { formatShortAddress } from "../../utils/addressFormat";
 import {
   FileText,
   Clock,
@@ -96,7 +97,11 @@ export function ContractCard({
                 className="h-3 w-3"
                 style={{ color: "var(--color-primary)" }}
               />
-              {warehouse.name} — {warehouse.location_commune}, {warehouse.location_province}
+              {warehouse.name} — {formatShortAddress({
+                province: warehouse.location_province,
+                commune: warehouse.location_commune,
+                locationAddressText: warehouse.location_address_text,
+              })}
             </p>
           )}
 

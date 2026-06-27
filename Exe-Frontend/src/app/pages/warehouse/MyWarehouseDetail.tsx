@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Activity, MapPin, LayoutGrid, Building, ShieldCheck
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { toast } from "sonner";
 import { Badge } from "../../components/ui/badge";
+import { formatShortAddress } from "../../utils/addressFormat";
 import { WarehouseMapDisplay } from "../../components/owner/WarehouseMapDisplay";
 import { WarehouseReviewsSection } from "../../components/renter/WarehouseReviewsSection";
 
@@ -168,7 +169,11 @@ export default function MyWarehouseDetail() {
                      </div>
                      <p className="text-[var(--color-text-secondary)] flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
-                        {((warehouse as any).locationAddressText) || warehouse.location_address_text || warehouse.address || "Chưa cập nhật địa chỉ"}, {((warehouse as any).locationCommune) || warehouse.location_commune || ""}, {((warehouse as any).locationProvince) || warehouse.location_province || ""}
+                        {((warehouse as any).locationAddressText) || warehouse.location_address_text || warehouse.address || "Chưa cập nhật địa chỉ"}, {formatShortAddress({
+                            province: ((warehouse as any).locationProvince) || warehouse.location_province,
+                            commune: ((warehouse as any).locationCommune) || warehouse.location_commune,
+                            locationAddressText: ((warehouse as any).locationAddressText) || warehouse.location_address_text,
+                        })}
                      </p>
                   </div>
                   <div className="flex items-center gap-3">

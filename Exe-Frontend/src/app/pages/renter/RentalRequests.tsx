@@ -276,7 +276,7 @@ export default function RentalRequests() {
                 ) : (
                     <div className="space-y-2">
                         {requestsList.map((req) => {
-                            const contract = contractsByRequestId[req.id_rentRequest || req.id];
+                            const contract = contractsByRequestId[req.id_rentRequest || req.id_rentRequest];
                             return (
                                 <RentalRequestCard
                                     key={req.id_rentRequest}

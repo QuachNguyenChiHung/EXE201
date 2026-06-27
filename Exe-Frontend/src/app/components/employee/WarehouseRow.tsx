@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { CompositeWarehouse } from '../../../types';
 import { WarehouseResponseDTO } from '../../../types/employee';
 import { employeeService } from '../../../services/employeeService';
+import { formatShortAddress } from '../../utils/addressFormat';
 
 const FallbackImage = ({ src, alt, className }: { src: string, alt: string, className?: string }) => {
     const [error, setError] = useState(false);
@@ -186,7 +187,11 @@ export default function WarehouseRow({
                     </div>
                     <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                         <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{warehouse.address}, {warehouse.location_commune}, {warehouse.location_province}</span>
+                        <span className="truncate">{warehouse.address}, {formatShortAddress({
+                            province: warehouse.location_province,
+                            commune: warehouse.location_commune,
+                            locationAddressText: warehouse.location_address_text,
+                        })}</span>
                     </div>
                 </div>
 

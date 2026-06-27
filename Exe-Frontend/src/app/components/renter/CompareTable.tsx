@@ -2,6 +2,7 @@ import { MapPin, Package, Thermometer, Zap, Shield, CheckCircle, LayoutGrid, Tra
 import { CompositeWarehouse } from '../../../types';
 import { CertificationList, PriceDisplay, SectionsDisplay } from './WarehouseDisplays';
 import { Link } from 'react-router';
+import { formatShortAddress } from '../../utils/addressFormat';
 
 const secLabel = (s: string) =>
     ({ basic: 'Cơ bản', medium: 'Trung bình', high: 'Cao' }[s] ?? s);
@@ -20,7 +21,11 @@ const ROWS: CompareRow[] = [
         label: 'Vị trí',
         icon: <MapPin className="h-3.5 w-3.5" />,
         render: (w) => (
-            <span>{w.location_commune}, {w.location_province}</span>
+            <span>{formatShortAddress({
+                province: w.location_province,
+                commune: w.location_commune,
+                locationAddressText: w.location_address_text,
+            })}</span>
         ),
     },
     {

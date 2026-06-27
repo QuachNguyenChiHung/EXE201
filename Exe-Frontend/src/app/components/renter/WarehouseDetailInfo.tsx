@@ -6,6 +6,7 @@ import { CompositeWarehouse } from '../../../types';
 import { WarehouseMapDisplay } from '../owner/WarehouseMapDisplay';
 import { renterService } from '../../../services/renterService';
 import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
+import { formatShortAddress } from '../../utils/addressFormat';
 
 /** Extract time unit key (day/week/month/year) from a tier label like "Giá theo tháng" */
 function tierTimeUnit(label: string | undefined): string {
@@ -238,7 +239,11 @@ export function WarehouseDetailInfo({ warehouse, selectedTiers, selectedSectionI
                     <WarehouseMapDisplay
                         lat={fetchedLocation.lat}
                         long={fetchedLocation.long}
-                        addressText={[warehouse.location_commune, warehouse.location_province].filter(Boolean).join(", ")}
+                        addressText={formatShortAddress({
+                            province: warehouse.location_province,
+                            commune: warehouse.location_commune,
+                            locationAddressText: warehouse.location_address_text,
+                        })}
                         obfuscateLocation={true}
                     />
                 ) : (

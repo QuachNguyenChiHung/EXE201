@@ -3,6 +3,7 @@ import { Plus, Warehouse } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Button } from "../ui/button";
 import type { CompositeWarehouse } from "../../../types";
+import { formatShortAddress } from "../../utils/addressFormat";
 
 interface WarehouseDashboardListProps {
   warehouses: CompositeWarehouse[];
@@ -64,7 +65,11 @@ export function WarehouseDashboardList({ warehouses }: WarehouseDashboardListPro
               <div>
                 <h3 className="mb-1">{w.name}</h3>
                 <p className="text-sm text-[var(--color-text-secondary)]">
-                  {w.location_commune}, {w.location_province}
+                  {formatShortAddress({
+                    province: w.location_province,
+                    commune: w.location_commune,
+                    locationAddressText: w.location_address_text,
+                  })}
                 </p>
               </div>
               <div className="space-y-1.5">

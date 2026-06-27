@@ -57,7 +57,21 @@ export default function AISearchWarehouse() {
 
     const [initialList, setInitialList] = useState<CompositeWarehouse[]>([]);
     const [displayedList, setDisplayedList] = useState<CompositeWarehouse[]>([]);
-    const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+    const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
+        {
+            id: "welcome-billing",
+            role: "ai",
+            content:
+                `Xin chào! Tôi là trợ lý AI của **Logicha**, sẵn sàng giúp bạn tìm kho lạnh phù hợp nhất.\n\n` +
+                `Lưu ý: **Các kho lạnh đều hỗ trợ tính theo ngày, tuần, tháng, năm** — bạn có thể chọn hình thức thuê linh hoạt theo nhu cầu.\n\n` +
+                `Bạn có thể mô tả nhu cầu bằng ngôn ngữ tự nhiên, ví dụ:\n` +
+                `- *"Kho lạnh ở Hồ Chí Minh, bảo quản hải sản đông lạnh"*\n` +
+                `- *"Tìm kho rẻ nhất dưới 300.000đ/m³"*\n` +
+                `- *"So sánh 3 kho có chứng chỉ HACCP"*\n\n` +
+                `_Tôi sẽ phân tích và gợi ý kho phù hợp cho bạn!_`,
+            timestamp: new Date(),
+        },
+    ]);
     const [chatInput, setChatInput] = useState("");
     const [chatLoading, setChatLoading] = useState(false);
     const [warehousesRevealed, setWarehousesRevealed] = useState(false);
@@ -71,7 +85,6 @@ export default function AISearchWarehouse() {
     const conversationIdRef = useRef<number>(0);
     const conversationCreatedAtRef = useRef<string>("");
     const cumulativeTokensRef = useRef<{ input: number; output: number }>({ input: 0, output: 0 });
-    const initialSearchStartedRef = useRef(false);
 
     useEffect(() => {
         renterService.getRenterAiSubscriptionStatus()
@@ -123,7 +136,7 @@ export default function AISearchWarehouse() {
         const payload: AIRequestPayload = {
             prompt,
             criteria: {},
-            matchingWarehouses: warehouses,
+            matchingWarehouses: warehouses.slice(0, 12),
             conversationHistory: history.map((m) => ({ role: m.role, content: m.content })),
             isInitialHandshake: history.length === 0,
             hasCriteria: false,
@@ -132,63 +145,17 @@ export default function AISearchWarehouse() {
         return aiAPI.chat(payload);
     };
 
-    const handleInitialSearch = useCallback(async () => {
-        setChatMessages([]);
-        setWarehousesRevealed(false);
-        setAiError(null);
-        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
-
-        setChatLoading(true);
-        conversationIdRef.current = Date.now();
-        conversationCreatedAtRef.current = new Date().toISOString();
-        cumulativeTokensRef.current = { input: 0, output: 0 };
+    // Best-effort: fetch the candidate universe the AI will reason about.
+    // Returns [] on failure so callers can still proceed gracefully.
+    const fetchInitialCandidates = useCallback(async (): Promise<CompositeWarehouse[]> => {
         try {
-            // Pull the full candidate set (top 50) so the AI has context, then let
-            // the BE do its own DB search inside processChat.
             const data = await renterService.searchWarehouses({ page: 0, size: 50 });
-            const filtered: CompositeWarehouse[] = data.content || [];
-
-            setInitialList(filtered);
-            setDisplayedList(filtered);
-            const response = await callAIBackend("", filtered, []);
-
-            if (response.usage) {
-                cumulativeTokensRef.current.input += response.usage.input_tokens;
-                cumulativeTokensRef.current.output += response.usage.output_tokens;
-            }
-
-            const aiMsg: ChatMsg = { id: "greeting-" + Date.now(), role: "ai", content: response.text, timestamp: new Date() };
-            setChatMessages([aiMsg]);
-            persistConversation([aiMsg], filtered.length);
-
-            const nextList = pickWarehouseList(response, filtered);
-            if (nextList !== filtered) {
-                setDisplayedList(nextList);
-                setInitialList(nextList);
-            }
-
-            setWarehousesRevealed(true);
-        } catch (err: any) {
-            if (isAINotConfigured(err)) {
-                const fallbackGreeting = `Xin chào! Tôi là trợ lý AI của **Logicha**, sẵn sàng giúp bạn tìm kho lạnh phù hợp nhất.\n\nBạn có thể mô tả nhu cầu của mình bằng ngôn ngữ tự nhiên — ví dụ:\n- *"Kho lạnh ở Hồ Chí Minh, bảo quản hải sản đông lạnh"*\n- *"Tìm kho rẻ nhất dưới 300.000đ/m³"*\n- *"So sánh 3 kho có chứng chỉ HACCP"*\n\n_Tôi sẽ phân tích và gợi ý kho phù hợp cho bạn!_`;
-                setChatMessages([{ id: "fallback-greeting", role: "ai", content: fallbackGreeting, timestamp: new Date() }]);
-                setAiError("AI_BACKEND_NOT_CONFIGURED");
-            } else {
-                toast.error("Không thể kết nối AI. Vui lòng thử lại.");
-                setAiError(err.message ?? "Unknown error");
-            }
-        } finally {
-            setChatLoading(false);
+            return data.content || [];
+        } catch (searchErr) {
+            console.warn("[AISearch] candidate list failed, continuing with empty list:", searchErr);
+            return [];
         }
-    }, [persistConversation]);
-
-    useEffect(() => {
-        // Auto-fire the greeting handshake once on mount so the user lands directly
-        // in the chat without going through a separate criteria-selection phase.
-        if (initialSearchStartedRef.current) return;
-        initialSearchStartedRef.current = true;
-        handleInitialSearch();
-    }, [handleInitialSearch]);
+    }, []);
 
     const handleChatSend = async (text?: string) => {
         const msg = (text ?? chatInput).trim();
@@ -196,12 +163,40 @@ export default function AISearchWarehouse() {
         setChatInput("");
         setAiError(null);
 
+        // Lazy-init on the first prompt: seed the conversation id, token counters,
+        // and (if not already loaded) the candidate warehouse list. This replaces
+        // the old auto-handshake and keeps the page quiet until the user engages.
+        const isFirstPrompt = initialList.length === 0 && conversationIdRef.current === 0;
+        if (isFirstPrompt) {
+            conversationIdRef.current = Date.now();
+            conversationCreatedAtRef.current = new Date().toISOString();
+            cumulativeTokensRef.current = { input: 0, output: 0 };
+            const candidates = await fetchInitialCandidates();
+            if (candidates.length > 0) {
+                setInitialList(candidates);
+                setDisplayedList(candidates);
+            }
+        }
+
         const userMsg: ChatMsg = { id: Date.now().toString(), role: "user", content: msg, timestamp: new Date() };
         setChatMessages((prev) => [...prev, userMsg]);
 
         setChatLoading(true);
         try {
-            const response = await callAIBackend(msg, initialList, [...chatMessages, userMsg]);
+            // Always read the freshest initialList — the lazy-init above may have
+            // just set it on this very same tick.
+            const universe = initialList.length > 0 ? initialList : await fetchInitialCandidates().then((c) => {
+                if (c.length > 0) {
+                    setInitialList(c);
+                    setDisplayedList(c);
+                }
+                return c;
+            });
+            const response = await callAIBackend(
+                msg,
+                universe,
+                [...chatMessages, userMsg].filter((m) => !m.id.startsWith("welcome-")),
+            );
 
             if (response.usage) {
                 cumulativeTokensRef.current.input += response.usage.input_tokens;
@@ -219,7 +214,11 @@ export default function AISearchWarehouse() {
             };
             setChatMessages((prev) => {
                 const updated = [...prev, aiMsg];
-                persistConversation(updated, initialList.length);
+                // Strip the static welcome banner — it's a UI hint, not a real AI turn.
+                persistConversation(
+                    updated.filter((m) => !m.id.startsWith("welcome-")),
+                    initialList.length,
+                );
                 return updated;
             });
             setDisplayedList(refinedList);

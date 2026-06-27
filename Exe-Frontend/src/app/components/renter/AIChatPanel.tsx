@@ -86,9 +86,11 @@ export function AIChatPanel({
                                     </div>
                                     {renderMd(msg.content)}
                                     <div className="mt-2 pt-2 border-t border-blue-200 text-xs text-[var(--color-text-muted)]">
-                                        {displayedListCount > 0
-                                            ? `Hiện đang phân tích ${displayedListCount} kho bãi phù hợp cho bạn.`
-                                            : "Đang tìm kiếm kho phù hợp..."}
+                                        {chatMessages.some((m) => m.role === "user")
+                                            ? displayedListCount > 0
+                                                ? `Hiện đang phân tích ${displayedListCount} kho bãi phù hợp cho bạn.`
+                                                : "Đang tìm kiếm kho phù hợp..."
+                                            : "Hãy nhập câu hỏi bên dưới để bắt đầu."}
                                     </div>
                                 </div>
                             ) : (
