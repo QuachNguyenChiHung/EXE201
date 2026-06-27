@@ -228,11 +228,6 @@ export function RentedPropertyCard({
                             </div>
                         )}
 
-                        {contract.notes && (
-                            <p className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg)] px-3 py-2 border-l-2 border-[var(--color-border)] mt-2">
-                                {contract.notes}
-                            </p>
-                        )}
                     </div>
 
                     {/* ── Right panel: price + actions ── */}

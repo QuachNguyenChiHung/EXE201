@@ -6,7 +6,7 @@ import { CompositeContract, CompositeWarehouse, ContractDetailDTO } from '../../
 import { ArrowLeft, Package, Snowflake } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { FilterTab } from '../../components/renter/RentedPropertyUtils';
+import { FilterTab, mapBackendStatus } from '../../components/renter/RentedPropertyUtils';
 import { RentedPropertyFilters } from '../../components/renter/RentedPropertyFilters';
 import { ContractDetailModal, RejectContractModal } from '../../components/renter/ContractModals';
 import { RentedPropertyCard } from '../../components/renter/RentedPropertyCard';
@@ -227,7 +227,14 @@ export default function RentedProperties() {
                 key={contract.id_contract}
                 contract={contract}
                 warehouse={warehouses[contract.id_warehouse?.toString() || '']}
-                onViewContract={() => setViewingContract(contract)}
+                onViewContract={() => {
+                  const mapped = mapBackendStatus(contract.status, contract.ownerSigned, contract.renterSigned);
+                  if (mapped === 'pending_renter') {
+                    setViewingContract(contract);
+                  } else {
+                    navigate(`/shared/contracts/${contract.id_contract}`);
+                  }
+                }}
                 onRejectContract={() => setRejectingContract(contract)}
                 onCancelContract={() => handleCancel(contract.id_contract)}
               />

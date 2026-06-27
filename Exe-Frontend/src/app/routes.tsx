@@ -80,6 +80,7 @@ export const router = createBrowserRouter([
       { path: '/warehouse/requests', lazy: lazyPage(() => import('./pages/warehouse/WarehouseRequests')) },
       { path: '/warehouse/contracts', lazy: lazyPage(() => import('./pages/warehouse/OwnerContracts')) },
       { path: '/warehouse/contracts/create/:requestId', lazy: lazyPage(() => import('./pages/warehouse/CreateContract')) },
+      { path: '/warehouse/contracts/edit/:contractId', lazy: lazyPage(() => import('./pages/warehouse/EditContract')) },
       { path: '/warehouse/my-warehouses', lazy: lazyPage(() => import('./pages/warehouse/MyWarehouses')) },
       { path: '/warehouse/add', lazy: lazyPage(() => import('./pages/warehouse/AddWarehouse')) },
       { path: '/warehouse/edit/:id', lazy: lazyPage(() => import('./pages/warehouse/EditWarehouse')) },

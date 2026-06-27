@@ -160,7 +160,7 @@ export default function OwnerContracts() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => navigate(`/warehouse/contracts/create/${c.requestId}`)}
+                          onClick={() => navigate(`/warehouse/contracts/edit/${c.id}`)}
                           className="inline-flex items-center gap-1 text-[var(--color-primary)] hover:underline"
                         >
                           <Edit3 className="h-4 w-4" /> Sửa

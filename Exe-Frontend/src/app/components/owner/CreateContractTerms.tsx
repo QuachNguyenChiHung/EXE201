@@ -8,6 +8,7 @@ interface Props {
   contract: Partial<CompositeContract>;
   onChange: (key: keyof CompositeContract, val: any) => void;
   request?: any;
+  readOnly?: boolean;
 }
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
@@ -33,11 +34,11 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-const INPUT_CLS = "w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-primary)] transition-colors";
+const INPUT_CLS = "w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 const INPUT_STYLE = { borderColor: "var(--color-border)", background: "var(--color-surface)", color: "var(--color-text)" };
-const TEXTAREA_CLS = "w-full px-3 py-2 text-sm border resize-none focus:outline-none focus:border-[var(--color-primary)] transition-colors";
+const TEXTAREA_CLS = "w-full px-3 py-2 text-sm border resize-none focus:outline-none focus:border-[var(--color-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
-export function CreateContractTerms({ contract, onChange, request }: Props) {
+export function CreateContractTerms({ contract, onChange, request, readOnly = false }: Props) {
   return (
     <div className="space-y-6">
       {/* ── Details ── */}
@@ -54,8 +55,9 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
-                      className={`${INPUT_CLS} pl-9 text-left flex items-center w-full`}
+                      className={`${INPUT_CLS} pl-9 text-left flex items-center w-full disabled:cursor-not-allowed`}
                       style={INPUT_STYLE}
+                      disabled={readOnly}
                     >
                       {contract.start_at ? format(parseISO(contract.start_at), "dd/MM/yyyy") : <span className="text-gray-400">dd/mm/yyyy</span>}
                     </button>
@@ -79,8 +81,9 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
-                      className={`${INPUT_CLS} pl-9 text-left flex items-center w-full`}
+                      className={`${INPUT_CLS} pl-9 text-left flex items-center w-full disabled:cursor-not-allowed`}
                       style={INPUT_STYLE}
+                      disabled={readOnly}
                     >
                       {contract.end_at ? format(parseISO(contract.end_at), "dd/MM/yyyy") : <span className="text-gray-400">dd/mm/yyyy</span>}
                     </button>
@@ -95,7 +98,7 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                   </PopoverContent>
                 </Popover>
               </div>
-              {request && contract.start_at && (
+              {request && contract.start_at && !readOnly && (
                 <div className="mt-2 flex">
                   <button
                     type="button"
@@ -135,6 +138,7 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                 placeholder="VD: Hải sản đông lạnh, Dược phẩm..."
                 value={contract.cargo_description || ""}
                 onChange={(e) => onChange("cargo_description", e.target.value)}
+                disabled={readOnly}
               />
             </div>
           </Field>
@@ -151,6 +155,7 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                   placeholder="VD: 50"
                   value={contract.rentedCapacity || ""}
                   onChange={(e) => onChange("rentedCapacity", e.target.value)}
+                  disabled={readOnly}
                 />
               </div>
             </Field>
@@ -170,10 +175,11 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
                     const numValue = parseInt(rawValue, 10);
                     onChange("monthlyRate", isNaN(numValue) ? "" : numValue);
                   }}
+                  disabled={readOnly}
                 />
               </div>
               {(() => {
-                if (!request) return null;
+                if (!request || readOnly) return null;
                 const ownerOffer = request.offeredPrice;
                 const renterOffer = request.renterOfferedPrice;
                 
@@ -238,6 +244,7 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
               placeholder="VD: Thanh toán vào mùng 1 đến mùng 5 hàng tháng."
               value={contract.payment_term || ""}
               onChange={(e) => onChange("payment_term", e.target.value)}
+              disabled={readOnly}
             />
           </Field>
           <Field label="Quy định phạt">
@@ -248,6 +255,7 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
               placeholder="VD: Trễ hạn thanh toán chịu phạt 1%/ngày."
               value={contract.penalty_clause || ""}
               onChange={(e) => onChange("penalty_clause", e.target.value)}
+              disabled={readOnly}
             />
           </Field>
           <Field label="Điều khoản đặc biệt">
@@ -258,22 +266,8 @@ export function CreateContractTerms({ contract, onChange, request }: Props) {
               placeholder="Ghi chú thêm các ràng buộc khác (nếu có)..."
               value={contract.special_term || ""}
               onChange={(e) => onChange("special_term", e.target.value)}
+              disabled={readOnly}
             />
-          </Field>
-          <Field label="Ghi chú nội bộ">
-            <div className="relative">
-              <div className="absolute top-2.5 left-3 pointer-events-none">
-                <Edit3 className="h-4 w-4 text-gray-400" />
-              </div>
-              <textarea
-                className={`${TEXTAREA_CLS} pl-9`}
-                style={INPUT_STYLE}
-                rows={2}
-                placeholder="Ghi chú riêng cho chủ kho..."
-                value={contract.notes || ""}
-                onChange={(e) => onChange("notes", e.target.value)}
-              />
-            </div>
           </Field>
         </div>
       </div>

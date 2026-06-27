@@ -6,7 +6,7 @@ import { ownerService } from "../../../services/ownerService";
 import { PRICE_TIER_OPTIONS } from "../../components/owner/WarehouseFormUtils";
 import { CompositeWarehouse } from "../../../types";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft, Loader2, Activity, MapPin, LayoutGrid, Building, ShieldCheck, Thermometer, Droplets, Image as ImageIcon, Tag, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Activity, MapPin, LayoutGrid, Building, ShieldCheck, Thermometer, Droplets, Image as ImageIcon, Tag, FileText, MessageSquare } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { toast } from "sonner";
 import { Badge } from "../../components/ui/badge";

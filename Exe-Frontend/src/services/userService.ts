@@ -5,12 +5,14 @@ import type { User } from '../types/public';
 export interface UserProfileUpdateDTO {
   fullName: string;
   phone: string;
+  dateOfBirth: string;
+  gender: string;
   /** Owners only — owners can edit their company name/tax code from the profile page */
   companyName?: string;
   companyTaxCode?: string;
 }
 
-function normalize(dto: UserProfileDTO): UserProfileDTO {
+function normalize(dto: any): UserProfileDTO {
   return {
     ...dto,
     company: dto.company

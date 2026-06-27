@@ -24,6 +24,8 @@ export interface UserProfileDTO {
   avatarUrl: string;
   role: string;
   status: string;
+  dateOfBirth?: string;
+  gender?: string;
   company: CompanyResponseDTO | null;
 }
 

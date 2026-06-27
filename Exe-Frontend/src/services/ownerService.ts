@@ -58,7 +58,8 @@ export const ownerService = {
           priceTiers: sec.priceTiers?.map((pt: any, idx: number) => ({
             ...pt,
             id_price_tier: pt.id_price_tier || pt.id || (Date.now() + idx),
-            unit: 'month' // Force to 'month' to match frontend price calculation
+            unit: pt.unit || 'month',
+            areaUnit: pt.areaUnit || 'm3'
           }))
         })),
         images: w.images?.map((img: any) => ({
@@ -288,6 +289,18 @@ export const ownerService = {
   createContract: async (payload: any): Promise<any> => {
     console.log('[API CALL] POST /owners/contracts', payload);
     const response = await api.post('/owners/contracts', payload);
+    console.log('[API RESPONSE]', response.data);
+    return response.data;
+  },
+  getContractById: async (contractId: number): Promise<any> => {
+    console.log(`[API CALL] GET /contracts/${contractId}`);
+    const response = await api.get(`/contracts/${contractId}`);
+    console.log('[API RESPONSE]', response.data);
+    return response.data;
+  },
+  updateContract: async (contractId: number, payload: any): Promise<any> => {
+    console.log(`[API CALL] PUT /owners/contracts/${contractId}`, payload);
+    const response = await api.put(`/owners/contracts/${contractId}`, payload);
     console.log('[API RESPONSE]', response.data);
     return response.data;
   },

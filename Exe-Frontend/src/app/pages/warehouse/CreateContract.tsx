@@ -54,7 +54,6 @@ export default function CreateContract() {
     payment_term: '',
     penalty_clause: '',
     special_term: '',
-    notes: '',
   });
 
   useEffect(() => {
@@ -113,7 +112,6 @@ export default function CreateContract() {
         rentedCapacity: request?.details?.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) ?? prev.rentedCapacity,
         monthlyRate: request?.offeredPrice ?? prev.monthlyRate,
         cargo_description: request?.cargoDescription ?? prev.cargo_description,
-        notes: request?.ownerNote ?? request?.otherDetail ?? prev.notes,
       }));
     }
   }, [user, request, existingDraft, metaData]);
@@ -171,7 +169,6 @@ export default function CreateContract() {
     renterCompany: contract.renterCompany,
     rentedCapacity: Number(contract.rentedCapacity) || 0,
     monthlyRate: Number(contract.monthlyRate) || 0,
-    notes: contract.notes,
     sentAt: status === 'pending_renter' ? new Date().toISOString() : undefined,
 
     // camelCase aliases to match backend API expectations and SharedContractDetail.tsx

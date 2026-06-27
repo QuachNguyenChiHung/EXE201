@@ -1,5 +1,5 @@
 import React, { RefObject } from "react";
-import { Sparkles, Bot, User, Send, SquarePen } from "lucide-react";
+import { Sparkles, Bot, User, Send, SquarePen, Plus } from "lucide-react";
 
 import { CompositeWarehouse } from "../../../types";
 
@@ -75,9 +75,9 @@ export function AIChatPanel({
                         onClick={onNewConversation}
                         disabled={chatLoading}
                         title="Cuộc trò chuyện mới"
-                        className="w-7 h-7 flex items-center justify-center bg-white bg-opacity-0 hover:bg-opacity-20 rounded transition-colors disabled:opacity-40 shrink-0"
+                        className="w-7 h-7 flex items-center justify-center bg-opacity-0 hover:bg-opacity-20 rounded transition-colors disabled:opacity-40 shrink-0"
                     >
-                        <SquarePen className="h-4 w-4" />
+                        <Plus className="h-9 w-9" />
                     </button>
                 )}
             </div>

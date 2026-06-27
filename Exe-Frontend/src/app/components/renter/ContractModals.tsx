@@ -210,12 +210,6 @@ export function ContractDetailModal({
                         </div>
                     )}
 
-                    {/* Notes */}
-                    {contract.notes && (
-                        <div className="px-3 py-2 border-l-2 border-[var(--color-border)] text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                            <strong>Ghi chú:</strong> {contract.notes}
-                        </div>
-                    )}
                 </div>
 
                 {/* Action footer */}

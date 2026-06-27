@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { userService, UserProfileUpdateDTO } from '../../services/userService';
 import type { UserProfileDTO } from '../../services/userService';
 import { getUser } from '../../utils/auth';
-import { ArrowLeft, Save, Loader2, Camera, User, Phone, Building2, FileText, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Camera, User, Phone, Building2, FileText, ShieldCheck, Calendar } from 'lucide-react';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -20,7 +20,14 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profile, setProfile] = useState<UserProfileDTO | null>(null);
-  const [form, setForm] = useState<UserProfileUpdateDTO>({ fullName: '', phone: '', companyName: '', companyTaxCode: '' });
+  const [form, setForm] = useState<{ fullName: string; phone: string; dateOfBirth: string; gender: string; companyName: string; companyTaxCode: string }>({
+    fullName: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    companyName: '',
+    companyTaxCode: '',
+  });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof UserProfileUpdateDTO, string>>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +46,8 @@ export default function ProfilePage() {
         setForm({
           fullName: p.fullName || '',
           phone: p.phone || '',
+          dateOfBirth: p.dateOfBirth || '',
+          gender: p.gender || '',
           companyName: p.company?.companyName || '',
           companyTaxCode: p.company?.companyTaxCode || '',
         });
@@ -84,6 +93,8 @@ export default function ProfilePage() {
       setForm({
         fullName: updated.fullName || '',
         phone: updated.phone || '',
+        dateOfBirth: updated.dateOfBirth || '',
+        gender: updated.gender || '',
         companyName: updated.company?.companyName || '',
         companyTaxCode: updated.company?.companyTaxCode || '',
       });
@@ -268,6 +279,38 @@ export default function ProfilePage() {
                 {formErrors.phone && (
                   <p className="mt-1 text-xs text-[var(--color-error)]">{formErrors.phone}</p>
                 )}
+              </div>
+
+              {/* Date of Birth */}
+              <div>
+                <Label htmlFor="dateOfBirth">Ngày sinh</Label>
+                <div className="relative mt-1">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={(e) => setForm((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                    className="pl-10"
+                    max={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              </div>
+
+              {/* Gender */}
+              <div>
+                <Label htmlFor="gender">Giới tính</Label>
+                <select
+                  id="gender"
+                  value={form.gender}
+                  onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+                  className="mt-1 flex h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">— Chọn giới tính —</option>
+                  <option value="MALE">Nam</option>
+                  <option value="FEMALE">Nữ</option>
+                  <option value="OTHER">Khác</option>
+                </select>
               </div>
 
               {/* Role — read-only */}
