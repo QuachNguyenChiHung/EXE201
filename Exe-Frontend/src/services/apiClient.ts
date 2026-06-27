@@ -361,7 +361,9 @@ export const aiAPI = {
         query: payload.prompt,
         conversationHistory: JSON.stringify(payload.conversationHistory ?? []),
         criteria: payload.criteria ?? {},
-        matchingWarehouses: payload.matchingWarehouses ?? [],
+        matchingWarehouses: (payload.matchingWarehouses ?? []).map(
+          ({ id_owner: _o, ownerName: _n, ...rest }: any) => rest
+        ),
         isInitialHandshake: payload.isInitialHandshake ?? false,
       }),
     });
@@ -380,6 +382,41 @@ export const aiAPI = {
           ? (data.warehouses.content as unknown[]).map(normalizeBackendWarehouse).filter((w): w is CompositeWarehouse => w !== null)
           : undefined,
       usage: { input_tokens: data.inputTokens ?? 0, output_tokens: data.outputTokens ?? 0 },
+      tokenExhausted: data.tokenExhausted === true,
+    };
+  },
+
+  contextChat: async (payload: { query: string; conversationHistory: { role: "user" | "ai"; content: string }[]; warehouses: CompositeWarehouse[] }): Promise<AIResponsePayload> => {
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const token = user?.token;
+    const res = await fetch(`${API_BASE}/ai/context-chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        query: payload.query,
+        conversationHistory: JSON.stringify(payload.conversationHistory ?? []),
+        // Strip owner identity fields before sending to the AI — the agent only needs
+        // warehouse characteristics, not who owns it.
+        warehouses: payload.warehouses.map(({ id_owner: _o, ownerName: _n, ...rest }) => rest),
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const refinedIds: string[] | undefined = Array.isArray(data.refinedWarehouseIds)
+        ? data.refinedWarehouseIds.map((v: unknown) => String(v))
+        : undefined;
+    return {
+      text: data.response ?? '',
+      refinedWarehouseIds: refinedIds?.filter((id: string) => id !== ''),
+      warehouses: undefined, // context mode re-ranks existing list via refinedIds
+      usage: { input_tokens: data.inputTokens ?? 0, output_tokens: data.outputTokens ?? 0 },
+      tokenExhausted: data.tokenExhausted === true,
     };
   },
 
@@ -395,14 +432,43 @@ export const aiAPI = {
   },
 
   saveConversation: async (conv: CompositeAiConversations): Promise<CompositeAiConversations> => {
-    await delay();
-    conversations.push(conv);
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const token = user?.token;
+    await fetch(`${API_BASE}/ai/conversations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        messages: JSON.stringify(Array.isArray(conv.message) ? conv.message : []),
+        criteria: JSON.stringify(conv.criteria ?? {}),
+        totalInputTokens: conv.total_input_tokens ?? 0,
+        totalOutputTokens: conv.total_output_tokens ?? 0,
+        warehouseCount: conv.warehouseCount ?? 0,
+      }),
+    });
     return conv;
   },
 
-  getConversationsByUser: async (userId: number): Promise<CompositeAiConversations[]> => {
-    await delay();
-    return conversations.filter(c => c.id_user === userId);
+  getConversationsByUser: async (_userId: number): Promise<CompositeAiConversations[]> => {
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const token = user?.token;
+    const res = await fetch(`${API_BASE}/ai/conversations/my`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) return [];
+    const data: any[] = await res.json();
+    return data.map(c => ({
+      id_ai_conversations: c.id,
+      id_user: undefined,
+      criteria: c.criteria,
+      message: c.messages,
+      total_input_tokens: c.totalInputTokens ?? 0,
+      total_output_tokens: c.totalOutputTokens ?? 0,
+      create_at: c.createdAt,
+      update_at: c.updatedAt,
+    }));
   },
 
   getAllConversations: async (): Promise<CompositeAiConversations[]> => {

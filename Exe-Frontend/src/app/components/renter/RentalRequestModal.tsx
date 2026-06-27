@@ -581,64 +581,6 @@ export function RentalRequestModal({
                         </div>
                     )}
 
-                    {/* ── Price estimate preview ─────────────────────────────────── */}
-                    {selectedSectionIds.length > 0 && sidebarBreakdown.length > 0 && (
-                        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4">
-                            <p className="text-sm font-semibold text-[var(--color-text)] mb-3">
-                                Dự toán chi phí (tham khảo)
-                            </p>
-
-                            {pendingSections.length > 0 && (
-                                <div className="mb-3 p-3 rounded-md bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]">
-                                    <p className="text-xs font-medium text-[var(--color-warning)] mb-1">Chưa chọn gói giá</p>
-                                    <p className="text-xs text-[var(--color-text-muted)]">
-                                        Vui lòng chọn gói giá cho: {pendingSections.join(', ')}
-                                    </p>
-                                </div>
-                            )}
-
-                            {sidebarBreakdown.map(b => {
-                                if (!b) return null;
-                                const ul = unitLabel(b.tierUnit);
-
-                                return (
-                                    <div key={b.sectionId} className="mb-2 last:mb-0">
-                                        <div className="flex justify-between items-start mb-0.5">
-                                            <span className="text-xs font-medium text-[var(--color-text)]">
-                                                {b.sectionName}
-                                                <span className="text-[var(--color-text-muted)] font-normal ml-1">
-                                                    ({b.area > 0 ? b.area.toFixed(1) : '0'} m³)
-                                                </span>
-                                            </span>
-                                            <span className="text-xs font-semibold text-[var(--color-text)]">
-                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.cost)}
-                                            </span>
-                                        </div>
-                                        <div className="text-[10px] text-[var(--color-text-muted)]">
-                                            {b.tierValue?.toLocaleString('vi-VN')} đ/{ul}/m³
-                                            <span className="mx-1">·</span>
-                                            {form.durationValue} {unitLabel(form.durationUnit)}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-
-                            <div className="border-t border-[var(--color-border)] mt-2 pt-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs font-semibold text-[var(--color-text)]">
-                                        Tổng ({form.durationValue} {unitLabel(form.durationUnit)})
-                                    </span>
-                                    <span className="text-base font-bold text-[var(--color-primary)]">
-                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(sidebarTotal)}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                                    Giá chính xác phụ thuộc vào thời hạn thuê thực tế
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
                     {/* ── Contact info ────────────────────────────────────────────── */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -805,6 +747,64 @@ export function RentalRequestModal({
                             onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                         />
                     </div>
+
+                    {/* ── Price estimate preview ─────────────────────────────────── */}
+                    {selectedSectionIds.length > 0 && sidebarBreakdown.length > 0 && (
+                        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-4">
+                            <p className="text-sm font-semibold text-[var(--color-text)] mb-3">
+                                Dự toán chi phí (tham khảo)
+                            </p>
+
+                            {pendingSections.length > 0 && (
+                                <div className="mb-3 p-3 rounded-md bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]">
+                                    <p className="text-xs font-medium text-[var(--color-warning)] mb-1">Chưa chọn gói giá</p>
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        Vui lòng chọn gói giá cho: {pendingSections.join(', ')}
+                                    </p>
+                                </div>
+                            )}
+
+                            {sidebarBreakdown.map(b => {
+                                if (!b) return null;
+                                const ul = unitLabel(b.tierUnit);
+
+                                return (
+                                    <div key={b.sectionId} className="mb-2 last:mb-0">
+                                        <div className="flex justify-between items-start mb-0.5">
+                                            <span className="text-xs font-medium text-[var(--color-text)]">
+                                                {b.sectionName}
+                                                <span className="text-[var(--color-text-muted)] font-normal ml-1">
+                                                    ({b.area > 0 ? b.area.toFixed(1) : '0'} m³)
+                                                </span>
+                                            </span>
+                                            <span className="text-xs font-semibold text-[var(--color-text)]">
+                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.cost)}
+                                            </span>
+                                        </div>
+                                        <div className="text-[10px] text-[var(--color-text-muted)]">
+                                            {b.tierValue?.toLocaleString('vi-VN')} đ/{ul}/m³
+                                            <span className="mx-1">·</span>
+                                            {form.durationValue} {unitLabel(form.durationUnit)}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            <div className="border-t border-[var(--color-border)] mt-2 pt-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-[var(--color-text)]">
+                                        Tổng ({form.durationValue} {unitLabel(form.durationUnit)})
+                                    </span>
+                                    <span className="text-base font-bold text-[var(--color-primary)]">
+                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(sidebarTotal)}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                                    Giá chính xác phụ thuộc vào thời hạn thuê thực tế
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* ── Submit ─────────────────────────────────────────────────── */}
                     <div className="flex gap-3 pt-2">

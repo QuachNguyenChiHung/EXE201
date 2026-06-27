@@ -62,9 +62,8 @@ export default function SearchWarehouse() {
       params.keyword = filters.keyword.trim();
     }
 
-    // Backend accepts a single `province` query param
     if (filters.provinces && filters.provinces.length > 0) {
-      params.province = filters.provinces[0];
+      params.provinces = filters.provinces;
     }
 
     if (filters.minCapacity !== undefined) {
@@ -266,6 +265,7 @@ export default function SearchWarehouse() {
               clearFilters={clearFilters}
               loading={loading}
               certifications={filterMeta?.certifications || []}
+              locations={filterMeta?.locations || []}
             />
           </div>
         )}

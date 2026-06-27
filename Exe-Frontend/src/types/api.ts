@@ -23,7 +23,15 @@ export interface AIRequestPayload {
 export interface AIResponsePayload {
   text: string;
   refinedWarehouseIds?: string[];
+  warehouses?: any[];
   usage?: { input_tokens: number; output_tokens: number };
+  tokenExhausted?: boolean;
+}
+
+export interface AIContextRequestPayload {
+  query: string;
+  conversationHistory: { role: "user" | "ai"; content: string }[];
+  warehouses: any[];
 }
 
 export interface AIStatusResult {

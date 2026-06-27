@@ -30,6 +30,7 @@ interface SearchSidebarProps {
   clearFilters: () => void;
   loading: boolean;
   certifications?: any[];
+  locations?: string[];
 }
 
 export function SearchSidebar({
@@ -39,6 +40,7 @@ export function SearchSidebar({
   clearFilters,
   loading,
   certifications = [],
+  locations = [],
 }: SearchSidebarProps) {
   const toggleProvince = (province: string) => {
     setLocalFilters((prev) => ({
@@ -86,7 +88,7 @@ export function SearchSidebar({
           <PopoverContent className="w-80 p-4 bg-white max-h-80 overflow-y-auto" align="start">
             <h4 className="font-semibold text-sm mb-3 text-gray-800">Chọn tỉnh / thành phố</h4>
             <div className="flex flex-wrap gap-2">
-              {Object.keys(vietnamDistricts).sort().map((province) => (
+              {(locations.length > 0 ? locations : Object.keys(vietnamDistricts)).sort().map((province) => (
                 <button
                   key={province}
                   onClick={() => toggleProvince(province)}

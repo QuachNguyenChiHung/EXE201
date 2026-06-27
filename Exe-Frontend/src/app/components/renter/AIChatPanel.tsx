@@ -1,6 +1,6 @@
 import React, { RefObject } from "react";
-import { Sparkles, Bot, User, Send } from "lucide-react";
-import { QUICK_SUGGESTIONS } from "../../pages/renter/aiSearchData";
+import { Sparkles, Bot, User, Send, SquarePen } from "lucide-react";
+
 import { CompositeWarehouse } from "../../../types";
 
 export interface ChatMsg {
@@ -23,6 +23,7 @@ interface AIChatPanelProps {
     setChatInput: (val: string) => void;
     handleChatSend: (text?: string) => void;
     handleChatKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+    onNewConversation: () => void;
 }
 
 function renderMd(text: string) {
@@ -53,19 +54,32 @@ export function AIChatPanel({
     chatInputRef,
     setChatInput,
     handleChatSend,
-    handleChatKeyDown
+    handleChatKeyDown,
+    onNewConversation,
 }: AIChatPanelProps) {
+    const hasUserTurns = chatMessages.some((m) => m.role === "user");
+
     return (
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-col" style={{ position: "sticky", top: "120px", height: "calc(100vh - 220px)" }}>
             <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-primary)] text-white shrink-0">
                 <div className="w-7 h-7 bg-white bg-opacity-20 flex items-center justify-center"><Sparkles className="h-4 w-4" /></div>
-                <div>
+                <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">Hỏi AI để phân tích sâu hơn</p>
                     <p className="text-xs text-blue-200">
                         Đang phân tích {displayedListCount} kho
                         {aiError === "AI_BACKEND_NOT_CONFIGURED" && <span className="ml-1 text-yellow-300">(chưa kết nối AI)</span>}
                     </p>
                 </div>
+                {hasUserTurns && (
+                    <button
+                        onClick={onNewConversation}
+                        disabled={chatLoading}
+                        title="Cuộc trò chuyện mới"
+                        className="w-7 h-7 flex items-center justify-center bg-white bg-opacity-0 hover:bg-opacity-20 rounded transition-colors disabled:opacity-40 shrink-0"
+                    >
+                        <SquarePen className="h-4 w-4" />
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" ref={chatScrollRef}>
@@ -120,15 +134,7 @@ export function AIChatPanel({
                 <div ref={chatEndRef} />
             </div>
 
-            <div className="px-3 py-2 border-t border-[var(--color-border)] shrink-0">
-                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                    {QUICK_SUGGESTIONS.map((s) => (
-                        <button key={s} onClick={() => handleChatSend(s)} disabled={chatLoading} className="whitespace-nowrap text-xs px-2.5 py-1.5 border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors shrink-0 disabled:opacity-40">
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            </div>
+
 
             <div className="border-t border-[var(--color-border)] p-3 flex gap-2 shrink-0">
                 <textarea

@@ -1,14 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
-import { CompositeWarehouse, CompositeAiConversations } from "../../../types";
+import { CompositeWarehouse, CompositeAiConversations, FilterOptions, AIResponsePayload } from "../../../types";
 import { toast } from "sonner";
 import { renterService } from "../../../services/renterService";
 import { aiAPI } from "../../../services/apiClient";
 import { isAINotConfigured } from "./aiSearchUtils";
 import { AIChatPanel, ChatMsg } from "../../components/renter/AIChatPanel";
 import { AIResultGrid } from "../../components/renter/AIResultGrid";
+import { SearchSidebar } from "../../components/renter/SearchSidebar";
 import { getUser } from "../../../utils/auth";
+
+type PriceUnit = "day" | "week" | "month" | "year";
+const PRICE_TO_MONTHLY: Record<PriceUnit, number> = { month: 1, day: 30, week: 4, year: 1 / 12 };
+const DEFAULT_PRICE_UNITS: PriceUnit[] = ["day", "week", "month", "year"];
 
 export interface AIRequestPayload {
     prompt: string;
@@ -19,12 +24,7 @@ export interface AIRequestPayload {
     hasCriteria: boolean;
 }
 
-export interface AIResponsePayload {
-    text: string;
-    refinedWarehouseIds?: string[];
-    warehouses?: CompositeWarehouse[];
-    usage?: { input_tokens: number; output_tokens: number };
-}
+
 
 /**
  * Resolve which warehouse list to show after an AI round-trip.
@@ -50,34 +50,59 @@ function pickWarehouseList(
     return initialList;
 }
 
+function buildCandidateParams(filters: FilterOptions): Record<string, unknown> {
+    const params: Record<string, unknown> = { page: 0, size: 50 };
+
+    if (filters.keyword?.trim()) params.keyword = filters.keyword.trim();
+    if (filters.provinces?.length) params.provinces = filters.provinces;
+    if (filters.minCapacity !== undefined) params.minArea = filters.minCapacity;
+    if (filters.maxCapacity !== undefined) params.maxArea = filters.maxCapacity;
+
+    const units = filters.priceUnits?.length ? filters.priceUnits as PriceUnit[] : DEFAULT_PRICE_UNITS;
+    const mul = units.reduce((s, u) => s + PRICE_TO_MONTHLY[u], 0) / units.length;
+    if (filters.minPrice !== undefined) params.minPrice = filters.minPrice * mul;
+    if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice * mul;
+    if (filters.ratingMin !== undefined) params.minRating = filters.ratingMin;
+    if (filters.ratingMax !== undefined) params.maxRating = filters.ratingMax;
+    if (filters.certifications?.length)
+        params.certTypeIds = filters.certifications.map(Number).filter(n => !Number.isNaN(n));
+
+    return params;
+}
+
 export default function AISearchWarehouse() {
     const currentUser = getUser();
 
     const [hasActiveTier, setHasActiveTier] = useState<boolean | null>(null);
 
-    const [initialList, setInitialList] = useState<CompositeWarehouse[]>([]);
+    const [filters, setFilters] = useState<FilterOptions>({ provinces: [], cities: [], priceUnits: [] });
+    const [filterMeta, setFilterMeta] = useState<any>(null);
+    const [candidatesLoading, setCandidatesLoading] = useState(false);
+    const [warehouseEntitiesList, setWarehouseEntitiesList] = useState<CompositeWarehouse[]>([]);
+
     const [displayedList, setDisplayedList] = useState<CompositeWarehouse[]>([]);
-    const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
-        {
-            id: "welcome-billing",
-            role: "ai",
-            content:
-                `Xin chào! Tôi là trợ lý AI của **Logicha**, sẵn sàng giúp bạn tìm kho lạnh phù hợp nhất.\n\n` +
-                `Lưu ý: **Các kho lạnh đều hỗ trợ tính theo ngày, tuần, tháng, năm** — bạn có thể chọn hình thức thuê linh hoạt theo nhu cầu.\n\n` +
-                `Bạn có thể mô tả nhu cầu bằng ngôn ngữ tự nhiên, ví dụ:\n` +
-                `- *"Kho lạnh ở Hồ Chí Minh, bảo quản hải sản đông lạnh"*\n` +
-                `- *"Tìm kho rẻ nhất dưới 300.000đ/m³"*\n` +
-                `- *"So sánh 3 kho có chứng chỉ HACCP"*\n\n` +
-                `_Tôi sẽ phân tích và gợi ý kho phù hợp cho bạn!_`,
-            timestamp: new Date(),
-        },
-    ]);
+    const makeWelcomeMsg = (): ChatMsg => ({
+        id: "welcome-billing",
+        role: "ai",
+        content:
+            `Xin chào! Tôi là trợ lý AI của **Logicha**, sẵn sàng giúp bạn tìm kho lạnh phù hợp nhất.\n\n` +
+            `Lưu ý: **Các kho lạnh đều hỗ trợ tính theo ngày, tuần, tháng, năm** — bạn có thể chọn hình thức thuê linh hoạt theo nhu cầu.\n\n` +
+            `Bạn có thể mô tả nhu cầu bằng ngôn ngữ tự nhiên, ví dụ:\n` +
+            `- *"Kho lạnh ở Hồ Chí Minh, bảo quản hải sản đông lạnh"*\n` +
+            `- *"Tìm kho rẻ nhất dưới 300.000đ/m³"*\n` +
+            `- *"So sánh 3 kho có chứng chỉ HACCP"*\n\n` +
+            `_Tôi sẽ phân tích và gợi ý kho phù hợp cho bạn!_`,
+        timestamp: new Date(),
+    });
+
+    const [chatMessages, setChatMessages] = useState<ChatMsg[]>([makeWelcomeMsg()]);
     const [chatInput, setChatInput] = useState("");
     const [chatLoading, setChatLoading] = useState(false);
     const [warehousesRevealed, setWarehousesRevealed] = useState(false);
 
     const [_aiPayload, setAiPayload] = useState<AIRequestPayload | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [searchMode, setSearchMode] = useState<"standard" | "context">("standard");
 
     const chatEndRef = useRef<HTMLDivElement>(null);
     const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -93,6 +118,69 @@ export default function AISearchWarehouse() {
     }, []);
 
     useEffect(() => {
+        renterService.getFilterMeta()
+            .then(setFilterMeta)
+            .catch(() => { });
+    }, []);
+
+    // Fetch all warehouses on mount so the AI has a full candidate pool immediately.
+    useEffect(() => {
+        setCandidatesLoading(true);
+        renterService.searchWarehouses({ page: 0, size: 50 })
+            .then((data) => {
+                const list = data.content || [];
+                setWarehouseEntitiesList(list);
+                console.log("[AI/init] loaded", list.length, "warehouses on mount");
+            })
+            .catch((err) => console.warn("[AI/init] failed to preload warehouses:", err?.message))
+            .finally(() => setCandidatesLoading(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Restore the latest saved conversation on mount.
+    // Guard: if the user sends a message before the fetch returns, skip restore
+    // so we don't overwrite their in-progress turn.
+    useEffect(() => {
+        if (!currentUser) return;
+        let cancelled = false;
+        console.log("[AI/restore] fetching latest conversation for user", currentUser.id_user);
+        aiAPI.getConversationsByUser(currentUser.id_user ?? 0)
+            .then(convs => {
+                if (cancelled) return;
+                console.log("[AI/restore] found", convs.length, "conversations");
+                if (convs.length === 0) return;
+                const latest = convs[0];
+                let parsed: ChatMsg[] = [];
+                try {
+                    const raw = typeof latest.message === 'string'
+                        ? JSON.parse(latest.message)
+                        : latest.message;
+                    if (Array.isArray(raw) && raw.length > 0) {
+                        parsed = raw.map((m: any, i: number) => ({
+                            id: m.id ?? `restored-${i}`,
+                            role: m.role === 'user' ? 'user' : 'ai',
+                            content: String(m.content ?? ''),
+                            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+                        }));
+                    }
+                } catch { /* malformed JSON — skip */ }
+                if (parsed.length === 0) return;
+                // Only restore if the user hasn't started a new conversation yet
+                if (conversationIdRef.current !== 0) return;
+                console.log("[AI/restore] restoring", parsed.length, "messages from conversation", latest.id_ai_conversations);
+                setChatMessages([makeWelcomeMsg(), ...parsed]);
+                conversationIdRef.current = latest.id_ai_conversations;
+                cumulativeTokensRef.current = {
+                    input: latest.total_input_tokens ?? 0,
+                    output: latest.total_output_tokens ?? 0,
+                };
+            })
+            .catch((err) => console.warn("[AI/restore] failed to load conversation:", err?.message));
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
         if (chatScrollRef.current) {
             chatScrollRef.current.scrollTo({
                 top: chatScrollRef.current.scrollHeight,
@@ -104,6 +192,12 @@ export default function AISearchWarehouse() {
     const persistConversation = useCallback(
         (msgs: ChatMsg[], whCount: number) => {
             if (!currentUser || !conversationIdRef.current || msgs.length === 0) return;
+            console.log("[AI/persist] saving conversation", {
+                id: conversationIdRef.current,
+                turns: msgs.length,
+                warehouseCount: whCount,
+                tokens: cumulativeTokensRef.current,
+            });
             const record: CompositeAiConversations = {
                 id_ai_conversations: conversationIdRef.current,
                 id_user: currentUser.id_user,
@@ -122,7 +216,7 @@ export default function AISearchWarehouse() {
                 update_at: new Date().toISOString(),
             };
             aiAPI.saveConversation(record).catch((err) =>
-                console.log("[ai/conv] Save error:", err?.message),
+                console.log("[AI/persist] save error:", err?.message),
             );
         },
         [currentUser],
@@ -133,48 +227,138 @@ export default function AISearchWarehouse() {
         warehouses: CompositeWarehouse[],
         history: ChatMsg[],
     ): Promise<AIResponsePayload> => {
+        const isHandshake = history.filter((m) => m.role === "ai").length === 0;
+        console.log("[AI/standard] → sending", {
+            mode: "standard",
+            prompt,
+            isInitialHandshake: isHandshake,
+            warehouseCount: warehouses.slice(0, 12).length,
+            historyTurns: history.length,
+        });
+        const strippedWarehouses = warehouses.slice(0, 12).map(w => {
+            const { images, ...rest } = w;
+            return rest;
+        });
         const payload: AIRequestPayload = {
             prompt,
             criteria: {},
-            matchingWarehouses: warehouses.slice(0, 12),
+            matchingWarehouses: strippedWarehouses,
             conversationHistory: history.map((m) => ({ role: m.role, content: m.content })),
-            isInitialHandshake: history.length === 0,
+            isInitialHandshake: isHandshake,
             hasCriteria: false,
         };
         setAiPayload(payload);
-        return aiAPI.chat(payload);
+        const result = await aiAPI.chat(payload);
+        console.log("[AI/standard] ← received", {
+            textLength: result.text?.length,
+            refinedIds: result.refinedWarehouseIds,
+            usage: result.usage,
+            tokenExhausted: result.tokenExhausted,
+        });
+        return result;
     };
 
-    // Best-effort: fetch the candidate universe the AI will reason about.
-    // Returns [] on failure so callers can still proceed gracefully.
-    const fetchInitialCandidates = useCallback(async (): Promise<CompositeWarehouse[]> => {
+    const callAIContextBackend = async (
+        prompt: string,
+        warehouses: CompositeWarehouse[],
+        history: ChatMsg[],
+    ): Promise<AIResponsePayload> => {
+        console.log("[AI/context] → sending", {
+            mode: "context",
+            prompt,
+            warehouseCount: warehouses.length,
+            historyTurns: history.length,
+        });
+        const strippedWarehouses = warehouses.map(w => {
+            const { images, ...rest } = w;
+            return rest;
+        });
+        const result = await aiAPI.contextChat({
+            query: prompt,
+            conversationHistory: history.map((m) => ({ role: m.role, content: m.content })),
+            warehouses: strippedWarehouses,
+        });
+        console.log("[AI/context] ← received", {
+            textLength: result.text?.length,
+            refinedIds: result.refinedWarehouseIds,
+            usage: result.usage,
+            tokenExhausted: result.tokenExhausted,
+        });
+        return result;
+    };
+
+    // Fetch the candidate universe the AI will reason about, respecting current filters.
+    const fetchInitialCandidates = useCallback(async (currentFilters?: FilterOptions): Promise<CompositeWarehouse[]> => {
         try {
-            const data = await renterService.searchWarehouses({ page: 0, size: 50 });
+            const params = currentFilters ? buildCandidateParams(currentFilters) : { page: 0, size: 50 };
+            console.log("[AI/candidates] fetching with params", params);
+            const data = await renterService.searchWarehouses(params);
+            const count = data.content?.length ?? 0;
+            console.log("[AI/candidates] fetched", count, "warehouses");
             return data.content || [];
         } catch (searchErr) {
-            console.warn("[AISearch] candidate list failed, continuing with empty list:", searchErr);
+            console.warn("[AI/candidates] fetch failed, continuing with empty list:", searchErr);
             return [];
         }
+    }, []);
+
+    const handleApplyFilters = useCallback(async () => {
+        setCandidatesLoading(true);
+        try {
+            const candidates = await fetchInitialCandidates(filters);
+            // Store filter results as the entity pool; display is driven by AI only
+            setWarehouseEntitiesList(candidates);
+            setWarehousesRevealed(false);
+        } finally {
+            setCandidatesLoading(false);
+        }
+    }, [filters, fetchInitialCandidates]);
+
+    const handleClearFilters = useCallback(() => {
+        setFilters({ provinces: [], cities: [], priceUnits: [] });
+    }, []);
+
+    const handleNewConversation = useCallback(() => {
+        setChatMessages([makeWelcomeMsg()]);
+        setChatInput("");
+        setAiError(null);
+        conversationIdRef.current = 0;
+        conversationCreatedAtRef.current = "";
+        cumulativeTokensRef.current = { input: 0, output: 0 };
     }, []);
 
     const handleChatSend = async (text?: string) => {
         const msg = (text ?? chatInput).trim();
         if (!msg || chatLoading) return;
+        console.log("[AI/send] user message:", msg, "| mode:", searchMode, "| candidates:", warehouseEntitiesList.length);
         setChatInput("");
         setAiError(null);
 
-        // Lazy-init on the first prompt: seed the conversation id, token counters,
-        // and (if not already loaded) the candidate warehouse list. This replaces
-        // the old auto-handshake and keeps the page quiet until the user engages.
-        const isFirstPrompt = initialList.length === 0 && conversationIdRef.current === 0;
+        // Lazy-init on the first prompt: seed the conversation id and token counters.
+        const isFirstPrompt = conversationIdRef.current === 0;
         if (isFirstPrompt) {
             conversationIdRef.current = Date.now();
             conversationCreatedAtRef.current = new Date().toISOString();
             cumulativeTokensRef.current = { input: 0, output: 0 };
-            const candidates = await fetchInitialCandidates();
-            if (candidates.length > 0) {
-                setInitialList(candidates);
-                setDisplayedList(candidates);
+        }
+        // Context mode requires a non-empty entity pool to analyze.
+        let localCandidates = warehouseEntitiesList;
+        if (searchMode === "context" && localCandidates.length === 0) {
+            const noListMsg: ChatMsg = {
+                id: (Date.now() + 1).toString(),
+                role: "ai",
+                content: "Chế độ **Ngữ cảnh** cần danh sách kho để phân tích. Hãy áp dụng bộ lọc bên trên trước rồi thử lại.",
+                timestamp: new Date(),
+            };
+            setChatMessages((prev) => [...prev, { id: Date.now().toString(), role: "user", content: msg, timestamp: new Date() }, noListMsg]);
+            return;
+        }
+
+        // Standard mode: auto-fetch if pool is still empty (edge case: fetch failed on mount).
+        if (searchMode === "standard" && localCandidates.length === 0) {
+            localCandidates = await fetchInitialCandidates(filters);
+            if (localCandidates.length > 0) {
+                setWarehouseEntitiesList(localCandidates);
             }
         }
 
@@ -183,33 +367,27 @@ export default function AISearchWarehouse() {
 
         setChatLoading(true);
         try {
-            // Always read the freshest initialList — the lazy-init above may have
-            // just set it on this very same tick.
-            const universe = initialList.length > 0 ? initialList : await fetchInitialCandidates().then((c) => {
-                if (c.length > 0) {
-                    setInitialList(c);
-                    setDisplayedList(c);
-                }
+            const universe = localCandidates.length > 0 ? localCandidates : (searchMode === "standard" ? await fetchInitialCandidates(filters).then((c) => {
+                if (c.length > 0) { setWarehouseEntitiesList(c); }
                 return c;
-            });
-            const response = await callAIBackend(
-                msg,
-                universe,
-                [...chatMessages, userMsg].filter((m) => !m.id.startsWith("welcome-")),
-            );
+            }) : []);
+            const history = [...chatMessages, userMsg].filter((m) => !m.id.startsWith("welcome-"));
+            const response = searchMode === "context"
+                ? await callAIContextBackend(msg, universe, history)
+                : await callAIBackend(msg, universe, history);
 
             if (response.usage) {
                 cumulativeTokensRef.current.input += response.usage.input_tokens;
                 cumulativeTokensRef.current.output += response.usage.output_tokens;
             }
 
-            const refinedList = pickWarehouseList(response, initialList);
+            const refinedList = pickWarehouseList(response, warehouseEntitiesList);
 
             const aiMsg: ChatMsg = {
                 id: (Date.now() + 1).toString(),
                 role: "ai",
                 content: response.text,
-                refinedList: refinedList !== initialList ? refinedList : undefined,
+                refinedList: refinedList !== warehouseEntitiesList ? refinedList : undefined,
                 timestamp: new Date(),
             };
             setChatMessages((prev) => {
@@ -217,17 +395,31 @@ export default function AISearchWarehouse() {
                 // Strip the static welcome banner — it's a UI hint, not a real AI turn.
                 persistConversation(
                     updated.filter((m) => !m.id.startsWith("welcome-")),
-                    initialList.length,
+                    warehouseEntitiesList.length,
                 );
                 return updated;
             });
+            // displayedList is exclusively driven by AI results
             setDisplayedList(refinedList);
-            // If the BE explicitly returned a warehouse list, that becomes the new
-            // candidate universe for subsequent follow-ups. Otherwise keep the original.
+            // If the BE explicitly returned a new warehouse list, update the entity pool
+            // so subsequent follow-up queries use the freshest universe.
             if (response.warehouses && response.warehouses.length > 0) {
-                setInitialList(response.warehouses);
+                setWarehouseEntitiesList(response.warehouses);
             }
             setWarehousesRevealed(true);
+
+            if (response.tokenExhausted) {
+                const noticeMsg: ChatMsg = {
+                    id: (Date.now() + 2).toString(),
+                    role: "ai",
+                    content:
+                        "Token AI đã hết. Cuộc hội thoại này đã được lưu.\n\nTin nhắn tiếp theo sẽ bắt đầu một cuộc hội thoại mới.",
+                    timestamp: new Date(),
+                };
+                setChatMessages((prev) => [...prev, noticeMsg]);
+                conversationIdRef.current = 0;
+                cumulativeTokensRef.current = { input: 0, output: 0 };
+            }
         } catch (err: any) {
             if (isAINotConfigured(err)) {
                 const fallbackMsg: ChatMsg = {
@@ -275,10 +467,78 @@ export default function AISearchWarehouse() {
                 <div className="max-w-[1400px] mx-auto px-6 py-4">
                     <h1 className="text-xl font-semibold">Tìm kho lạnh bằng AI</h1>
                     <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-                        Mô tả nhu cầu của bạn — AI sẽ tự động tìm kho phù hợp và cập nhật danh sách bên phải theo hội thoại.
+                        Lọc thủ công bên dưới để thu hẹp phạm vi, sau đó mô tả nhu cầu cho AI để tìm kho phù hợp nhất.
                     </p>
                 </div>
             </div>
+
+            {/* ── Search mode toggle ── */}
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+                <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center gap-2">
+                    <span className="text-xs text-[var(--color-text-secondary)] mr-1">Chế độ:</span>
+                    <button
+                        onClick={() => {
+                            if (searchMode === "standard") return;
+                            setSearchMode("standard");
+                            setChatMessages([{ id: "welcome-billing", role: "ai", content: `Xin chào! Tôi là trợ lý AI của **Logicha**, sẵn sàng giúp bạn tìm kho lạnh phù hợp nhất.\n\nBạn có thể mô tả nhu cầu bằng ngôn ngữ tự nhiên, ví dụ:\n- *"Kho lạnh ở Hồ Chí Minh, bảo quản hải sản đông lạnh"*\n- *"Tìm kho rẻ nhất dưới 300.000đ/m³"*\n\n_Tôi sẽ phân tích và gợi ý kho phù hợp cho bạn!_`, timestamp: new Date() }]);
+                            conversationIdRef.current = 0;
+                            cumulativeTokensRef.current = { input: 0, output: 0 };
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${searchMode === "standard" ? "bg-blue-600 text-white" : "bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]"}`}
+                    >
+                        Tiêu chuẩn
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (searchMode === "context") return;
+                            setSearchMode("context");
+                            setChatMessages([{ id: "welcome-billing", role: "ai", content: `Chế độ **Ngữ cảnh** — AI sẽ phân tích toàn bộ thông tin chi tiết của từng kho trong danh sách lọc.\n\n⚠ Chế độ này **tốn nhiều token hơn**. Hãy áp dụng bộ lọc trước để giảm số kho cần phân tích.\n\nSau khi lọc, hãy mô tả nhu cầu của bạn.`, timestamp: new Date() }]);
+                            conversationIdRef.current = 0;
+                            cumulativeTokensRef.current = { input: 0, output: 0 };
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${searchMode === "context" ? "bg-orange-500 text-white" : "bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]"}`}
+                    >
+                        Ngữ cảnh ▲ Tốn token hơn
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Context mode cost warning ── */}
+            {searchMode === "context" && (
+                <div className="bg-orange-50 border-b border-orange-200 px-6 py-2">
+                    <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+                        <p className="text-xs text-orange-800">
+                            ⚠ Chế độ ngữ cảnh đang gửi <strong>{warehouseEntitiesList.length} kho</strong> cho AI — tốn nhiều token hơn chế độ tiêu chuẩn.
+                            {warehouseEntitiesList.length === 0 && " Áp dụng bộ lọc trước để tải danh sách kho."}
+                        </p>
+                        <button
+                            onClick={() => document.querySelector<HTMLElement>("[data-filter-bar]")?.scrollIntoView({ behavior: "smooth" })}
+                            className="shrink-0 text-xs font-semibold text-orange-700 hover:text-orange-900 underline"
+                        >
+                            Lọc ngay ↑
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Manual pre-filter bar — only shown in context mode ── */}
+            {searchMode === "context" && (
+                <div className="border-b border-[var(--color-border)] bg-white" data-filter-bar="true">
+                    <div className="max-w-[1400px] mx-auto">
+                        <SearchSidebar
+                            sidebarOpen={true}
+                            setSidebarOpen={() => { }}
+                            filters={filters}
+                            setLocalFilters={setFilters}
+                            handleSearch={handleApplyFilters}
+                            clearFilters={handleClearFilters}
+                            loading={candidatesLoading}
+                            certifications={filterMeta?.certifications || []}
+                            locations={filterMeta?.locations || []}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="max-w-[1400px] mx-auto px-6 py-6">
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
@@ -295,6 +555,7 @@ export default function AISearchWarehouse() {
                             setChatInput={setChatInput}
                             handleChatSend={handleChatSend}
                             handleChatKeyDown={handleChatKeyDown}
+                            onNewConversation={handleNewConversation}
                         />
                     </div>
                     <div className="lg:col-span-3">
