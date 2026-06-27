@@ -25,7 +25,7 @@ const TABS: { key: StatusFilter; label: string }[] = [
 export default function ManageWarehouses() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { users } = useApp();
+  const { users, incrementWarehouseRevision } = useApp();
 
   const [tab, setTab] = useState<StatusFilter>('all');
   const [search, setSearch] = useState(location.state?.searchWarehouse || '');
@@ -64,9 +64,9 @@ export default function ManageWarehouses() {
     return () => { mounted = false; };
   }, []);
 
-  const fetchPage = useCallback(async (p: number, t: StatusFilter, isPreload: boolean = false) => {
+  const fetchPage = useCallback(async (p: number, t: StatusFilter, isPreload: boolean = false, forceRefetch: boolean = false) => {
     const cacheKey = `${t}_${p}`;
-    if (cache[cacheKey]) {
+    if (!forceRefetch && cache[cacheKey]) {
       if (!isPreload) {
         setWarehouses(cache[cacheKey].list);
         setTotalPages(cache[cacheKey].totalPages);
@@ -169,49 +169,105 @@ export default function ManageWarehouses() {
   };
 
   const handleApproveImmediate = async (w: CompositeWarehouse) => {
+    const prevStatus = w.status;
+    // Optimistic update
+    setWarehouses(prev => prev.map(wh =>
+      wh.id_warehouse === w.id_warehouse ? { ...wh, status: 'active' } : wh
+    ));
     try {
       await employeeService.acceptWarehouse(w.id_warehouse);
       toast.success('Kho đã được duyệt');
-      setCache({}); // Invalidate cache
-      setPage(0);
-      fetchPage(0, tab);
+      incrementWarehouseRevision();
     } catch (err) {
       toast.error('Có lỗi xảy ra khi duyệt kho');
+      // Rollback on failure
+      setWarehouses(prev => prev.map(wh =>
+        wh.id_warehouse === w.id_warehouse ? { ...wh, status: prevStatus } : wh
+      ));
+      return;
     }
+    setCache({});
+    setPage(0);
+    refreshTabCounts();
+    fetchPage(0, tab, false, true);
   };
 
   const handleRejectImmediate = async (w: CompositeWarehouse) => {
+    const prevStatus = w.status;
+    // Optimistic update
+    setWarehouses(prev => prev.map(wh =>
+      wh.id_warehouse === w.id_warehouse ? { ...wh, status: 'rejected' } : wh
+    ));
     try {
       await employeeService.rejectWarehouse(w.id_warehouse);
       toast.success('Kho đã bị từ chối');
-      setCache({}); // Invalidate cache
-      setPage(0);
-      fetchPage(0, tab);
+      incrementWarehouseRevision();
     } catch (err) {
       toast.error('Có lỗi xảy ra khi từ chối kho');
+      // Rollback on failure
+      setWarehouses(prev => prev.map(wh =>
+        wh.id_warehouse === w.id_warehouse ? { ...wh, status: prevStatus } : wh
+      ));
+      return;
     }
+    setCache({});
+    setPage(0);
+    refreshTabCounts();
+    fetchPage(0, tab, false, true);
   };
 
   const handleDeactivate = async (w: CompositeWarehouse) => {
+    const prevStatus = w.status;
+    // Optimistic update
+    setWarehouses(prev => prev.map(wh =>
+      wh.id_warehouse === w.id_warehouse ? { ...wh, status: 'inactive' } : wh
+    ));
     try {
       // await employeeService.hideWarehouse(w.id_warehouse);
       toast.info('API ẩn kho chưa được hỗ trợ');
-      setCache({}); // Invalidate cache
-      fetchPage(page, tab);
     } catch (err) {
       toast.error('Có lỗi xảy ra khi ẩn kho');
+      // Rollback
+      setWarehouses(prev => prev.map(wh =>
+        wh.id_warehouse === w.id_warehouse ? { ...wh, status: prevStatus } : wh
+      ));
+      return;
     }
+    setCache({});
+    refreshTabCounts();
+    fetchPage(page, tab);
   };
 
   const handleDeleteImmediate = async (w: CompositeWarehouse) => {
+    const prevStatus = w.status;
+    // Optimistic update
+    setWarehouses(prev => prev.map(wh =>
+      wh.id_warehouse === w.id_warehouse ? { ...wh, status: 'rejected' } : wh
+    ));
     try {
       await employeeService.rejectWarehouse(w.id_warehouse);
       toast.success('Đã xoá / từ chối kho');
-      setCache({}); // Invalidate cache
-      setPage(0);
-      fetchPage(0, tab);
+      incrementWarehouseRevision();
     } catch (err) {
       toast.error('Có lỗi xảy ra khi xoá kho');
+      // Rollback on failure
+      setWarehouses(prev => prev.map(wh =>
+        wh.id_warehouse === w.id_warehouse ? { ...wh, status: prevStatus } : wh
+      ));
+      return;
+    }
+    setCache({});
+    setPage(0);
+    refreshTabCounts();
+    fetchPage(0, tab, false, true);
+  };
+
+  const refreshTabCounts = () => {
+    const tabs: StatusFilter[] = ['all', 'pending', 'active', 'rejected'];
+    for (const t of tabs) {
+      fetchPage(0, t, true).then(data => {
+        if (data) setCounts(prev => ({ ...prev, [t]: data.totalElements }));
+      });
     }
   };
 
@@ -225,11 +281,11 @@ export default function ManageWarehouses() {
             rejectReason
         });
         toast.success(status === 'VERIFIED' ? 'Đã duyệt chứng nhận!' : 'Đã từ chối chứng nhận!');
+        incrementWarehouseRevision();
         setReviewingCert(null);
-        // We probably want to re-fetch or the user will just close the row and reopen it.
-        // For now, refreshing the whole list is the safest to keep it in sync.
-        setCache({}); // Invalidate cache
-        fetchPage(page, tab);
+        setCache({});
+        refreshTabCounts();
+        fetchPage(page, tab, false, true);
         setRefetchCounter(prev => prev + 1);
     } catch (err) {
         toast.error('Có lỗi xảy ra khi xét duyệt chứng nhận.');

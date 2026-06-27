@@ -6,7 +6,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
 import type {
   User,
   CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating,
-  CertificationType, CompositeAiConversations
+  CertificationType, CompositeAiConversations, PriceTier, CompositeWarehouseSection
 } from '../types';
 import { MockUsers } from '../data/mockUsers';
 import { MockWarehouseData } from '../data/mockWarehouses';
@@ -230,6 +230,123 @@ import { AIRequestPayload, AIResponsePayload, AIStatusResult } from '../types';
 
 let conversations: CompositeAiConversations[] = [];
 
+/**
+ * Convert a backend `WarehouseResponseDTO` (camelCase, uses `id`) into the FE's
+ * `CompositeWarehouse` shape (snake_case, uses `id_warehouse`). Best-effort — fills
+ * defaults so the FE's existing renderers don't crash on missing fields.
+ */
+function normalizeBackendWarehouse(raw: unknown): CompositeWarehouse | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const w = raw as Record<string, unknown>;
+    const id = Number(w.id ?? (w as Record<string, unknown>)['id_warehouse'] ?? 0);
+    if (!id) return null;
+    const rawSections = Array.isArray(w.sections) ? (w.sections as Array<Record<string, unknown>>) : [];
+    const sections: CompositeWarehouseSection[] = rawSections.map((s) => ({
+        id_section: Number(s.id ?? s['id_section'] ?? 0),
+        id_warehouse: undefined,
+        label: typeof s.name === 'string' ? s.name : typeof s.label === 'string' ? s.label : undefined,
+        sector: Number(s.sector ?? 0),
+        total_capacity: Number(s.totalCapacity ?? s['total_capacity'] ?? 0),
+        available_capacity: Number(s.availableCapacity ?? s['available_capacity'] ?? 0),
+        temp_min: Number(s.tempMin ?? s['temp_min'] ?? 0),
+        temp_max: Number(s.tempMax ?? s['temp_max'] ?? 0),
+        humidity: Number(s.humidity ?? 0),
+        hasCertification: Boolean(s.hasCertification),
+        name: typeof s.name === 'string' ? s.name : undefined,
+        description: typeof s.description === 'string' ? s.description : undefined,
+        priceTiers: Array.isArray(s.priceTiers)
+            ? (s.priceTiers as Array<Record<string, unknown>>).map(normalizePriceTier)
+            : [],
+        availability: typeof s.availability === 'string' ? s.availability : undefined,
+    }));
+
+    return {
+        id_warehouse: id,
+        name: String(w.name ?? ''),
+        address: String(w.locationAddressText ?? w.address ?? ''),
+        description: String(w.description ?? ''),
+        location_address_text: String(w.locationAddressText ?? ''),
+        location_province: String(w.locationProvince ?? ''),
+        location_district: '',
+        location_commune: String(w.locationCommune ?? ''),
+        location_long: 0,
+        location_lat: 0,
+        location_postal_code: '',
+        isSponsor: Boolean(w.isSponsor),
+        status: String(w.status ?? 'ACTIVE'),
+        location: {
+            address: w.locationAddressText ?? '',
+            province: w.locationProvince ?? '',
+            commune: w.locationCommune ?? '',
+        },
+        ownerName: '',
+        stats: {
+            views: 0,
+            rating: Number(w.averageRating ?? 0),
+            reviews: Number(w.totalReviews ?? 0),
+            available_capacity: sections.reduce((sum, s) => sum + s.available_capacity, 0),
+            total_capacity: sections.reduce((sum, s) => sum + s.total_capacity, 0),
+            temp_min: sections.length > 0 ? Math.min(...sections.map((s) => s.temp_min)) : 0,
+            temp_max: sections.length > 0 ? Math.max(...sections.map((s) => s.temp_max)) : 0,
+        },
+        certifications: Array.isArray(w.certificates) ? w.certificates : [],
+        priceTiers: [],
+        sections,
+        images: Array.isArray(w.images)
+            ? (w.images as Array<Record<string, unknown>>).map((img) => {
+                  if (typeof img === 'string') return img;
+                  // BE returns { id, imageUrl, isThumbnail } (camelCase); FE expects { image_url } (snake_case)
+                  return {
+                      id: Number(img.id ?? 0),
+                      image_url: String(img.imageUrl ?? img['image_url'] ?? ''),
+                      is_thumbnail: Boolean(img.isThumbnail),
+                  };
+              })
+            : [],
+        availability: 'AVAILABLE',
+        createdAt: '',
+        updatedAt: '',
+        ratingScore: Number(w.averageRating ?? 0),
+        ratingCount: Number(w.totalReviews ?? 0),
+        subscriptionTier: 'free',
+        pendingRequestCount: Number(w.pendingRequestCount ?? 0),
+    };
+}
+
+/**
+ * Map a backend `PriceTierDTO` (camelCase, no time-unit field) into the FE's
+ * `PriceTier` snake_case shape. The FE's `PriceTier.unit` is a time-unit code
+ * ("year"|"month"|"week"|"day") used to look up the human label in PRICE_TIER_OPTIONS.
+ * We derive it from the BE's `label` (e.g. "Theo tháng" → "month").
+ */
+function normalizePriceTier(raw: Record<string, unknown>): PriceTier {
+    const areaUnit = String(raw.areaUnit ?? '');
+    const label = String(raw.label ?? '');
+
+    const lcLabel = label.toLowerCase();
+    let timeUnit: string | undefined;
+    let timeCode: string = areaUnit; // default fallback (no recognizable time label)
+    if (lcLabel.includes('năm') || lcLabel.includes('nam') || lcLabel.includes('year')) {
+        timeUnit = 'year'; timeCode = 'year';
+    } else if (lcLabel.includes('tháng') || lcLabel.includes('thang') || lcLabel.includes('month')) {
+        timeUnit = 'month'; timeCode = 'month';
+    } else if (lcLabel.includes('tuần') || lcLabel.includes('tuan') || lcLabel.includes('week')) {
+        timeUnit = 'week'; timeCode = 'week';
+    } else if (lcLabel.includes('ngày') || lcLabel.includes('ngay') || lcLabel.includes('day')) {
+        timeUnit = 'day'; timeCode = 'day';
+    }
+
+    return {
+        id: Number(raw.id ?? 0),
+        id_price_tier: Number(raw.id ?? 0),
+        label,
+        value: Number(raw.value ?? 0),
+        unit: timeCode,        // time-unit code so PRICE_TIER_OPTIONS lookup works
+        areaUnit,              // area-unit code ("m3", "pallet", "chuyến", ...)
+        timeUnit,
+    };
+}
+
 export const aiAPI = {
   chat: async (payload: AIRequestPayload): Promise<AIResponsePayload> => {
     const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
@@ -240,14 +357,30 @@ export const aiAPI = {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ query: payload.prompt }),
+      body: JSON.stringify({
+        query: payload.prompt,
+        conversationHistory: JSON.stringify(payload.conversationHistory ?? []),
+        criteria: payload.criteria ?? {},
+        matchingWarehouses: payload.matchingWarehouses ?? [],
+        isInitialHandshake: payload.isInitialHandshake ?? false,
+      }),
     });
     if (!res.ok) {
       const err = await res.text();
       throw new Error(err || `HTTP ${res.status}`);
     }
     const data = await res.json();
-    return { text: data.response, usage: payload.isInitialHandshake ? { input_tokens: 0, output_tokens: 0 } : undefined };
+    const refinedIds: string[] | undefined = Array.isArray(data.refinedWarehouseIds)
+        ? data.refinedWarehouseIds.map((v: unknown) => String(v))
+        : data.warehouses?.content?.map((w: { id?: number }) => String(w.id ?? ''));
+    return {
+      text: data.response ?? '',
+      refinedWarehouseIds: refinedIds?.filter((id: string) => id !== ''),
+      warehouses: Array.isArray(data.warehouses?.content)
+          ? (data.warehouses.content as unknown[]).map(normalizeBackendWarehouse).filter((w): w is CompositeWarehouse => w !== null)
+          : undefined,
+      usage: { input_tokens: data.inputTokens ?? 0, output_tokens: data.outputTokens ?? 0 },
+    };
   },
 
   status: async (): Promise<AIStatusResult> => {

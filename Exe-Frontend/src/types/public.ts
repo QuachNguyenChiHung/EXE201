@@ -88,12 +88,15 @@ export interface FilterOptions {
   maxCapacity?: number;
   minPrice?: number;
   maxPrice?: number;
+  priceUnits?: ('day' | 'week' | 'month' | 'year')[];
   temperatureRange?: { min: number; max: number };
   availability?: ('available' | 'partially')[];
   certificationRequired?: boolean;
   certifications?: string[];
   features?: string[];
   securityLevel?: ('basic' | 'medium' | 'high')[];
+  ratingMin?: number;
+  ratingMax?: number;
 }
 
 export interface SearchResult {

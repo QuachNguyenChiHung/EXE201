@@ -1,8 +1,25 @@
 import { useState } from "react";
 import { FilterOptions } from "../../../types";
 import { Input } from "../ui/input";
-import { Search, X, MapPin, ChevronDown, ChevronUp, Filter as FilterIcon, ShieldCheck } from "lucide-react";
+import { Search, MapPin, ChevronDown, Filter as FilterIcon, ShieldCheck, Star } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import vietnamDistricts from "../../../data/vietnamDistricts.json";
+
+type PriceUnit = 'day' | 'week' | 'month' | 'year';
+
+const PRICE_UNIT_LABELS: Record<PriceUnit, string> = {
+  day: 'Ngày',
+  week: 'Tuần',
+  month: 'Tháng',
+  year: 'Năm',
+};
+
+const PRICE_UNIT_TO_MONTHLY: Record<PriceUnit, number> = {
+  month: 1,
+  day: 30,
+  week: 4,
+  year: 1 / 12,
+};
 
 interface SearchSidebarProps {
   sidebarOpen: boolean;
@@ -12,7 +29,6 @@ interface SearchSidebarProps {
   handleSearch: () => void;
   clearFilters: () => void;
   loading: boolean;
-  locations: string[];
   certifications?: any[];
 }
 
@@ -22,7 +38,6 @@ export function SearchSidebar({
   handleSearch,
   clearFilters,
   loading,
-  locations,
   certifications = [],
 }: SearchSidebarProps) {
   const toggleProvince = (province: string) => {
@@ -47,18 +62,20 @@ export function SearchSidebar({
   };
 
   // Helper to count active filters
-  const activeCount = 
+  const activeCount =
     (filters.provinces?.length || 0) +
     (filters.certifications?.length || 0) +
     (filters.minCapacity ? 1 : 0) +
     (filters.maxCapacity ? 1 : 0) +
     (filters.minPrice ? 1 : 0) +
-    (filters.maxPrice ? 1 : 0);
+    (filters.maxPrice ? 1 : 0) +
+    ((filters.ratingMin !== undefined) || (filters.ratingMax !== undefined) ? 1 : 0) +
+    (filters.priceUnits?.length ? 1 : 0);
 
   return (
     <div className="w-full flex flex-col md:flex-row items-start md:items-center justify-between px-3 sm:px-5 py-3 gap-3 bg-white">
       <div className="flex flex-wrap items-center gap-2 flex-1">
-        
+
         {/* Địa điểm */}
         <Popover>
           <PopoverTrigger asChild>
@@ -66,10 +83,10 @@ export function SearchSidebar({
               <MapPin size={14} /> Địa điểm {filters.provinces && filters.provinces.length > 0 && `(${filters.provinces.length})`} <ChevronDown size={14} />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4 bg-white" align="start">
+          <PopoverContent className="w-80 p-4 bg-white max-h-80 overflow-y-auto" align="start">
             <h4 className="font-semibold text-sm mb-3 text-gray-800">Chọn tỉnh / thành phố</h4>
             <div className="flex flex-wrap gap-2">
-              {locations.map((province) => (
+              {Object.keys(vietnamDistricts).sort().map((province) => (
                 <button
                   key={province}
                   onClick={() => toggleProvince(province)}
@@ -126,12 +143,41 @@ export function SearchSidebar({
         {/* Giá */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${(filters.minPrice || filters.maxPrice) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+            <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${(filters.minPrice || filters.maxPrice || (filters.priceUnits && filters.priceUnits.length > 0 && filters.priceUnits.length < 4)) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
               Mức giá <ChevronDown size={14} />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-64 p-4 bg-white" align="start">
-            <h4 className="font-semibold text-sm mb-3 text-gray-800">Giá (VNĐ/m²/tháng)</h4>
+          <PopoverContent className="w-80 p-4 bg-white" align="start">
+            <h4 className="font-semibold text-sm text-gray-800 mb-3">Mức giá(VNĐ)</h4>
+            {/* Time-unit multi-select */}
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {(['day', 'week', 'month', 'year'] as PriceUnit[]).map((unit) => {
+                const selected = filters.priceUnits?.includes(unit) ?? false;
+                return (
+                  <button
+                    key={unit}
+                    onClick={() =>
+                      setLocalFilters((prev) => {
+                        const current = prev.priceUnits ?? [];
+                        return {
+                          ...prev,
+                          priceUnits: selected
+                            ? current.filter((u) => u !== unit)
+                            : [...current, unit],
+                        };
+                      })
+                    }
+                    className={`px-3 py-1 rounded-full text-[12px] border transition-colors ${selected
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                      }`}
+                  >
+                    {PRICE_UNIT_LABELS[unit]}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="flex flex-col gap-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Tối thiểu</label>
@@ -153,6 +199,71 @@ export function SearchSidebar({
                   value={filters.maxPrice ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setLocalFilters((prev) => ({ ...prev, maxPrice: Number((e.target as HTMLInputElement).value) || undefined }))
+                  }
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Đánh giá */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`h-8 px-3 rounded-full border text-[13px] flex items-center gap-1.5 transition-colors ${(filters.ratingMin !== undefined || filters.ratingMax !== undefined) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              <Star size={14} style={{ color: '#facc15', fill: '#facc15' }} />
+              Đánh giá
+              {filters.ratingMin !== undefined || filters.ratingMax !== undefined ? (
+                <span className="text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>
+                  {filters.ratingMin ?? 1}–{filters.ratingMax ?? 5}
+                </span>
+              ) : null}
+              <ChevronDown size={14} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-4 bg-white" align="start">
+            <h4 className="font-semibold text-sm text-gray-800 mb-3">Khoảng đánh giá</h4>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Tối thiểu</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  placeholder="1"
+                  value={filters.ratingMin ?? ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setLocalFilters((prev) => {
+                      const val = Number((e.target as HTMLInputElement).value);
+                      const newMin = (val >= 1 && val <= 5) ? val : undefined;
+                      const currentMax = prev.ratingMax;
+                      const newMax = newMin !== undefined && currentMax !== undefined && currentMax < newMin
+                        ? newMin
+                        : currentMax;
+                      return { ...prev, ratingMin: newMin, ratingMax: newMax };
+                    })
+                  }
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Tối đa</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  placeholder="5"
+                  value={filters.ratingMax ?? ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setLocalFilters((prev) => {
+                      const val = Number((e.target as HTMLInputElement).value);
+                      const newMax = (val >= 1 && val <= 5) ? val : undefined;
+                      const currentMin = prev.ratingMin;
+                      const newMin = newMax !== undefined && currentMin !== undefined && newMax < currentMin
+                        ? newMax
+                        : currentMin;
+                      return { ...prev, ratingMax: newMax, ratingMin: newMin };
+                    })
                   }
                   className="h-8 text-sm"
                 />

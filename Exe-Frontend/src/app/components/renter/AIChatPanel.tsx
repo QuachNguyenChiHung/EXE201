@@ -56,7 +56,7 @@ export function AIChatPanel({
     handleChatKeyDown
 }: AIChatPanelProps) {
     return (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-col" style={{ position: "sticky", top: "120px", maxHeight: "calc(100vh - 140px)" }}>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-col" style={{ position: "sticky", top: "120px", height: "calc(100vh - 220px)" }}>
             <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-primary)] text-white shrink-0">
                 <div className="w-7 h-7 bg-white bg-opacity-20 flex items-center justify-center"><Sparkles className="h-4 w-4" /></div>
                 <div>
@@ -69,22 +69,42 @@ export function AIChatPanel({
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" ref={chatScrollRef}>
-                {chatMessages.map((msg) => (
-                    <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        {msg.role === "ai" && (
-                            <div className="w-6 h-6 bg-[var(--color-primary)] flex items-center justify-center shrink-0 mt-0.5"><Bot className="h-3.5 w-3.5 text-white" /></div>
-                        )}
-                        <div className={`max-w-[85%] px-3 py-2.5 text-sm leading-relaxed ${msg.role === "user" ? "bg-[var(--color-primary)] text-white" : "bg-[var(--color-bg-secondary)] text-[var(--color-text)]"}`}>
-                            {msg.role === "ai" ? renderMd(msg.content) : msg.content}
-                            {msg.refinedList && (
-                                <div className="mt-2 pt-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">↑ Danh sách bên phải đã cập nhật ({msg.refinedList.length} kho)</div>
+                {chatMessages.map((msg, idx) => {
+                    const isFirstAi = idx === 0 && msg.role === "ai";
+                    return (
+                        <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            {msg.role === "ai" && (
+                                <div className={`${isFirstAi ? "w-8 h-8 bg-[var(--color-primary)]" : "w-6 h-6 bg-[var(--color-primary)]"} flex items-center justify-center shrink-0 mt-0.5`}>
+                                    <Bot className={`${isFirstAi ? "h-4 w-4" : "h-3.5 w-3.5"} text-white`} />
+                                </div>
+                            )}
+                            {isFirstAi ? (
+                                <div className="flex-1 px-4 py-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 text-sm leading-relaxed text-[var(--color-text)] shadow-sm">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Sparkles className="h-4 w-4 text-[var(--color-primary)]" />
+                                        <span className="font-semibold text-[var(--color-primary)] text-sm">AI đã sẵn sàng hỗ trợ bạn</span>
+                                    </div>
+                                    {renderMd(msg.content)}
+                                    <div className="mt-2 pt-2 border-t border-blue-200 text-xs text-[var(--color-text-muted)]">
+                                        {displayedListCount > 0
+                                            ? `Hiện đang phân tích ${displayedListCount} kho bãi phù hợp cho bạn.`
+                                            : "Đang tìm kiếm kho phù hợp..."}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className={`max-w-[85%] px-3 py-2.5 text-sm leading-relaxed ${msg.role === "user" ? "bg-[var(--color-primary)] text-white" : "bg-[var(--color-bg-secondary)] text-[var(--color-text)]"}`}>
+                                    {renderMd(msg.content)}
+                                    {msg.refinedList && (
+                                        <div className="mt-2 pt-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">↑ Danh sách bên phải đã cập nhật ({msg.refinedList.length} kho)</div>
+                                    )}
+                                </div>
+                            )}
+                            {msg.role === "user" && (
+                                <div className="w-6 h-6 bg-[var(--color-bg-tertiary)] flex items-center justify-center shrink-0 mt-0.5"><User className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" /></div>
                             )}
                         </div>
-                        {msg.role === "user" && (
-                            <div className="w-6 h-6 bg-[var(--color-bg-tertiary)] flex items-center justify-center shrink-0 mt-0.5"><User className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" /></div>
-                        )}
-                    </div>
-                ))}
+                    );
+                })}
                 {chatLoading && (
                     <div className="flex gap-2 justify-start">
                         <div className="w-6 h-6 bg-[var(--color-primary)] flex items-center justify-center shrink-0"><Bot className="h-3.5 w-3.5 text-white" /></div>

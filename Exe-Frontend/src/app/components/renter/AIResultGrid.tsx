@@ -22,10 +22,12 @@ export function AIResultGrid({ displayedList, warehousesRevealed }: AIResultGrid
 
     if (displayedList.length > 0) {
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--color-border)] border border-[var(--color-border)]">
-                {displayedList.map((w) => (
-                    <WarehouseCard key={w.id_warehouse} warehouse={w} compact openInNewTab />
-                ))}
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {displayedList.map((w) => (
+                        <WarehouseCard key={w.id_warehouse} warehouse={w} compact openInNewTab />
+                    ))}
+                </div>
             </div>
         );
     }

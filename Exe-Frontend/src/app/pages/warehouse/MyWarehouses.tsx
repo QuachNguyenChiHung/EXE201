@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { ownerService } from '../../../services/ownerService';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { CompositeWarehouse } from '../../../types';
 import { MyWarehouseCard } from '../../components/owner/MyWarehouseCard';
 import { MyWarehouseCertsModal } from '../../components/owner/MyWarehouseCertsModal';
+import { useApp } from '../../../context/AppContext';
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'pending';
 const TABS: { key: StatusFilter; label: string; icon: any }[] = [
@@ -22,6 +23,7 @@ const TABS: { key: StatusFilter; label: string; icon: any }[] = [
 
 export default function MyWarehouses() {
   const navigate  = useNavigate();
+  const { warehouseRevision } = useApp();
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } });
   
   const [tab, setTab] = useState<StatusFilter>('all');
@@ -36,9 +38,9 @@ export default function MyWarehouses() {
   const [cache, setCache] = useState<Record<string, { list: CompositeWarehouse[], totalPages: number, totalElements: number }>>({});
   const [counts, setCounts] = useState<Record<string, number>>({ all: 0, active: 0, inactive: 0, pending: 0 });
 
-  const fetchPage = useCallback(async (p: number, t: StatusFilter, isPreload: boolean = false) => {
+  const fetchPage = useCallback(async (p: number, t: StatusFilter, isPreload: boolean = false, forceRefetch: boolean = false) => {
     const cacheKey = `${t}_${p}`;
-    if (cache[cacheKey]) {
+    if (!forceRefetch && cache[cacheKey]) {
       if (!isPreload) {
         setWarehouses(cache[cacheKey].list);
         setTotalPages(cache[cacheKey].totalPages);
@@ -66,14 +68,23 @@ export default function MyWarehouses() {
     } finally {
       if (!isPreload) setLoading(false);
     }
-  }, [cache]);
+  }, [cache, warehouseRevision]);
+
+  const refreshTabCounts = () => {
+    const tabs: StatusFilter[] = ['all', 'active', 'inactive', 'pending'];
+    for (const t of tabs) {
+      fetchPage(0, t, true, true).then(data => {
+        if (data) setCounts(prev => ({ ...prev, [t]: data.totalElements }));
+      });
+    }
+  };
 
   // Preload tab counts
   useEffect(() => {
     if (!user || user.role !== 'OWNER') return;
     const tabs: StatusFilter[] = ['all', 'active', 'inactive', 'pending'];
     for (const currentTab of tabs) {
-      fetchPage(0, currentTab, true).then(data => {
+      fetchPage(0, currentTab, true, true).then(data => {
         if (data) setCounts(prev => ({ ...prev, [currentTab]: data.totalElements }));
       });
     }
@@ -82,21 +93,35 @@ export default function MyWarehouses() {
   // Fetch current page and preload next page
   useEffect(() => {
     if (!user || user.role !== 'OWNER') return;
-    fetchPage(page, tab).then(data => {
+    fetchPage(page, tab, false, true).then(data => {
       if (data && page < data.totalPages - 1) {
-        fetchPage(page + 1, tab, true);
+        fetchPage(page + 1, tab, true, true);
       }
     });
   }, [page, tab]);
+
+  // Skip the initial mount — the "Preload tab counts" and "Fetch current page" effects handle that.
+  // This effect only fires when warehouseRevision increments (i.e. employee changed a status).
+  const warehouseRevisionRef = useRef(warehouseRevision);
+  useEffect(() => {
+    if (!user || user.role !== 'OWNER') return;
+    if (warehouseRevision === warehouseRevisionRef.current) return;
+    warehouseRevisionRef.current = warehouseRevision;
+    setCache({});
+    setPage(0);
+    refreshTabCounts();
+    fetchPage(0, tab, false, true);
+  }, [warehouseRevision]);
 
   const handleHide = async (warehouse: CompositeWarehouse) => {
     if (!confirm(`Ẩn kho "${warehouse.name}"? Kho sẽ không hiển thị cho người thuê nhưng bạn có thể khôi phục bất cứ lúc nào.`)) return;
     try {
       await ownerService.hideWarehouse(warehouse.id_warehouse);
+      toast.success(`Đã ẩn kho "${warehouse.name}".`);
       setCache({});
       setPage(0);
-      fetchPage(0, tab);
-      toast.success(`Đã ẩn kho "${warehouse.name}".`);
+      refreshTabCounts();
+      fetchPage(0, tab, false, true);
     } catch (err: any) {
       console.error('[MyWarehouses] hide failed', err);
       toast.error('Không thể ẩn kho');
@@ -106,10 +131,11 @@ export default function MyWarehouses() {
   const handleRestore = async (warehouse: CompositeWarehouse) => {
     try {
       await ownerService.restoreWarehouse(warehouse.id_warehouse);
+      toast.success(`Đã khôi phục kho "${warehouse.name}".`);
       setCache({});
       setPage(0);
-      fetchPage(0, tab);
-      toast.success(`Đã khôi phục kho "${warehouse.name}".`);
+      refreshTabCounts();
+      fetchPage(0, tab, false, true);
     } catch (err: any) {
       console.error('[MyWarehouses] restore failed', err);
       toast.error('Không thể khôi phục kho');
@@ -119,9 +145,10 @@ export default function MyWarehouses() {
   const handleCertSaved = async (updated: CompositeWarehouse) => {
     try {
       await ownerService.updateWarehouse(updated.id_warehouse, updated);
-      setCache({});
-      fetchPage(page, tab);
       toast.success(`Đã cập nhật chứng nhận cho kho "${updated.name}".`);
+      setCache({});
+      refreshTabCounts();
+      fetchPage(page, tab, false, true);
       setReuploadTarget(null);
     } catch (err: any) {
       console.error('[MyWarehouses] cert update failed', err);

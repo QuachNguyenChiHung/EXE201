@@ -49,6 +49,9 @@ interface AppContextValue extends AppState {
   refreshRequests: () => Promise<void>;
   refreshContracts: () => Promise<void>;
   refreshRatings: () => Promise<void>;
+  // Upsert live ratings fetched per-warehouse (keeps AppContext.ratings in sync
+  // with what WarehouseCard reads, without reloading all mock data).
+  upsertRatings: (ratings: Rating[]) => void;
 
   // User actions
   adminUpdateUser: (id: number, updates: Partial<User>) => Promise<void>;
@@ -79,6 +82,12 @@ interface AppContextValue extends AppState {
   compareIds: number[];
   toggleCompare: (warehouse: CompositeWarehouse) => void;
   clearCompare: () => void;
+
+  // Live-revision counter — incrementing this signals all warehouse-listening
+  // pages to re-fetch. Used to propagate cross-page/cross-user status changes
+  // (e.g. employee approving a warehouse that the owner is viewing).
+  warehouseRevision: number;
+  incrementWarehouseRevision: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -100,6 +109,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ratings: false,
     },
   });
+
+  const [warehouseRevision, setWarehouseRevision] = useState(0);
+  const incrementWarehouseRevision = () => setWarehouseRevision(v => v + 1);
+
+  // Any page that increments warehouseRevision causes ALL warehouse-listening pages
+  // (MyWarehouses, WarehouseRequests, SearchWarehouse, etc.) to re-fetch.
+  useEffect(() => {
+    if (warehouseRevision === 0) return; // skip initial mount
+    refreshWarehouses();
+  }, [warehouseRevision]);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -167,6 +186,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setState(prev => ({ ...prev, loading: { ...prev.loading, ratings: false } }));
     }
+  };
+
+  const upsertRatings = (newRatings: Rating[]) => {
+    setState(prev => {
+      const existing = new Map(prev.ratings.map(r => [r.id_rating, r]));
+      for (const nr of newRatings) {
+        existing.set(nr.id_rating, nr);
+      }
+      return { ...prev, ratings: Array.from(existing.values()) };
+    });
   };
 
   // User actions
@@ -277,6 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshRequests,
     refreshContracts,
     refreshRatings,
+    upsertRatings,
     adminUpdateUser,
     createWarehouse,
     updateWarehouse,
@@ -294,6 +324,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteRating,
     toggleCompare,
     clearCompare,
+    warehouseRevision,
+    incrementWarehouseRevision,
   };
 
   // Auto-load mock data on app start so pages have initial data without needing Data Migration

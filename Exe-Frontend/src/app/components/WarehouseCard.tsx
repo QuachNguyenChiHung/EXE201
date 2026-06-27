@@ -40,7 +40,7 @@ interface LowestPriceContext {
 
 function getLowestPriceInfo(warehouse: CompositeWarehouse): LowestPriceContext | null {
   let lowest: LowestPriceContext | null = null;
-  
+
   const checkTier = (t: any) => {
     if (t.value > 0 && (!lowest || t.value < lowest.value)) {
       lowest = { value: t.value, timeUnit: t.timeUnit, areaUnit: t.areaUnit };
@@ -51,7 +51,7 @@ function getLowestPriceInfo(warehouse: CompositeWarehouse): LowestPriceContext |
   warehouse.priceTiers?.forEach(checkTier);
 
   if (!lowest && warehouse.pricePerCubicMeter) {
-      lowest = { value: warehouse.pricePerCubicMeter, areaUnit: 'm3', timeUnit: 'month' };
+    lowest = { value: warehouse.pricePerCubicMeter, areaUnit: 'm3', timeUnit: 'month' };
   }
 
   return lowest;
@@ -93,14 +93,16 @@ export function WarehouseCard({
   useEffect(() => {
     setAllRatings(ratings || []);
   }, [ratings]);
-  
+
   const warehouseRatings = allRatings.filter(r => r.warehouse_id === warehouse.id_warehouse);
   const liveRatingCount = warehouseRatings.length;
   const liveRatingScore = liveRatingCount > 0
     ? warehouseRatings.reduce((sum, r) => sum + r.rate, 0) / liveRatingCount
-    : (warehouse.ratingScore ?? null);
-  const displayScore = liveRatingCount > 0 ? liveRatingScore : (warehouse.ratingScore ?? null);
-  const displayCount = liveRatingCount > 0 ? liveRatingCount : (warehouse.ratingCount ?? 0);
+    : null;
+  // Prefer live ratings; fall back to the pre-computed average only if it's a real positive value.
+  const backendAvg = warehouse.ratingScore ?? 0;
+  const displayScore = liveRatingScore ?? (backendAvg > 0 ? backendAvg : null);
+  const displayCount = liveRatingCount > 0 ? liveRatingCount : (backendAvg > 0 ? (warehouse.ratingCount ?? 0) : 0);
 
   const [showReviews, setShowReviews] = useState(false);
 
@@ -192,7 +194,7 @@ export function WarehouseCard({
     >
       {/* Image area */}
       <div
-        className={`${compact ? 'aspect-[3/1]' : 'aspect-video'} relative overflow-hidden`}
+        className={`${compact ? 'aspect-[4/3]' : 'aspect-video'} relative overflow-hidden`}
         style={{ background: 'var(--color-primary-100)' }}
       >
         {warehouse.images && warehouse.images.length > 0 ? (
@@ -218,7 +220,7 @@ export function WarehouseCard({
           style={{ display: warehouse.images && warehouse.images.length > 0 ? 'none' : 'flex' }}
         >
           <Package
-            className={`${compact ? 'h-7 w-7' : 'h-12 w-12'} text-[var(--color-primary-300)]`}
+            className={`${compact ? 'h-14 w-14' : 'h-12 w-12'} text-[var(--color-primary-300)]`}
           />
         </div>
 
