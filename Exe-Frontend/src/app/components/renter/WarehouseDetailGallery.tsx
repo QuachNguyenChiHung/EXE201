@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Heart, Share2, MapPin, Image as ImageIcon } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types';
+import { SponsorBadge } from '../SubscriptionTierBadge';
 
 interface WarehouseDetailGalleryProps {
     warehouse: CompositeWarehouse;
@@ -54,7 +55,7 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                             Kết quả tìm kiếm
                         </button>
                         <span>/</span>
-                        <span className="text-[var(--color-text)] truncate max-w-[200px]">
+                        <span className="text-white-900 truncate max-w-[200px]">
                             {warehouse.name}
                         </span>
                     </div>
@@ -112,6 +113,11 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                                 >
                                     {warehouse.name}
                                 </h1>
+                                {warehouse.isSponsor && (
+                                    <div className="mt-1">
+                                        <SponsorBadge sponsorType={warehouse.sponsor_type} size="md" label={warehouse.sponsorTierLabel} />
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-3 text-white/90 text-sm">
                                     <div className="flex items-center gap-1.5">
                                         <MapPin className="h-4 w-4" />
@@ -161,8 +167,8 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                                         aria-label={`Xem ảnh ${idx + 1}`}
                                         aria-current={isActive ? 'true' : undefined}
                                         className={`relative shrink-0 rounded-lg overflow-hidden border-2 transition-all ${isActive
-                                                ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)] ring-offset-1'
-                                                : 'border-transparent hover:border-[var(--color-border)] opacity-75 hover:opacity-100'
+                                            ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)] ring-offset-1'
+                                            : 'border-transparent hover:border-[var(--color-border)] opacity-75 hover:opacity-100'
                                             }`}
                                         style={{ width: '120px', height: '90px' }}
                                     >

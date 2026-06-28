@@ -225,6 +225,11 @@ export default function WarehouseDetail() {
                 onSelectedTiersChange={setSelectedTiers}
                 sectionCapacities={sectionCapacities}
                 onSectionCapacitiesChange={setSectionCapacities}
+                onRequestSubmitted={() => {
+                    setSelectedTiers({});
+                    setSelectedSectionIds([]);
+                    setSectionCapacities({});
+                }}
             />
             <Footer />
         </div>

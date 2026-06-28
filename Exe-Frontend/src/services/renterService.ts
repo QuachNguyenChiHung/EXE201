@@ -82,6 +82,7 @@ const mapWarehouseResponse = (w: any): CompositeWarehouse => {
         })),
         ratingScore: w.averageRating ?? w.ratingScore ?? 0,
         ratingCount: w.totalReviews ?? w.ratingCount ?? 0,
+        sponsorTierLabel: w.sponsorTier?.label ?? null,
     };
 };
 

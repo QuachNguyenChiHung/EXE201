@@ -45,6 +45,7 @@ export const ownerService = {
         availability: avail,
         id_warehouse: w.id,
         sponsor_type: w.sponsorTier?.id,
+        sponsorTierLabel: w.sponsorTier?.label ?? null,
         location_province: w.locationProvince,
         location_commune: w.locationCommune,
         location_address_text: w.locationAddressText,

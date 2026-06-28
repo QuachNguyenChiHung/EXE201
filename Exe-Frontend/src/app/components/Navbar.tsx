@@ -219,6 +219,15 @@ export function Navbar() {
                   </NavBtn>
 
                   <NavBtn
+                    onClick={() => navigate("/renter/ai-subscription")}
+                    active={isActive("/renter/ai-subscription")}
+                    className="hidden sm:flex"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Gói AI
+                  </NavBtn>
+
+                  <NavBtn
                     onClick={() => navigate("/renter/rented")}
                     active={isActive("/renter/rented")}
                     className="hidden sm:flex"
@@ -375,6 +384,13 @@ export function Navbar() {
                         >
                           <Sparkles className="h-4 w-4 mr-2" />
                           AI Search
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate("/renter/ai-subscription")}
+                          className="rounded-none"
+                        >
+                          <Crown className="h-4 w-4 mr-2" />
+                          Gói AI
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => navigate("/renter/rented")}

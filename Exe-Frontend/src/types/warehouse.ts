@@ -124,6 +124,7 @@ export interface CompositeWarehouse extends Warehouse {
   ratingCount?: number;
   subscriptionTier?: SubscriptionTierLevel;
   pendingRequestCount?: number;
+  sponsorTierLabel?: string; // full label from backend e.g. "Tài trợ Vàng (Top 1)"
 }
 
 export type SubscriptionTierLevel = 'free' | 'silver' | 'gold' | 'platinum';
@@ -148,5 +149,20 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTierLevel, SubscriptionTierC
   gold: { level: 'gold', label: 'Gold', labelVi: 'Vàng', color: '#b45309', bgColor: '#fef3c7', icon: '🥇', boostFactor: 2.5, monthlyPrice: 1500000, benefits: [] },
   platinum: { level: 'platinum', label: 'Platinum', labelVi: 'Bạch kim', color: '#7c3aed', bgColor: '#ede9fe', icon: '💎', boostFactor: 4.0, monthlyPrice: 3500000, benefits: [] },
 };
+
+export interface SponsorTierConfig {
+  level: string;
+  label: string;
+  labelVi: string;
+  color: string;
+  bgColor: string;
+}
+
+export const SPONSOR_TIERS: Record<string, SponsorTierConfig> = {
+  1: { level: 'gold',     label: 'Gold',     labelVi: 'Tài trợ Vàng',    color: '#d97706', bgColor: '#fef3c7' },
+  2: { level: 'silver',   label: 'Silver',   labelVi: 'Tài trợ Bạc',     color: '#475569', bgColor: '#e8ecf1' },
+  3: { level: 'diamond',  label: 'Diamond',  labelVi: 'Tài trợ Kim Cương', color: '#7c3aed', bgColor: '#ede9fe' },
+};
+
 
 

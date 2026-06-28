@@ -19,8 +19,8 @@ import {
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SubscriptionTierBadge, SubscriptionTierStrip } from './SubscriptionTierBadge';
-import { SUBSCRIPTION_TIERS } from '../../types';
+import { SubscriptionTierBadge, SubscriptionTierStrip, SponsorBadge } from './SubscriptionTierBadge';
+import { SUBSCRIPTION_TIERS, SPONSOR_TIERS } from '../../types';
 import { toast } from 'sonner';
 import { WarehouseReviewsModal } from './WarehouseReviewsModal';
 import { useBookmarks } from '../../hooks/useBookmarks';
@@ -225,8 +225,27 @@ export function WarehouseCard({
           />
         </div>
 
+        {/* Sponsor badge — top-left overlay (overrides "no cert" warning) */}
+        {warehouse.isSponsor && (
+          <div
+            className="absolute top-0 left-0 px-2 py-1 font-bold"
+            style={{
+              background: warehouse.sponsor_type === 3
+                ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
+                : warehouse.sponsor_type === 2
+                  ? 'linear-gradient(135deg, #475569 0%, #64748b 100%)'
+                  : 'linear-gradient(135deg, #b45309 0%, #d97706 100%)',
+              color: '#fff',
+              fontSize: compact ? '0.55rem' : '0.6rem',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {warehouse.sponsorTierLabel ?? SPONSOR_TIERS[warehouse.sponsor_type?.toString()]?.labelVi ?? 'Tài trợ'}
+          </div>
+        )}
+
         {/* Multiple images indicator — top-left when >1 image */}
-        {!(warehouse.certifications && warehouse.certifications.length > 0) && (
+        {!(warehouse.certifications && warehouse.certifications.length > 0) && !warehouse.isSponsor && (
           <div
             className="absolute top-0 left-0 flex items-center gap-1.5 text-white px-3 py-1.5"
             style={{
@@ -242,7 +261,7 @@ export function WarehouseCard({
         )}
 
         {/* Image count badge — top-left when certified and >1 image */}
-        {(warehouse.certifications && warehouse.certifications.length > 0) && warehouse.images && warehouse.images.length > 1 && (
+        {(warehouse.certifications && warehouse.certifications.length > 0) && warehouse.images && warehouse.images.length > 1 && !warehouse.isSponsor && (
           <div
             className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5"
             style={{
@@ -323,13 +342,14 @@ export function WarehouseCard({
       <div className={`flex-1 flex flex-col ${compact ? 'p-3 space-y-2' : 'p-4 space-y-4'}`}>
         {/* Name & location */}
         <div>
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <h3
               className="truncate"
               style={{ color: 'var(--color-text)', fontSize: compact ? '0.8rem' : undefined }}
             >
               {warehouse.name}
             </h3>
+            <SponsorBadge sponsorType={warehouse.sponsor_type} size="xs" label={warehouse.sponsorTierLabel} />
             <SubscriptionTierBadge tier={warehouse.subscriptionTier} size="sm" />
           </div>
           <div

@@ -1,4 +1,4 @@
-import { SUBSCRIPTION_TIERS, SubscriptionTierLevel } from '../../types';
+import { SUBSCRIPTION_TIERS, SubscriptionTierLevel, SPONSOR_TIERS } from '../../types';
 import { TrendingUp } from 'lucide-react';
 
 interface SubscriptionTierBadgeProps {
@@ -76,5 +76,43 @@ export function SubscriptionTierStrip({ tier }: { tier?: SubscriptionTierLevel }
         +{Math.round((config.boostFactor - 1) * 100)}% ưu tiên tìm kiếm
       </span>
     </div>
+  );
+}
+
+// ─── Sponsor (warehouse) badge ──────────────────────────────────────────────────
+
+interface SponsorBadgeProps {
+  sponsorType?: number; // SponsorTier.id (1 = Gold, 2 = Silver, 3 = Diamond)
+  size?: 'xs' | 'sm' | 'md';
+  label?: string; // optional override — uses sponsorTier.label from backend if provided
+}
+
+export function SponsorBadge({ sponsorType, size = 'sm', label }: SponsorBadgeProps) {
+  if (!sponsorType) return null;
+  const config = SPONSOR_TIERS[sponsorType.toString()];
+  if (!config) return null;
+
+  const sizeMap = {
+    xs: { fontSize: '0.55rem', padding: '1px 4px' },
+    sm: { fontSize: '0.6rem',  padding: '2px 6px' },
+    md: { fontSize: '0.7rem',  padding: '3px 8px' },
+  };
+  const s = sizeMap[size];
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 font-semibold whitespace-nowrap"
+      style={{
+        fontSize: s.fontSize,
+        padding: s.padding,
+        background: config.bgColor,
+        color: config.color,
+        border: `1px solid ${config.color}40`,
+        borderRadius: '4px',
+        letterSpacing: '0.02em',
+      }}
+    >
+      {label ?? config.labelVi}
+    </span>
   );
 }

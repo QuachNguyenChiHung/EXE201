@@ -104,6 +104,8 @@ export interface RentalRequestModalProps {
     onSelectedTiersChange: (tiers: Record<string, number>) => void;
     sectionCapacities: Record<string, string>;
     onSectionCapacitiesChange: (caps: Record<string, string>) => void;
+    /** Called after the request is successfully submitted — parent should clear selection state. */
+    onRequestSubmitted?: () => void;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -116,10 +118,32 @@ export function RentalRequestModal({
     onSelectedTiersChange,
     sectionCapacities,
     onSectionCapacitiesChange,
+    onRequestSubmitted,
 }: RentalRequestModalProps) {
     const user = useMemo(() => getUser(), []);
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+
+    // Reset form + success state whenever the modal closes
+    useEffect(() => {
+        if (!open) {
+            setShowSuccess(false);
+            setSubmitting(false);
+            setForm({
+                name: user?.name ?? '',
+                phone: user?.phone ?? '',
+                email: user?.email ?? '',
+                cargoType: '',
+                sectionCapacities,
+                durationValue: '',
+                durationUnit: defaultUnit,
+                startDate: '',
+                endDate: '',
+                message: '',
+                renterOfferedPrice: '',
+            });
+        }
+    }, [open]);
 
     const availableUnits = useMemo(() => {
         if (selectedSections.length === 0) return ['day', 'week', 'month', 'year'];
@@ -336,6 +360,8 @@ export function RentalRequestModal({
         }
 
         setSubmitting(true);
+        // Prevent double-submit: guard immediately after setting submitting
+        let cancelled = false;
         try {
             const details = selectedSections.map(s => {
                 const sectionId = s.id_section?.toString() ?? '';
@@ -361,11 +387,14 @@ export function RentalRequestModal({
                 details,
             });
 
+            if (cancelled) return;
             setShowSuccess(true);
+            onRequestSubmitted?.();
         } catch (error: any) {
+            if (cancelled) return;
             toast.error(error.message || 'Có lỗi xảy ra khi gửi yêu cầu');
         } finally {
-            setSubmitting(false);
+            if (!cancelled) setSubmitting(false);
         }
     };
 

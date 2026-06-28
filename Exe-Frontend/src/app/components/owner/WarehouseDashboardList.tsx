@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { Button } from "../ui/button";
 import type { CompositeWarehouse } from "../../../types";
 import { formatShortAddress } from "../../utils/addressFormat";
+import { SponsorBadge } from "../SubscriptionTierBadge";
 
 interface WarehouseDashboardListProps {
   warehouses: CompositeWarehouse[];
@@ -63,7 +64,10 @@ export function WarehouseDashboardList({ warehouses }: WarehouseDashboardListPro
             </div>
             <div className="p-5 space-y-3">
               <div>
-                <h3 className="mb-1">{w.name}</h3>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h3 className="">{w.name}</h3>
+                <SponsorBadge sponsorType={w.sponsor_type} size="sm" label={w.sponsorTierLabel} />
+              </div>
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   {formatShortAddress({
                     province: w.location_province,
