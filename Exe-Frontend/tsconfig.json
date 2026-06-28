@@ -16,8 +16,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": false,
-    "esModulecInterop": true,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
     "paths": {
       "*": [
         "./*"
