@@ -108,8 +108,8 @@ export function WarehouseDetailGallery({ warehouse, isBookmarked, onToggleBookma
                         <div className="flex items-end justify-between">
                             <div>
                                 <h1
-                                    className="mb-1 text-white font-extrabold"
-                                    style={{ fontSize: "1.75rem" }}
+                                    className="mb-1 font-extrabold"
+                                    style={{ fontSize: "1.75rem", color: "white" }}
                                 >
                                     {warehouse.name}
                                 </h1>
