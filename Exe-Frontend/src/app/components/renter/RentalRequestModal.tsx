@@ -341,6 +341,10 @@ export function RentalRequestModal({
             toast.error('Vui lòng nhập thời hạn thuê hợp lệ');
             return;
         }
+        if (!form.startDate) {
+            toast.error('Vui lòng chọn ngày bắt đầu thuê');
+            return;
+        }
 
         for (const id of selectedSectionIds) {
             const sec = warehouse.sections?.find(s => s.id_section?.toString() === id);
@@ -383,6 +387,8 @@ export function RentalRequestModal({
                 otherDetail: form.message,
                 duration: durVal,
                 durationUnit: form.durationUnit,
+                startDate: form.startDate,
+                endDate: form.endDate,
                 renterOfferedPrice: form.renterOfferedPrice ? parseFloat(form.renterOfferedPrice) : null,
                 details,
             });
@@ -669,7 +675,7 @@ export function RentalRequestModal({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">
-                                Thời Gian Bắt Đầu
+                                Thời Gian Bắt Đầu <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -750,6 +756,7 @@ export function RentalRequestModal({
                             <input
                                 type="text"
                                 placeholder="Nhập giá bạn muốn đề xuất..."
+                                min="10000"
                                 className="w-full text-sm pl-3 pr-12 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent"
                                 value={form.renterOfferedPrice ? Number(form.renterOfferedPrice).toLocaleString('en-US') : ''}
                                 onChange={e => {

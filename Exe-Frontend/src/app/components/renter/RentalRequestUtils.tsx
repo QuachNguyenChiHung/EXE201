@@ -25,6 +25,7 @@ export const UNIT_LABEL: Record<string, string> = {
 
 export const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> = {
     PENDING: { label: "Đang chờ", color: "#f59e0b", icon: <Clock className="h-3 w-3" />, description: "Đang chờ chủ kho phản hồi." },
+    NEGOTIATING: { label: "Đang thương lượng", color: "#3b82f6", icon: <MessageSquare className="h-3 w-3" />, description: "Chủ kho đã gửi giá đề xuất." },
     APPROVED: { label: "Đã chấp nhận", color: "#22c55e", icon: <CheckCircle className="h-3 w-3" />, description: "Chủ kho đã chấp nhận yêu cầu này." },
     REJECTED: { label: "Từ chối", color: "#ef4444", icon: <XCircle className="h-3 w-3" />, description: "Chủ kho đã từ chối yêu cầu này." },
 };
@@ -32,6 +33,7 @@ export const STATUS_CONFIG: Record<string, { label: string; color: string; icon:
 export const TABS: { key: FilterTab; label: string }[] = [
     { key: "all", label: "Tất cả" },
     { key: "PENDING", label: "Đang chờ" },
+    { key: "NEGOTIATING", label: "Đàm phán" },
     { key: "APPROVED", label: "Đã chấp nhận" },
     { key: "REJECTED", label: "Từ chối" },
 ];

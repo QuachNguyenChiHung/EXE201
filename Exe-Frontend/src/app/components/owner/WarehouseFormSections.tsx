@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef, useEffect } from "react";
 import { CompositeWarehouseSection, PriceTier } from "../../../types";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
@@ -17,6 +17,7 @@ interface Props {
 
 function WarehouseFormSectionsInner({ sections, onChange }: Props) {
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<number>>(new Set(sections.map(s => s.id_section)));
+  const [addTierSectionId, setAddTierSectionId] = useState<number | null>(null);
 
   const toggleSection = (id: number) => {
     const next = new Set(expandedSectionIds);
@@ -66,14 +67,15 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
     }));
   };
 
-  const addPriceTier = (sectionId: number) => {
+  const addPriceTier = (sectionId: number, unit: string) => {
     onChange(
       sections.map((s) => {
         if (s.id_section === sectionId) {
+          const option = PRICE_TIER_OPTIONS.find(o => o.unit === unit) || PRICE_TIER_OPTIONS[0];
           const newTier: PriceTier = {
             id_price_tier: Date.now(),
-            label: "Giá theo ngày",
-            unit: "day",
+            label: option.label,
+            unit: unit,
             value: 0,
             areaUnit: "m3"
           };
@@ -82,6 +84,7 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
         return s;
       })
     );
+    setAddTierSectionId(null);
   };
 
   const updatePriceTier = (sectionId: number, tierId: number, updates: Partial<PriceTier>) => {
@@ -111,6 +114,26 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
       })
     );
   };
+
+  // Build list of available units not yet used in this section
+  const availableUnits = (section: CompositeWarehouseSection) =>
+    PRICE_TIER_OPTIONS.filter(
+      (opt) => !(section.priceTiers || []).some((t) => t.unit === opt.unit)
+    );
+
+  const addTierPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (addTierPopoverRef.current && !addTierPopoverRef.current.contains(e.target as Node)) {
+        setAddTierSectionId(null);
+      }
+    };
+    if (addTierSectionId !== null) {
+      document.addEventListener("mousedown", handleClick);
+    }
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [addTierSectionId]);
 
   return (
     <Card className="bento-card p-6">
@@ -235,7 +258,7 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
 
                   {/* Price Tiers */}
                   <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 relative">
                       <Label className="flex items-center gap-2 font-semibold">
                         <Tag className="h-4 w-4" /> Bảng giá thuê
                       </Label>
@@ -243,13 +266,34 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => addPriceTier(s.id_section)}
-                        disabled={(s.priceTiers?.length ?? 0) >= 4}
+                        onClick={() => setAddTierSectionId(s.id_section)}
+                        disabled={availableUnits(s).length === 0}
                         className="h-8 text-xs flex items-center gap-1 disabled:opacity-50"
-                        title={(s.priceTiers?.length ?? 0) >= 4 ? "Đã đủ 4 mốc giá (tối đa)" : undefined}
+                        title={availableUnits(s).length === 0 ? "Đã thêm đủ tất cả các loại giá" : undefined}
                       >
                         <Plus className="h-3 w-3" /> Thêm mốc giá
                       </Button>
+                      {/* Unit picker dropdown — appears when this section's button was clicked */}
+                      {addTierSectionId === s.id_section && (
+                        <div
+                          ref={addTierPopoverRef}
+                          className="absolute z-50 mt-1 right-0 bg-white border border-[var(--color-border)] rounded-lg shadow-lg w-48 overflow-hidden"
+                        >
+                          <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 bg-gray-50">
+                            Chọn loại giá
+                          </div>
+                          {availableUnits(s).map((opt) => (
+                            <button
+                              key={opt.unit}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                              onClick={() => addPriceTier(s.id_section, opt.unit)}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {s.priceTiers && s.priceTiers.length > 0 ? (
@@ -271,9 +315,16 @@ function WarehouseFormSectionsInner({ sections, onChange }: Props) {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {PRICE_TIER_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.unit} value={opt.unit}>{opt.label}</SelectItem>
-                                  ))}
+                                  {PRICE_TIER_OPTIONS
+                                    .filter(opt =>
+                                      opt.unit === tier.unit ||
+                                      !(s.priceTiers || []).some(
+                                        (t) => t.unit === opt.unit && t.id_price_tier !== tier.id_price_tier
+                                      )
+                                    )
+                                    .map((opt) => (
+                                      <SelectItem key={opt.unit} value={opt.unit}>{opt.label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                               </Select>
                             </div>

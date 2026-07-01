@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
     MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building, CheckCircle
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
-import { CompositeRentRequest, CompositeWarehouse, CompositeContract } from "../../../types";
+import { CompositeWarehouse, CompositeWarehouseSection, CompositeRentRequest, CompositeContract } from "../../../types";
+import { renterService } from "../../../services/renterService";
 import {
     RequestStatus, STATUS_CONFIG, CARGO_LABEL, UNIT_LABEL, CONTRACT_CFG, fmtDate, fmtCurrency, relativeTime
 } from "./RentalRequestUtils";
@@ -19,30 +20,63 @@ interface RentalRequestCardProps {
     onViewContract?: (contract: CompositeContract) => void;
     onSign?: (contractId: number) => void;
     onReject?: (contractId: number, reason: string) => void;
+    onAcceptOffer?: (id: number) => void;
+    onCounterOffer?: (id: number, note: string, newPrice: number) => void;
 }
 
-export function RentalRequestCard({ request, warehouse, contract, isExpanded, onToggle, onWithdraw, onSign, onReject }: RentalRequestCardProps) {
+export function RentalRequestCard({ request, warehouse, contract, isExpanded, onToggle, onWithdraw, onSign, onReject, onAcceptOffer, onCounterOffer }: RentalRequestCardProps) {
     const navigate = useNavigate();
     const { users } = useApp();
     const [sectionOpen, setSectionOpen] = useState(false);
     const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
+    const [offerRejectReasonOpen, setOfferRejectReasonOpen] = useState(false);
+    const [offerRejectReason, setOfferRejectReason] = useState("");
+    const [offerNewPrice, setOfferNewPrice] = useState("");
+    const [priceError, setPriceError] = useState("");
+    const [sectionData, setSectionData] = useState<CompositeWarehouseSection | undefined>();
 
     const status = request.status as RequestStatus;
     const cfg = STATUS_CONFIG[status];
     if (!cfg) return null;
 
-    // Use request.details for section info if warehouse is missing
-    const section = warehouse?.sections
+    // Fetch full warehouse detail on first expand to get real temp/humidity
+    useEffect(() => {
+        if (!sectionOpen || sectionData) return;
+        const warehouseId = request.id_warehouse;
+        if (!warehouseId) return;
+        renterService.getWarehouseDetail(warehouseId)
+            .then((fullWarehouse) => {
+                console.log(`[RentalRequestCard #${request.id_rentRequest}] fetched warehouse detail:`, JSON.stringify(fullWarehouse, null, 2));
+                const sectorNum = request.details?.[0]?.sector;
+                const matched = fullWarehouse.sections?.find((s) => String(s.sector) === String(sectorNum));
+                console.log(`[RentalRequestCard #${request.id_rentRequest}] sectorNum=${sectorNum}, matched section:`, JSON.stringify(matched, null, 2));
+                if (matched) setSectionData(matched);
+            })
+            .catch((err) => {
+                console.error(`[RentalRequestCard #${request.id_rentRequest}] getWarehouseDetail error:`, err);
+            });
+    }, [sectionOpen, sectionData, request.id_warehouse, request.details]);
+
+    // Resolve section: prefer fetched data, then warehouse prop, then fallback to request.details
+    const sectionById = warehouse?.sections
         ? warehouse.sections.find((s) => s.id_section?.toString() === request.sectionId?.toString())
-        : request.details && request.details.length > 0
-            ? { name: `Phân khu ${request.details[0].sector}`, temp_min: "-", temp_max: "-", total_capacity: request.details[0].rentedArea, description: "-" }
-            : undefined;
+        : undefined;
+
+    const section = sectionData ?? sectionById ?? (request.details && request.details.length > 0
+        ? {
+            name: `Khu vực ${request.details[0].sector}`, label: undefined,
+            temp_min: request.details[0].tempMin ?? request.details[0].temp_min ?? "-",
+            temp_max: request.details[0].tempMax ?? request.details[0].temp_max ?? "-",
+            humidity: request.details[0].humidity ?? "-",
+            total_capacity: request.details[0].rentedArea, description: "-"
+        }
+        : undefined);
 
     const ownerUser = warehouse ? users.find((u) => u.id_user === warehouse.id_owner) : undefined;
     const warehouseName = warehouse?.name || request.warehouseName || "Kho không xác định";
     const ownerName = ownerUser?.name || warehouse?.ownerName || request.ownerName || "Chủ kho";
-    
+
     const existingContract = contract;
 
     return (
@@ -148,6 +182,15 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                         </p>
                                     </div>
                                 )}
+                                {request.renterOfferedPrice && (
+                                    <div className="col-span-2">
+                                        <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Giá bạn đề xuất lại</p>
+                                        <p className="text-sm font-bold" style={{ color: "#16a34a" }}>
+                                            {fmtCurrency(request.renterOfferedPrice)}
+                                            <span className="font-normal text-xs ml-1" style={{ color: "var(--color-text-muted)" }}>/m³/tháng</span>
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Message */}
@@ -169,7 +212,7 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                         style={{ color: "var(--color-primary)" }}
                                     >
                                         <LayoutGrid className="h-3 w-3 shrink-0" />
-                                        Phân khu: <span className="font-semibold">{section.name}</span>
+                                        <span className="font-semibold">{section.name}</span>
                                         <ChevronDown
                                             className="h-3 w-3 transition-transform"
                                             style={{ transform: sectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}
@@ -183,7 +226,15 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                             <div>
                                                 <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Nhiệt độ</p>
                                                 <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
-                                                    {section.temp_min}°C ~ {section.temp_max}°C
+                                                    {typeof section.temp_min === 'number' && typeof section.temp_max === 'number'
+                                                        ? `${section.temp_min}°C ~ ${section.temp_max}°C`
+                                                        : `${section.temp_min ?? '-'}°C ~ ${section.temp_max ?? '-'}`}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Độ ẩm</p>
+                                                <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                                                    {typeof section.humidity === 'number' ? `${section.humidity}%` : (section.humidity ?? '-')}
                                                 </p>
                                             </div>
                                             <div>
@@ -243,8 +294,8 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                 </div>
                             )}
 
-                            {/* Negotiating (Still PENDING but has owner note/price) */}
-                            {status === "PENDING" && (request.owner_note || request.offered_price) && (
+                            {/* Negotiating (owner sent a counter-offer) */}
+                            {(status === "PENDING" || status === "NEGOTIATING") && (request.owner_note || request.offered_price) && (
                                 <div className="space-y-2">
                                     <div
                                         className="flex items-center gap-2 px-3 py-2"
@@ -271,6 +322,88 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                                 {fmtCurrency(request.offered_price)}
                                                 <span className="text-xs font-normal ml-1" style={{ color: "var(--color-text-muted)" }}>/m³/tháng</span>
                                             </span>
+                                        </div>
+                                    )}
+                                    {/* Accept / Reject offer buttons */}
+                                    {request.offered_price && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => onAcceptOffer?.(request.id_rentRequest)}
+                                                className="flex-1 text-xs py-2 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                                style={{ background: "#16a34a" }}
+                                            >
+                                                <CheckCircle className="h-3 w-3" /> Chấp nhận giá
+                                            </button>
+                                            <button
+                                                onClick={() => setOfferRejectReasonOpen(true)}
+                                                className="flex-1 text-xs py-2 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                                style={{ background: "#dc2626" }}
+                                            >
+                                                <XCircle className="h-3 w-3" /> Từ chối giá
+                                            </button>
+                                        </div>
+                                    )}
+                                    {offerRejectReasonOpen && (
+                                        <div className="border border-[var(--color-border)] rounded p-3 space-y-3" style={{ background: "var(--color-surface)" }}>
+                                            <div>
+                                                <p className="text-[11px] mb-1 font-semibold" style={{ color: "var(--color-error)" }}>
+                                                    Bạn phải nhập mức giá mới để gửi lại cho chủ kho
+                                                </p>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        className="w-full text-xs p-2 rounded pr-14 focus:outline-none focus:ring-1"
+                                                        style={{ background: "var(--color-bg)", border: `1px solid ${priceError ? "#dc2626" : "var(--color-border)"}`, color: "var(--color-text)" }}
+                                                        placeholder="Ví dụ: 300000"
+                                                        value={offerNewPrice}
+                                                        onChange={e => { setOfferNewPrice(e.target.value); setPriceError(""); }}
+                                                    />
+                                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--color-text-muted)" }}>đ/m³/tháng</span>
+                                                </div>
+                                                {priceError && (
+                                                    <p className="text-[10px] mt-1" style={{ color: "#dc2626" }}>{priceError}</p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] mb-1" style={{ color: "var(--color-text-secondary)" }}>
+                                                    Lý do/phản hồi (tùy chọn):
+                                                </p>
+                                                <textarea
+                                                    className="w-full text-xs p-2 rounded resize-none focus:outline-none focus:ring-1"
+                                                    style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                    rows={2}
+                                                    placeholder="Nhập phản hồi cho chủ kho..."
+                                                    value={offerRejectReason}
+                                                    onChange={e => setOfferRejectReason(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        const price = parseFloat(offerNewPrice);
+                                                        if (!offerNewPrice || isNaN(price) || price <= 0) {
+                                                            setPriceError("Vui lòng nhập mức giá hợp lệ!");
+                                                            return;
+                                                        }
+                                                        onCounterOffer?.(request.id_rentRequest, offerRejectReason, price);
+                                                        setOfferRejectReasonOpen(false);
+                                                        setOfferRejectReason("");
+                                                        setOfferNewPrice("");
+                                                        setPriceError("");
+                                                    }}
+                                                    className="flex-1 text-xs py-2 text-white rounded"
+                                                    style={{ background: "#dc2626" }}
+                                                >
+                                                    Gửi từ chối Giá
+                                                </button>
+                                                <button
+                                                    onClick={() => { setOfferRejectReasonOpen(false); setOfferRejectReason(""); setOfferNewPrice(""); setPriceError(""); }}
+                                                    className="flex-1 text-xs py-2 rounded"
+                                                    style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                >
+                                                    Hủy
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                     {/* Contacts */}
@@ -404,7 +537,7 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                         className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-border)]"
                         style={{ background: "var(--color-bg-secondary)" }}
                     >
-                        {status === "PENDING" && (
+                        {(status === "PENDING" || status === "NEGOTIATING") && (
                             <button
                                 onClick={() => onWithdraw(request.id_rentRequest)}
                                 className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-error)]"

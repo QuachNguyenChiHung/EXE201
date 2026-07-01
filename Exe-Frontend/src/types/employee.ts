@@ -101,6 +101,10 @@ export interface RentRequestDetailResponseDTO {
 export interface RentRequestResponseDTO {
   id: number;
   warehouseName: string;
+  renterName: string;
+  renterCompanyName?: string;
+  renterCompanyTaxCode?: string;
+  ownerName: string;
   cargoDescription: string;
   duration: number;
   durationUnit: string;
@@ -109,7 +113,9 @@ export interface RentRequestResponseDTO {
   renterRejectionReason?: string;
   rejectionReason?: string;
   offeredPrice?: number;
+  renterOfferedPrice?: number;
   ownerNote?: string;
+  renterNote?: string;
   details: RentRequestDetailResponseDTO[];
 }
 

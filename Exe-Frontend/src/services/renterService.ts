@@ -24,6 +24,8 @@ export interface RentRequestCreateDTO {
     otherDetail: string;
     duration: number;
     durationUnit: string;
+    startDate: string;
+    endDate: string;
     renterOfferedPrice: number | null;
     details: RentRequestDetailCreateDTO[];
 }
@@ -74,10 +76,13 @@ const mapWarehouseResponse = (w: any): CompositeWarehouse => {
         sections: (w.sections || []).map((s: any) => ({
             ...s,
             id_section: s.id_section || s.id,
+            label: s.label,
+            name: s.label || s.name || `Khu vực ${s.sector}`,
             total_capacity: s.total_capacity || s.totalCapacity,
             available_capacity: s.available_capacity || s.availableCapacity,
             temp_min: s.temp_min || s.tempMin,
             temp_max: s.temp_max || s.tempMax,
+            humidity: s.humidity,
             priceTiers: mapPriceTiers(s.priceTiers)
         })),
         ratingScore: w.averageRating ?? w.ratingScore ?? 0,
@@ -129,6 +134,20 @@ export const renterService = {
     cancelRequest: async (requestId: number, reason?: string): Promise<any> => {
         console.log(`[API CALL] PATCH /renters/requests/${requestId}/cancel`);
         const response = await api.patch(`/renters/requests/${requestId}/cancel`, { reason });
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+
+    acceptOffer: async (requestId: number): Promise<any> => {
+        console.log(`[API CALL] PATCH /renters/requests/${requestId}/accept-offer`);
+        const response = await api.patch(`/renters/requests/${requestId}/accept-offer`);
+        console.log('[API RESPONSE]', response.data);
+        return response.data;
+    },
+
+    counterOffer: async (requestId: number, note?: string, newPrice?: number): Promise<any> => {
+        console.log(`[API CALL] PATCH /renters/requests/${requestId}/counter-offer`);
+        const response = await api.patch(`/renters/requests/${requestId}/counter-offer`, { note, newPrice });
         console.log('[API RESPONSE]', response.data);
         return response.data;
     },

@@ -74,6 +74,26 @@ export default function RentalRequests() {
         }
     };
 
+    const handleAcceptOffer = async (requestId: number) => {
+        try {
+            await renterService.acceptOffer(requestId);
+            await fetchPage(page, tab, false, true);
+            toast.success('Đã chấp nhận giá đề xuất!');
+        } catch (err) {
+            toast.error((err as any)?.message ?? 'Không thể chấp nhận giá đề xuất');
+        }
+    };
+
+    const handleCounterOffer = async (requestId: number, note: string, newPrice: number) => {
+        try {
+            await renterService.counterOffer(requestId, note, newPrice);
+            await fetchPage(page, tab, false, true);
+            toast.success('Đã gửi lời từ chối Giá cho chủ kho.');
+        } catch (err) {
+            toast.error((err as any)?.message ?? 'Không thể gửi lời từ chối Giá');
+        }
+    };
+
     const contractsByRequestId = useMemo(() => {
         const map: Record<number, CompositeContract> = {};
         contracts.forEach(c => {
@@ -97,20 +117,21 @@ export default function RentalRequests() {
         if (!isPreload) setLoading(true);
         try {
             const dataRes = await renterService.getMyRequests(p, 10, t === 'all' ? undefined : t);
+            console.log('[RentalRequests] raw API response:', JSON.stringify(dataRes.content, null, 2));
             const mapped = (dataRes.content as any[]).map(r => {
-                const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
                 const details = r.details || [];
+
                 const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
-                const sectionName = details.length > 1
-                    ? `${details.length} phân khu`
-                    : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
                 const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
                 const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
+                const sectionName = details.length > 1
+                    ? `${details.length} phân khu`
+                    : (details[0]?.priceTierLabel ?? (details[0]?.sector ? `Khu vực ${details[0].sector}` : undefined));
 
                 return {
                     ...r,
                     id_rentRequest: r.id || r.id_rentRequest,
-                    id_warehouse: matchingWarehouse?.id_warehouse,
+                    id_warehouse: r.warehouseId,
                     cargo_description: r.cargoDescription,
                     cargoType: r.cargoDescription,
                     other_detail: r.otherDetail,
@@ -134,6 +155,9 @@ export default function RentalRequests() {
                     details: r.details
                 } as CompositeRentRequest;
             });
+
+            console.log('[RentalRequests] mapped requests:', mapped);
+            console.log('[RentalRequests] warehouseList (mock):', warehouseList);
 
             const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
             setCache(prev => ({ ...prev, [cacheKey]: newData }));
@@ -288,6 +312,8 @@ export default function RentalRequests() {
                                     onWithdraw={handleWithdraw}
                                     onSign={handleAcceptContract}
                                     onReject={handleRejectContract}
+                                    onAcceptOffer={handleAcceptOffer}
+                                    onCounterOffer={handleCounterOffer}
                                 />
                             );
                         })}

@@ -87,7 +87,7 @@ export function RentedPropertyCard({
                         {wh && (
                             <div className="flex items-center gap-1.5 text-[var(--color-text-secondary)] text-sm mb-3">
                                 <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                                <span>{wh.address}, {formatShortAddress({
+                                <span>{(wh.address ? wh.address + ", " : "")}{formatShortAddress({
                                     province: wh.location_province,
                                     commune: wh.location_commune,
                                     locationAddressText: wh.location_address_text,
