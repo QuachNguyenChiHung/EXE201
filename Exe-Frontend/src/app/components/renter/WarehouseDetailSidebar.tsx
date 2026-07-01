@@ -281,7 +281,8 @@ export function WarehouseDetailSidebar({
                     <button
                         type="button"
                         onClick={onOpenRentalModal}
-                        className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                        disabled={selectedSectionIds.length === 0}
+                        className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         <Send className="h-4 w-4" />
                         Đăng ký thuê kho

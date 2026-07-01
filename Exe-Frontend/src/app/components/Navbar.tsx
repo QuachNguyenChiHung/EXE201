@@ -20,7 +20,7 @@ import {
   Crown,
   UserCircle,
 } from "lucide-react";
-import logoUrl from "../../assets/logo.jpg";
+import logoUrl from "../../assets/logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,

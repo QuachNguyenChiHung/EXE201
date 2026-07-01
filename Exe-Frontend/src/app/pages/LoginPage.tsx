@@ -8,7 +8,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
-import logoUrl from "../../assets/logo.jpg";
+import logoUrl from "../../assets/logo.png";
 import type { User } from "../../types/public";
 
 

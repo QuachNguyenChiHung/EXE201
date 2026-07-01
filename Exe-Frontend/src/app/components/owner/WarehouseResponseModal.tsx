@@ -15,9 +15,10 @@ export interface ResponseModalProps {
 }
 
 export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, onNegotiate, onReject }: ResponseModalProps) {
-  const [mode, setMode] = useState<'accept' | 'negotiate' | 'reject'>('accept');
-  const [offeredPrice, setOfferedPrice] = useState('');
-  const [note, setNote]     = useState('');
+  const isNegotiating = request.status === 'NEGOTIATING';
+  const [mode, setMode] = useState<'accept' | 'negotiate' | 'reject'>(isNegotiating ? 'negotiate' : 'accept');
+  const [offeredPrice, setOfferedPrice] = useState(isNegotiating && request.renterOfferedPrice ? String(request.renterOfferedPrice) : '');
+  const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
 
   const section = warehouse?.sections?.find(s => s.id_section === request.sectionId);
@@ -56,7 +57,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
               Phản hồi yêu cầu
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              {request.renterName} · {request.renterCompany}
+              {request.renterName} · {request.renterCompanyName}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-[var(--color-bg-secondary)] transition-colors">
@@ -69,7 +70,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
           <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
             <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {request.requestedCapacity?.toLocaleString() || request.duration} m³</span>
             {request.cargoType && (
-                <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {CARGO_LABEL[request.cargoType] ?? request.cargoType}</span>
+              <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {CARGO_LABEL[request.cargoType] ?? request.cargoType}</span>
             )}
             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {fmtDate(request.start_date)} · {request.durationLabel}</span>
             {request.sectionName && (
@@ -138,13 +139,16 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
                 </label>
                 <div className="flex gap-2 items-center">
                   <div className="relative flex-1">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
+
                     <input
                       type="text"
-                      placeholder={suggestedTotalPrice ? suggestedTotalPrice.toLocaleString('en-US') : ''}
+                      placeholder={suggestedTotalPrice ? Number(suggestedTotalPrice).toLocaleString('en-US') : ''}
                       value={offeredPrice ? Number(offeredPrice).toLocaleString('en-US') : ''}
-                      onChange={e => setOfferedPrice(e.target.value.replace(/\D/g, ''))}
-                      className="w-full h-9 pl-8 pr-3 text-sm border focus:outline-none focus:border-[var(--color-primary)]"
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        setOfferedPrice(raw);
+                      }}
+                      className="w-full h-9 pl-3 pr-3 text-sm border focus:outline-none focus:border-[var(--color-primary)]"
                       style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                     />
                   </div>
@@ -207,8 +211,8 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
             {mode === 'accept'
               ? <><CheckCircle className="h-4 w-4" /> Chấp nhận yêu cầu</>
               : mode === 'negotiate'
-              ? <><DollarSign className="h-4 w-4" /> Gửi đề xuất giá</>
-              : <><XCircle className="h-4 w-4" /> Xác nhận từ chối</>}
+                ? <><DollarSign className="h-4 w-4" /> Gửi đề xuất giá</>
+                : <><XCircle className="h-4 w-4" /> Xác nhận từ chối</>}
           </button>
         </div>
       </div>

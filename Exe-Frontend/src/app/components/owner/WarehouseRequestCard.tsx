@@ -71,9 +71,9 @@ export function WarehouseRequestCard({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>
             {req.renterName}
-            {req.renterCompany && (
+            {req.renterCompanyName && (
               <span className="ml-2 text-[11px] font-normal" style={{ color: 'var(--color-text-muted)' }}>
-                · {req.renterCompany}
+                · {req.renterCompanyName}
               </span>
             )}
           </p>
@@ -404,7 +404,7 @@ export function WarehouseRequestCard({
             <p className="text-[11px] flex-1" style={{ color: 'var(--color-text-muted)' }}>
               Gửi {relativeTime(req.submit_at)}
             </p>
-            {req.status === 'PENDING' && (
+            {(req.status === 'PENDING' || req.status === 'NEGOTIATING') && (
               <button
                 onClick={() => onOpenModal(req)}
                 className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"

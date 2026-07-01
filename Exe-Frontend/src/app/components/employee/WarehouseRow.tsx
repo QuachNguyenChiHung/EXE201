@@ -187,7 +187,7 @@ export default function WarehouseRow({
                     </div>
                     <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                         <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{warehouse.address}, {formatShortAddress({
+                        <span className="truncate">{(warehouse.address ? warehouse.address + ", " : "")}{formatShortAddress({
                             province: warehouse.location_province,
                             commune: warehouse.location_commune,
                             locationAddressText: warehouse.location_address_text,
