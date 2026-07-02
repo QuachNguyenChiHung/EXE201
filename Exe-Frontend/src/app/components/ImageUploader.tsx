@@ -82,7 +82,6 @@ export function ImageUploader({
         URL.revokeObjectURL(preview);
       }, 800);
     } catch (err: any) {
-      console.error('[ImageUploader] Upload failed:', err);
       setUploading(prev => prev.map(u =>
         u.id === id ? { ...u, status: 'error', error: err?.message } : u
       ));

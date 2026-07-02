@@ -137,7 +137,6 @@ export function Navbar() {
       setUserState(null);
       navigate("/");
     } catch (error) {
-      console.error('Logout failed:', error);
       toast.error('Đăng xuất thất bại do lỗi kết nối!');
     }
   };

@@ -25,8 +25,7 @@ export function WarehouseReviewsModal({ warehouseId, warehouseName, onClose }: P
   useEffect(() => {
     renterService.getWarehouseRatings(warehouseId)
       .then(setData)
-      .catch((err) => {
-        console.error('[WarehouseReviewsModal] Failed to fetch reviews:', err);
+      .catch(() => {
         setError('Không thể tải đánh giá.');
       })
       .finally(() => setLoading(false));

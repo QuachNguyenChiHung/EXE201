@@ -25,8 +25,7 @@ export default function AISubscriptionPage() {
         const tiers = await renterService.getAiTiers();
         setAiTiers(tiers);
       } catch (err) {
-        console.error('Failed to load AI tiers:', err);
-        toast.error('Không thể tải danh sách gói AI.');
+        // silent
       } finally {
         setLoadingTiers(false);
       }

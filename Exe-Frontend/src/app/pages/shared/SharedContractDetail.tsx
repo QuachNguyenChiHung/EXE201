@@ -29,11 +29,10 @@ export default function SharedContractDetail() {
                     .then(reqRes => {
                         setRequestDetail(reqRes);
                     })
-                    .catch(reqErr => console.error("Failed to fetch attached request:", reqErr));
+                    .catch(() => {});
             }
         })
-        .catch(err => {
-            console.error("Failed to fetch contract:", err);
+        .catch(() => {
             setError("Không tìm thấy hợp đồng hoặc có lỗi xảy ra.");
         })
         .finally(() => setLoading(false));

@@ -69,7 +69,7 @@ export function WarehouseMapDisplay({ lat, long, addressText, obfuscateLocation 
           }
         }
       } catch (error) {
-        console.error("Failed to resolve exact address:", error);
+        // silent
       } finally {
         if (isMounted) setLoadingAddress(false);
       }

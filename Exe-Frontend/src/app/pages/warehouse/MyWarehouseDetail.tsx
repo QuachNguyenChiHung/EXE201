@@ -66,20 +66,19 @@ export default function MyWarehouseDetail() {
             // Fetch requests for this warehouse
             ownerService.getWarehouseRentRequests(warehouseId)
                .then(setRequests)
-               .catch(e => console.error("Failed to load requests", e));
+               .catch(() => {});
 
             // Fetch contracts for this warehouse
             ownerService.getWarehouseContracts(warehouseId)
                .then(setContracts)
-               .catch(e => console.error("Failed to load contracts", e));
+               .catch(() => {});
 
             // Fetch location
             ownerService.getWarehouseLocation(warehouseId)
                .then(setLocation)
-               .catch(e => console.error("Failed to load location", e));
+               .catch(() => {});
 
          } catch (err: any) {
-            console.error("Fetch warehouse failed", err);
             toast.error("Không tìm thấy thông tin kho lạnh!");
             navigate("/warehouse/my-warehouses");
          } finally {
@@ -116,7 +115,7 @@ export default function MyWarehouseDetail() {
                }
                setViewStats(formatted);
             })
-            .catch(err => console.error("Failed to fetch view stats", err))
+               .catch(() => {})
             .finally(() => setLoadingStats(false));
       }
    }, [warehouse, viewStatsDays]);

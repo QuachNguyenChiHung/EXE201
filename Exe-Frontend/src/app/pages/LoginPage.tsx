@@ -39,7 +39,6 @@ export default function LoginPage() {
       else navigate("/");
     } catch (err: any) {
       setAuthError(err?.message ?? "Đăng nhập thất bại");
-      console.error("Login error:", err);
       toast.error(err?.message ?? "Đăng nhập thất bại");
     } finally {
       setLoading(false);

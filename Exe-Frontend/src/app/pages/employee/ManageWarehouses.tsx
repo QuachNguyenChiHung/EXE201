@@ -101,7 +101,6 @@ export default function ManageWarehouses() {
       }
       return newData;
     } catch (err: any) {
-      console.error('Failed to fetch warehouses', err);
       if (!isPreload) toast.error('Không tải được danh sách kho');
     } finally {
       if (!isPreload) setLoading(false);

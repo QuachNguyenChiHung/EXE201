@@ -63,7 +63,6 @@ export default function MyWarehouses() {
       }
       return newData;
     } catch (err: any) {
-      console.error('Failed to fetch warehouses', err);
       if (!isPreload) toast.error('Không tải được danh sách kho');
     } finally {
       if (!isPreload) setLoading(false);
@@ -123,7 +122,6 @@ export default function MyWarehouses() {
       refreshTabCounts();
       fetchPage(0, tab, false, true);
     } catch (err: any) {
-      console.error('[MyWarehouses] hide failed', err);
       toast.error('Không thể ẩn kho');
     }
   };
@@ -137,7 +135,6 @@ export default function MyWarehouses() {
       refreshTabCounts();
       fetchPage(0, tab, false, true);
     } catch (err: any) {
-      console.error('[MyWarehouses] restore failed', err);
       toast.error('Không thể khôi phục kho');
     }
   };
@@ -151,7 +148,6 @@ export default function MyWarehouses() {
       fetchPage(page, tab, false, true);
       setReuploadTarget(null);
     } catch (err: any) {
-      console.error('[MyWarehouses] cert update failed', err);
       toast.error('Không thể cập nhật chứng nhận');
     }
   };

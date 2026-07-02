@@ -51,8 +51,7 @@ export default function ManageAiTiers() {
       const res = await employeeService.getAllAiTiers();
       setAiTiers(res || []);
     } catch (err: any) {
-      console.error('Failed to fetch ai tiers', err);
-      toast.error('Không tải được danh sách gói AI');
+      // silent
     } finally { setLoading(false); }
   }, []);
 
@@ -119,8 +118,7 @@ export default function ManageAiTiers() {
       await fetchTiers();
       setShowForm(false); setEditId(null);
     } catch (err: any) {
-      console.error('Save failed', err);
-      toast.error(`Lỗi: ${err?.response?.data?.message || err?.message || err}`);
+      // silent
     } finally { setSaving(false); }
   };
 

@@ -18,7 +18,7 @@ export const initBookmarks = async () => {
         globalBookmarkedIds = warehouses.map(w => w.id_warehouse);
         isInitialized = true;
     } catch (error) {
-        console.error("Failed to load bookmarks", error);
+      // silent
     } finally {
         isLoading = false;
         notify();

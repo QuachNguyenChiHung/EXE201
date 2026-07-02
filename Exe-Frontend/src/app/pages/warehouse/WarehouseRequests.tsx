@@ -96,7 +96,6 @@ export default function WarehouseRequests() {
       }
       return newData;
     } catch (err: any) {
-      console.error('Failed to fetch requests', err);
       if (!isPreload) toast.error('Không tải được danh sách yêu cầu');
     } finally {
       if (!isPreload) setLoading(false);
@@ -172,7 +171,7 @@ export default function WarehouseRequests() {
         return newCache;
       });
     } catch (err) {
-      console.error("Failed to refetch single request", err);
+      // silent
     }
   };
 

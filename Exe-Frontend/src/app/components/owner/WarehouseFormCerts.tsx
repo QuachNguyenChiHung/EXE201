@@ -24,7 +24,7 @@ function WarehouseFormCertsInner({ certFiles, setCertFiles, existingCerts, setEx
         const data = await ownerService.getCertifications();
         setCertTypes(data || []);
       } catch (err) {
-        console.error("Failed to fetch cert types", err);
+        // silent
       }
     };
     fetchTypes();

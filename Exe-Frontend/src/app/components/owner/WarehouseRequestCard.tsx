@@ -32,7 +32,7 @@ export function WarehouseRequestCard({
         const data = await ownerService.getRequestDetail(req.id_rentRequest || (req as any).id);
         setRequestDetail(data);
       } catch (err) {
-        console.error("Failed to fetch request detail", err);
+        // silent
       } finally {
         setIsLoadingDetail(false);
       }

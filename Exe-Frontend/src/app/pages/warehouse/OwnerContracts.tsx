@@ -36,7 +36,7 @@ export default function OwnerContracts() {
         setTotalPages(1);
       }
     } catch (err) {
-      console.error("Failed to fetch contracts:", err);
+      // silent
     } finally {
       setLoading(false);
     }

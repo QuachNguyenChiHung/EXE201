@@ -130,9 +130,8 @@ export default function AISearchWarehouse() {
             .then((data) => {
                 const list = data.content || [];
                 setWarehouseEntitiesList(list);
-                console.log("[AI/init] loaded", list.length, "warehouses on mount");
             })
-            .catch((err) => console.warn("[AI/init] failed to preload warehouses:", err?.message))
+            .catch(() => {})
             .finally(() => setCandidatesLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -143,11 +142,9 @@ export default function AISearchWarehouse() {
     useEffect(() => {
         if (!currentUser) return;
         let cancelled = false;
-        console.log("[AI/restore] fetching latest conversation for user", currentUser.id_user);
         aiAPI.getConversationsByUser(currentUser.id_user ?? 0)
             .then(convs => {
                 if (cancelled) return;
-                console.log("[AI/restore] found", convs.length, "conversations");
                 if (convs.length === 0) return;
                 const latest = convs[0];
                 let parsed: ChatMsg[] = [];
@@ -167,7 +164,6 @@ export default function AISearchWarehouse() {
                 if (parsed.length === 0) return;
                 // Only restore if the user hasn't started a new conversation yet
                 if (conversationIdRef.current !== 0) return;
-                console.log("[AI/restore] restoring", parsed.length, "messages from conversation", latest.id_ai_conversations);
                 setChatMessages([makeWelcomeMsg(), ...parsed]);
                 conversationIdRef.current = latest.id_ai_conversations;
                 cumulativeTokensRef.current = {
@@ -175,7 +171,7 @@ export default function AISearchWarehouse() {
                     output: latest.total_output_tokens ?? 0,
                 };
             })
-            .catch((err) => console.warn("[AI/restore] failed to load conversation:", err?.message));
+            .catch(() => {});
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -192,12 +188,6 @@ export default function AISearchWarehouse() {
     const persistConversation = useCallback(
         (msgs: ChatMsg[], whCount: number) => {
             if (!currentUser || !conversationIdRef.current || msgs.length === 0) return;
-            console.log("[AI/persist] saving conversation", {
-                id: conversationIdRef.current,
-                turns: msgs.length,
-                warehouseCount: whCount,
-                tokens: cumulativeTokensRef.current,
-            });
             const record: CompositeAiConversations = {
                 id_ai_conversations: conversationIdRef.current,
                 id_user: currentUser.id_user,
@@ -215,9 +205,7 @@ export default function AISearchWarehouse() {
                 create_at: conversationCreatedAtRef.current,
                 update_at: new Date().toISOString(),
             };
-            aiAPI.saveConversation(record).catch((err) =>
-                console.log("[AI/persist] save error:", err?.message),
-            );
+            aiAPI.saveConversation(record).catch(() => {});
         },
         [currentUser],
     );
@@ -228,13 +216,6 @@ export default function AISearchWarehouse() {
         history: ChatMsg[],
     ): Promise<AIResponsePayload> => {
         const isHandshake = history.filter((m) => m.role === "ai").length === 0;
-        console.log("[AI/standard] → sending", {
-            mode: "standard",
-            prompt,
-            isInitialHandshake: isHandshake,
-            warehouseCount: warehouses.slice(0, 12).length,
-            historyTurns: history.length,
-        });
         const strippedWarehouses = warehouses.slice(0, 12).map(w => {
             const { images, ...rest } = w;
             return rest;
@@ -249,12 +230,6 @@ export default function AISearchWarehouse() {
         };
         setAiPayload(payload);
         const result = await aiAPI.chat(payload);
-        console.log("[AI/standard] ← received", {
-            textLength: result.text?.length,
-            refinedIds: result.refinedWarehouseIds,
-            usage: result.usage,
-            tokenExhausted: result.tokenExhausted,
-        });
         return result;
     };
 
@@ -263,12 +238,6 @@ export default function AISearchWarehouse() {
         warehouses: CompositeWarehouse[],
         history: ChatMsg[],
     ): Promise<AIResponsePayload> => {
-        console.log("[AI/context] → sending", {
-            mode: "context",
-            prompt,
-            warehouseCount: warehouses.length,
-            historyTurns: history.length,
-        });
         const strippedWarehouses = warehouses.map(w => {
             const { images, ...rest } = w;
             return rest;
@@ -278,12 +247,6 @@ export default function AISearchWarehouse() {
             conversationHistory: history.map((m) => ({ role: m.role, content: m.content })),
             warehouses: strippedWarehouses,
         });
-        console.log("[AI/context] ← received", {
-            textLength: result.text?.length,
-            refinedIds: result.refinedWarehouseIds,
-            usage: result.usage,
-            tokenExhausted: result.tokenExhausted,
-        });
         return result;
     };
 
@@ -291,13 +254,9 @@ export default function AISearchWarehouse() {
     const fetchInitialCandidates = useCallback(async (currentFilters?: FilterOptions): Promise<CompositeWarehouse[]> => {
         try {
             const params = currentFilters ? buildCandidateParams(currentFilters) : { page: 0, size: 50 };
-            console.log("[AI/candidates] fetching with params", params);
             const data = await renterService.searchWarehouses(params);
-            const count = data.content?.length ?? 0;
-            console.log("[AI/candidates] fetched", count, "warehouses");
             return data.content || [];
         } catch (searchErr) {
-            console.warn("[AI/candidates] fetch failed, continuing with empty list:", searchErr);
             return [];
         }
     }, []);
@@ -330,7 +289,6 @@ export default function AISearchWarehouse() {
     const handleChatSend = async (text?: string) => {
         const msg = (text ?? chatInput).trim();
         if (!msg || chatLoading) return;
-        console.log("[AI/send] user message:", msg, "| mode:", searchMode, "| candidates:", warehouseEntitiesList.length);
         setChatInput("");
         setAiError(null);
 

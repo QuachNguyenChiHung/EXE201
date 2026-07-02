@@ -24,13 +24,9 @@ export default function WarehouseDashboard() {
       return;
     }
 
-    ownerService.getMyWarehouses(0, 10, 'all').then(res => setWarehouses(res.content)).catch(err => {
-      console.error('Failed to load warehouses:', err);
-    });
+    ownerService.getMyWarehouses(0, 10, 'all').then(res => setWarehouses(res.content)).catch(() => {});
 
-    ownerService.getOwnerStatistics().then(setOwnerStats).catch(err => {
-      console.error('Failed to load owner statistics:', err);
-    });
+    ownerService.getOwnerStatistics().then(setOwnerStats).catch(() => {});
   }, [user?.role, navigate]);
 
 

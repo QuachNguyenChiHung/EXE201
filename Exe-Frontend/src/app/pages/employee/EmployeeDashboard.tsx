@@ -28,12 +28,12 @@ export default function EmployeeDashboard() {
         const list = Array.isArray(c) ? c : ((c as any)?.content || (c as any)?.data || (c as any)?.contracts || []);
         setContractList(list);
       })
-      .catch(err => console.error('Failed to load contracts:', err));
+      .catch(() => {});
 
     // fetch employee statistics
     employeeService.getStatistics()
       .then(r => setStatsData(r))
-      .catch(err => console.error('Failed to load statistics:', err));
+      .catch(() => {});
   }, [user?.role, navigate]);
 
   // ── Stats from mock data ──────────────────────────────────────────────────

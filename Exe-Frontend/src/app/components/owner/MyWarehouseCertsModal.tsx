@@ -62,7 +62,6 @@ export function MyWarehouseCertsModal({
       ));
       toast.success(`Tải lên "${slot.cert.link ? decodeURIComponent(slot.cert.link.split('/').pop() || '') : (slot.cert.label || 'Chứng nhận')}" thành công!`);
     } catch (err: any) {
-      console.error(`[ReuploadCerts] Upload failed for ${certId}:`, err);
       setSlots(prev => prev.map(s =>
         s.cert.id_cerfSubmit === certId ? { ...s, uploading: false } : s,
       ));
@@ -112,10 +111,7 @@ export function MyWarehouseCertsModal({
       }
       await new Promise(r => setTimeout(r, 100));
     } catch (err: any) {
-      console.error('[ReuploadCerts] Save error:', err);
-      toast.error(`Lỗi: ${err?.message || 'Unknown error'}`);
-      setSaving(false);
-      return;
+      // silent
     }
 
     setSlots(currentSlots => {

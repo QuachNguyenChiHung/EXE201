@@ -61,7 +61,7 @@ export default function SubscriptionManagement() {
 
         setSponsorTiers([freeTier, ...backendTiers]);
       } catch (err) {
-        console.error("Failed to fetch sponsor tiers", err);
+        // silent
       }
     };
 
@@ -70,7 +70,7 @@ export default function SubscriptionManagement() {
         const response = await ownerService.getMyWarehouses(0, 100);
         setMyWarehouses(response.content || []);
       } catch (err) {
-        console.error("Failed to fetch warehouses", err);
+        // silent
       }
     };
 

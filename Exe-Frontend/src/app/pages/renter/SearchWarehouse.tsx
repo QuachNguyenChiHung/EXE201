@@ -45,7 +45,7 @@ export default function SearchWarehouse() {
     renterService
       .getFilterMeta()
       .then((meta) => setFilterMeta(meta))
-      .catch(console.error);
+      .catch(() => {});
   }, []);
 
   /**
@@ -124,7 +124,6 @@ export default function SearchWarehouse() {
     setLoading(true);
     try {
       const params = buildSearchParams(currentPage);
-      console.log("[SearchWarehouse] GET /warehouses/search", params);
       const data = await renterService.searchWarehouses(params);
 
       setWarehouses(data.content);
@@ -152,7 +151,7 @@ export default function SearchWarehouse() {
       });
       await Promise.allSettled(ratingFetches);
     } catch (error) {
-      console.error("Search failed:", error);
+      // silent
     } finally {
       setLoading(false);
     }

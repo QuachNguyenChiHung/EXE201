@@ -32,7 +32,7 @@ export default function ManageContracts() {
           setTotalElements(list.length);
         }
       })
-      .catch(err => console.error("Failed to fetch contracts:", err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [statusFilter, page]);
 

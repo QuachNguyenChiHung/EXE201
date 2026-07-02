@@ -30,8 +30,7 @@ export default function RenterDashboard() {
       setWarehouses(activeWhsData.content);
       setStats(fetchedStats);
       setLoading(false);
-    }).catch(err => {
-      console.error('Failed to load dashboard:', err);
+    }).catch(() => {
       setLoading(false);
     });
   }, [user?.email, user?.role, navigate]);

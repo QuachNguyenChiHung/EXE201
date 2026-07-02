@@ -63,9 +63,7 @@ export const userService = {
    *  object so the Navbar / dashboard greeting renders the real name on every
    *  page load (not just right after login). */
   getMyProfile: async (): Promise<UserProfileDTO> => {
-    console.log('[API CALL] GET /users/me');
     const res = await api.get('/users/me');
-    console.log('[API RESPONSE]', res.data);
     const profile = normalize(res.data);
     const stored = localStorage.getItem('user');
     if (stored) {
@@ -83,9 +81,7 @@ export const userService = {
 
   /** PATCH /api/users/me — update full name, phone, and (optionally) company fields. */
   updateMyProfile: async (dto: UserProfileUpdateDTO): Promise<UserProfileDTO> => {
-    console.log('[API CALL] PATCH /users/me', dto);
     const res = await api.patch('/users/me', dto);
-    console.log('[API RESPONSE]', res.data);
     const profile = normalize(res.data);
     const stored = localStorage.getItem('user');
     if (stored) {
@@ -105,11 +101,9 @@ export const userService = {
    * The shared axios instance already strips the JSON Content-Type for FormData bodies.
    */
   uploadAvatar: async (file: File): Promise<UserProfileDTO> => {
-    console.log('[API CALL] POST /users/me/avatar', { fileName: file.name, fileSize: file.size, fileType: file.type });
     const form = new FormData();
     form.append('file', file);
     const res = await api.post('/users/me/avatar', form);
-    console.log('[API RESPONSE]', res.data);
     const profile = normalize(res.data);
     const stored = localStorage.getItem('user');
     if (stored) {

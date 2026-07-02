@@ -71,7 +71,7 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
       setProvincesData(data.filter((d: any) => d.kind === "province"));
       setQuanhuyenData(data.filter((d: any) => d.kind === "district"));
       setXaphuongData(data.filter((d: any) => d.kind === "commune"));
-    }).catch(e => console.error("Failed to load map data", e));
+    }).catch(() => {});
   }, []);
 
   const provinceNames = useMemo(() => Array.from(new Set([...vietnamProvinces, ...provincesData.map(p => p.ten)])).sort(), [provincesData]);
@@ -229,8 +229,6 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
         warehouse.location_province || ""
       );
 
-      console.log("[Map Search Results]:", results);
-
       if (results && results.length > 0) {
         const best = results[0];
         const lat = parseFloat(best.lat);
@@ -258,7 +256,6 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
         toast.error("Không tìm thấy địa chỉ này trên bản đồ. Vui lòng thử nhấp trực tiếp lên bản đồ.");
       }
     } catch (err) {
-      console.error(err);
       toast.error("Lỗi khi tìm kiếm địa chỉ");
     } finally {
       setSearchingLocation(false);
@@ -271,11 +268,6 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
 
     try {
       const data = await nominatimReverse(lat, lon);
-
-      console.log("[Map Pin Drop Result]:", {
-        lat, lon,
-        reverseGeocodeData: data
-      });
 
       let newAddressText = data?.display_name || "";
       let newProvince = warehouse.location_province;
@@ -307,7 +299,6 @@ export function WarehouseFormLocation({ warehouse, onChange }: Props) {
       }
 
     } catch (err) {
-      console.error("Geocoding error:", err);
       toast.error("Lỗi khi lấy thông tin vị trí.");
     }
   };

@@ -71,7 +71,7 @@ export default function RentedProperties() {
 
       setRenterContracts(contracts);
     } catch (err) {
-      console.error('[RentedProperties] fetchContracts failed', err);
+      // silent
     } finally {
       setLoadingContracts(false);
     }

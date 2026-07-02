@@ -146,7 +146,7 @@ export function UserConversationsModal({
         setConvs(convData);
         setAttributes(getAttributes(meta));
       })
-      .catch((err) => console.log('[convs] Fetch error:', err?.message))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [userId]);
 

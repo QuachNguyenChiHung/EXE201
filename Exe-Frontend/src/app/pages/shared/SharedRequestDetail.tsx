@@ -24,8 +24,7 @@ export default function SharedRequestDetail() {
         .then(res => {
             setRequest(res);
         })
-        .catch(err => {
-            console.error("Failed to fetch request:", err);
+        .catch(() => {
             setError("Không tìm thấy yêu cầu hoặc có lỗi xảy ra.");
         })
         .finally(() => setLoading(false));

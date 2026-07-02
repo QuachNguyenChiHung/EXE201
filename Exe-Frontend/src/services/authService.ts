@@ -22,9 +22,7 @@ export const authService = {
    *   4. Merge profile into localStorage so Navbar shows the real name
    */
   login: async (credentials: { email: string; password: string }): Promise<User> => {
-    console.log('[API CALL] POST /auth/login', credentials);
     const { data: loginData } = await api.post('/auth/login', credentials);
-    console.log('[API RESPONSE]', loginData);
 
     const partialUser: Partial<User> & { token: string } = {
       token: loginData.token,
@@ -43,16 +41,12 @@ export const authService = {
   },
 
   logout: async () => {
-    console.log('[API CALL] POST /auth/logout');
     const response = await api.post('/auth/logout');
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
 
   register: async (data: RegisterRequestDTO): Promise<string> => {
-    console.log('[API CALL] POST /auth/register', data);
     const response = await api.post('/auth/register', data);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   }
 };

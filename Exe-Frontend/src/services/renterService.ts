@@ -105,25 +105,19 @@ export interface RenterStatisticResponseDTO {
 
 export const renterService = {
     getDashboardStatistics: async (expireDays: number = 30): Promise<RenterStatisticResponseDTO> => {
-        console.log(`[API CALL] GET /renters/statistics?expireDays=${expireDays}`);
         const response = await api.get('/renters/statistics', { params: { expireDays } });
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     createRentRequest: async (request: RentRequestCreateDTO): Promise<any> => {
-        console.log(`[API CALL] POST /renters/requests`, request);
         const response = await api.post('/renters/requests', request);
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     getMyRequests: async (page: number = 0, size: number = 6, status?: string): Promise<{ content: any[], totalPages: number, totalElements: number }> => {
-        console.log(`[API CALL] GET /renters/requests?page=${page}&size=${size}&status=${status || ''}`);
         const params: any = { page, size };
         if (status) params.status = status;
         const response = await api.get('/renters/requests', { params });
-        console.log('[API RESPONSE]', response.data);
         return {
             content: response.data.content || [],
             totalPages: response.data.totalPages || 0,
@@ -132,23 +126,17 @@ export const renterService = {
     },
 
     cancelRequest: async (requestId: number, reason?: string): Promise<any> => {
-        console.log(`[API CALL] PATCH /renters/requests/${requestId}/cancel`);
         const response = await api.patch(`/renters/requests/${requestId}/cancel`, { reason });
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     acceptOffer: async (requestId: number): Promise<any> => {
-        console.log(`[API CALL] PATCH /renters/requests/${requestId}/accept-offer`);
         const response = await api.patch(`/renters/requests/${requestId}/accept-offer`);
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     counterOffer: async (requestId: number, note?: string, newPrice?: number): Promise<any> => {
-        console.log(`[API CALL] PATCH /renters/requests/${requestId}/counter-offer`);
         const response = await api.patch(`/renters/requests/${requestId}/counter-offer`, { note, newPrice });
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
@@ -163,9 +151,7 @@ export const renterService = {
     },
 
     getActiveWarehouses: async (page: number = 0, size: number = 6): Promise<{ content: CompositeWarehouse[], totalPages: number, totalElements: number }> => {
-        console.log(`[API CALL] GET /warehouses?page=${page}&size=${size}`);
         const response = await api.get('/warehouses', { params: { page, size } });
-        console.log('[API RESPONSE]', response.data);
         return {
             content: (response.data.content || []).map(mapWarehouseResponse),
             totalPages: response.data.totalPages || 0,
@@ -174,9 +160,7 @@ export const renterService = {
     },
 
     getPopularWarehouses: async (page: number = 0, size: number = 6): Promise<{ content: CompositeWarehouse[], totalPages: number, totalElements: number }> => {
-        console.log(`[API CALL] GET /warehouses/popular?page=${page}&size=${size}`);
         const response = await api.get('/warehouses/popular', { params: { page, size } });
-        console.log('[API RESPONSE]', response.data);
         return {
             content: (response.data.content || []).map(mapWarehouseResponse),
             totalPages: response.data.totalPages || 0,
@@ -185,9 +169,7 @@ export const renterService = {
     },
 
     searchWarehouses: async (params: any): Promise<{ content: CompositeWarehouse[], totalPages: number, totalElements: number }> => {
-        console.log(`[API CALL] GET /warehouses/search`, params);
         const response = await api.get('/warehouses/search', { params });
-        console.log('[API RESPONSE]', response.data);
         return {
             content: (response.data.content || []).map(mapWarehouseResponse),
             totalPages: response.data.totalPages || 0,
@@ -196,32 +178,24 @@ export const renterService = {
     },
 
     getFilterMeta: async (): Promise<FilterMetaResponseDTO> => {
-        console.log(`[API CALL] GET /warehouses/filter-meta`);
         const response = await api.get('/warehouses/filter-meta');
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     getWarehouseDetail: async (id: string | number): Promise<CompositeWarehouse> => {
-        console.log(`[API CALL] GET /warehouses/${id}`);
         const response = await api.get(`/warehouses/${id}`);
-        console.log('[API RESPONSE]', response.data);
         return mapWarehouseResponse(response.data);
     },
 
     getWarehouseLocation: async (id: string | number): Promise<{ locationLat: number, locationLong: number }> => {
-        console.log(`[API CALL] GET /warehouses/${id}/location`);
         const response = await api.get(`/warehouses/${id}/location`);
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     getMyContracts: async (page: number = 0, size: number = 6, status?: string): Promise<{ content: CompositeContract[], totalPages: number, totalElements: number }> => {
-        console.log(`[API CALL] GET /contracts?page=${page}&size=${size}&status=${status || ''}`);
         const params: any = { page, size };
         if (status) params.status = status;
         const response = await api.get('/contracts', { params });
-        console.log('[API RESPONSE]', response.data);
         return {
             content: (response.data.content || []).map(mapContractResponse),
             totalPages: response.data.totalPages || 0,
@@ -230,39 +204,29 @@ export const renterService = {
     },
 
     signContract: async (contractId: number): Promise<CompositeContract> => {
-        console.log(`[API CALL] PATCH /renters/contracts/${contractId}/sign`);
         const response = await api.patch(`/renters/contracts/${contractId}/sign`);
-        console.log('[API RESPONSE]', response.data);
         return mapContractResponse(response.data);
     },
 
     rejectContract: async (contractId: number, reason?: string): Promise<CompositeContract> => {
-        console.log(`[API CALL] PATCH /renters/contracts/${contractId}/reject`);
         const response = await api.patch(`/renters/contracts/${contractId}/reject`, { reason });
-        console.log('[API RESPONSE]', response.data);
         return mapContractResponse(response.data);
     },
 
     // AI SUBSCRIPTION
     getAiTiers: async (): Promise<AiSubscriptionTier[]> => {
-        console.log('[API CALL] GET /renters/ai-tiers');
         const response = await api.get('/renters/ai-tiers');
-        console.log('[API RESPONSE]', response.data);
         return (response.data || []).map(mapAiTierResponse);
     },
 
     buyAiTier: async (tierId: number): Promise<{ paymentUrl?: string }> => {
-        console.log(`[API CALL] POST /renters/ai-tiers/${tierId}/pay`);
         const response = await api.post(`/renters/ai-tiers/${tierId}/pay`);
-        console.log('[API RESPONSE]', response.data);
         return response.data;
     },
 
     getMyActiveAiSubscription: async (): Promise<any | null> => {
-        console.log('[API CALL] GET /renters/ai-subscription');
         try {
             const response = await api.get('/renters/ai-subscription');
-            console.log('[API RESPONSE]', response.data);
             return response.data;
         } catch (err: any) {
             if (err?.response?.status === 404) return null;
@@ -292,9 +256,7 @@ export const renterService = {
     },
 
     createReview: async (warehouseId: number, rating: number, comment?: string): Promise<Review> => {
-        console.log(`[API CALL] POST /renters/warehouses/${warehouseId}/ratings`, { rating, comment });
         const response = await api.post<any>(`/renters/warehouses/${warehouseId}/ratings`, { rating, comment });
-        console.log('[API RESPONSE]', response.data);
         return {
             id: response.data.id,
             userId: 0,

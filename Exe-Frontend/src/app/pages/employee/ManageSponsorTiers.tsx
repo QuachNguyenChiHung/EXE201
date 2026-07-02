@@ -49,8 +49,7 @@ export default function ManageSponsorTiers() {
       const res = await employeeService.getAllSponsorTiers();
       setSponsorTiers(res || []);
     } catch (err: any) {
-      console.error('Failed to fetch sponsor tiers', err);
-      toast.error('Không tải được danh sách gói Tài trợ');
+      // silent
     } finally { setLoading(false); }
   }, []);
 
@@ -115,8 +114,7 @@ export default function ManageSponsorTiers() {
       await fetchTiers();
       setShowForm(false); setEditId(null);
     } catch (err: any) {
-      console.error('Save failed', err);
-      toast.error(`Lỗi: ${err?.response?.data?.message || err?.message || err}`);
+      // silent
     } finally { setSaving(false); }
   };
 

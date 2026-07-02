@@ -58,7 +58,6 @@ export default function ManageCertTypes() {
       }));
       setCertTypes(items.sort((a, b) => a.label.localeCompare(b.label)));
     } catch (err: any) {
-      console.error('Failed to fetch certs', err);
       toast.error('Không tải được danh sách loại chứng nhận');
     } finally { setLoading(false); }
   }, []);
@@ -146,7 +145,6 @@ export default function ManageCertTypes() {
           update: toDDMMYYYY(form.update),
           pdfLink: (form as any).pdfLink || existing?.pdfLink || null,
         };
-        console.log(`Updating cert ${certID} with payload: ${JSON.stringify(payload)}`);
         await employeeService.updateCertType(certID, payload);
         toast.success('Đã cập nhật loại chứng nhận');
       } else {
@@ -163,7 +161,6 @@ export default function ManageCertTypes() {
       await fetchCerts();
       setShowForm(false); setEditId(null);
     } catch (err: any) {
-      console.error('Save failed', err);
       toast.error(`Lỗi: ${err?.message || err}`);
     } finally { setSaving(false); }
   };

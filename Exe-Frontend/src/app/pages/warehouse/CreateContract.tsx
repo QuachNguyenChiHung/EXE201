@@ -74,13 +74,13 @@ export default function CreateContract() {
           const meta = await ownerService.getContractMetaData(requestId);
           if (mounted) setMetaData(meta);
         } catch (e) {
-          console.warn('[CreateContract] failed to fetch metadata', e);
+          // silent
         }
         const allContracts = await contractsAPI.getAll();
         const draft = allContracts.find(c => c.id_rent_request?.toString() === requestId && (c.status === 'draft' || c.status === 'pending_renter')) as CompositeContract | undefined;
         if (draft && mounted) setExistingDraft(draft);
       } catch (err) {
-        console.warn('[CreateContract] load data failed', err);
+        // silent
       }
     };
     load();
@@ -238,7 +238,6 @@ export default function CreateContract() {
       toast.success('Đã lưu bản nháp hợp đồng!');
       navigate('/warehouse/contracts');
     } catch (err: any) {
-      console.error('[CreateContract] createContract failed:', err);
       toast.error(err?.message ?? 'Không thể lưu hợp đồng');
     }
   };
@@ -250,7 +249,6 @@ export default function CreateContract() {
       toast.success('Đã gửi hợp đồng cho người thuê ký xác nhận!');
       navigate('/warehouse/contracts');
     } catch (err: any) {
-      console.error('[CreateContract] createContract failed:', err);
       toast.error(err?.message ?? 'Không thể gửi hợp đồng');
     }
   };

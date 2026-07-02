@@ -245,7 +245,6 @@ export default function ManageUsers() {
       // update local list optimistically
       setListUsers(prev => prev.map(u => u.id_user === id ? { ...u, name, company: companyName ? { company_name: companyName } : u.company } : u));
     } catch (err) {
-      console.error(err);
       toast.error('Cập nhật thất bại');
     }
   }
@@ -256,7 +255,6 @@ export default function ManageUsers() {
       toast.success(`Đã ${newStatus === 'ACTIVE' ? 'mở khoá' : 'khoá'} tài khoản.`);
       setListUsers(prev => prev.map(u => u.id_user === user.id_user ? { ...u, status: newStatus } : u));
     } catch (err: any) {
-      console.error(err);
       toast.error('Cập nhật trạng thái thất bại');
     }
   }
@@ -270,7 +268,6 @@ export default function ManageUsers() {
       setPage(0);
       setRefetchKey(k => k + 1);
     } catch (err: any) {
-      console.error(err);
       const errMsg = err.response?.data || err.message || 'Lỗi không xác định';
       toast.error('Không thể tạo nhân viên: ' + errMsg);
     }
@@ -311,7 +308,7 @@ export default function ManageUsers() {
       }
       return newData;
     } catch (error) {
-      console.error('Error fetching users:', error);
+      // silent
     } finally {
       if (!isPreload) setLoading(false);
     }
@@ -387,8 +384,7 @@ export default function ManageUsers() {
           setStatsByDate(formattedDateStats);
           setStatsByHour(formattedHourStats);
         } catch (error) {
-          console.error('Error fetching stats:', error);
-          toast.error('Lỗi khi tải thống kê');
+          // silent
         } finally {
           setStatsLoading(false);
         }

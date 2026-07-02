@@ -15,17 +15,13 @@ export interface OwnerStatisticResponseDTO {
 
 export const ownerService = {
   getOwnerStatistics: async (): Promise<OwnerStatisticResponseDTO> => {
-    console.log('[API CALL] GET /owners/statistics');
     const response = await api.get('/owners/statistics');
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getMyWarehouses: async (page: number = 0, size: number = 10, status?: string): Promise<{ content: CompositeWarehouse[], totalPages: number, totalElements: number }> => {
     const params: any = { page, size };
     if (status && status !== 'all') params.status = status;
-    console.log('[API CALL] GET /owners/warehouses', params);
     const response = await api.get('/owners/warehouses', { params });
-    console.log('[API RESPONSE]', response.data);
 
     // Map backend DTO to frontend CompositeWarehouse interface
     const dataList = Array.isArray(response.data) ? response.data : (response.data.content || []);
@@ -98,15 +94,11 @@ export const ownerService = {
     };
   },
   hideWarehouse: async (id: number): Promise<any> => {
-    console.log(`[API CALL] PATCH /owners/warehouses/${id}/inactive`);
     const response = await api.patch(`/owners/warehouses/${id}/inactive`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   restoreWarehouse: async (id: number): Promise<any> => {
-    console.log(`[API CALL] PATCH /owners/warehouses/${id}/active`);
     const response = await api.patch(`/owners/warehouses/${id}/active`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   updateWarehouse: async (id: number, payload: any, force = false, deletedImageIds?: number[], deletedCertIds?: number[]): Promise<any> => {
@@ -152,15 +144,11 @@ export const ownerService = {
       deletedCertIds.forEach((id) => formData.append("deletedCertIds", String(id)));
     }
 
-    console.log(`[API CALL] PUT /owners/warehouses/${id}?force=${force}`);
     const response = await api.put(`/owners/warehouses/${id}?force=${force}`, formData);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getMyWarehouseDetail: async (id: number): Promise<CompositeWarehouse> => {
-    console.log(`[API CALL] GET /owners/warehouses/${id}`);
     const response = await api.get(`/owners/warehouses/${id}`);
-    console.log('[API RESPONSE]', response.data);
     const w = response.data;
 
     // Exact same mapping logic as getMyWarehouses
@@ -216,23 +204,17 @@ export const ownerService = {
     };
   },
   getWarehouseRatings: async (id: number): Promise<any> => {
-    console.log(`[API CALL] GET /owners/warehouses/${id}/ratings`);
     const response = await api.get(`/owners/warehouses/${id}/ratings`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getWarehouseViewStats: async (id: number, days: number = 7): Promise<any> => {
-    console.log(`[API CALL] GET /warehouses/${id}/view-stats?days=${days}`);
     const response = await api.get(`/warehouses/${id}/view-stats`, { params: { days } });
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getIncomingRequests: async (page: number = 0, size: number = 10, status?: string): Promise<{ content: any[], totalPages: number, totalElements: number }> => {
     const params: any = { page, size };
     if (status && status !== 'all') params.status = status;
-    console.log('[API CALL] GET /owners/requests', params);
     const response = await api.get('/owners/requests', { params });
-    console.log('[API RESPONSE]', response.data);
 
     if (response.data && !Array.isArray(response.data)) {
       return {
@@ -253,97 +235,64 @@ export const ownerService = {
   },
 
   getRequestDetail: async (id: number): Promise<any> => {
-    console.log(`[API CALL] GET /requests/${id}`);
     const response = await api.get(`/requests/${id}`);
-    console.log('[API RESPONSE] getRequestDetail:', response.data);
     return response.data;
   },
   getContractMetaData: async (id: string | number): Promise<any> => {
-    console.log(`[API CALL] GET /requests/${id}/contract-meta`);
     const response = await api.get(`/requests/${id}/contract-meta`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getWarehouseRentRequests: async (warehouseId: number, status?: string): Promise<any[]> => {
-    console.log(`[API CALL] GET /owners/warehouses/${warehouseId}/requests${status ? `?status=${status}` : ''}`);
     const response = await api.get(`/owners/warehouses/${warehouseId}/requests`, { params: status ? { status } : {} });
-    console.log('[API RESPONSE]', response.data);
     return response.data?.content || response.data || [];
   },
   getWarehouseContracts: async (warehouseId: number, status?: string): Promise<any[]> => {
-    console.log(`[API CALL] GET /owners/warehouses/${warehouseId}/contracts${status ? `?status=${status}` : ''}`);
     const response = await api.get(`/owners/warehouses/${warehouseId}/contracts`, { params: status ? { status } : {} });
-    console.log('[API RESPONSE]', response.data);
     return response.data?.content || response.data || [];
   },
   getContracts: async (status?: string, page: number = 0, size: number = 6): Promise<any> => {
-    const queryParams = new URLSearchParams();
-    if (status && status !== 'ALL') queryParams.append('status', status);
-    queryParams.append('page', page.toString());
-    queryParams.append('size', size.toString());
-
-    console.log(`[API CALL] GET /contracts?${queryParams.toString()}`);
     const response = await api.get(`/contracts`, { params: { status: status && status !== 'ALL' ? status : undefined, page, size } });
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   createContract: async (payload: any): Promise<any> => {
-    console.log('[API CALL] POST /owners/contracts', payload);
     const response = await api.post('/owners/contracts', payload);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getContractById: async (contractId: number): Promise<any> => {
-    console.log(`[API CALL] GET /contracts/${contractId}`);
     const response = await api.get(`/contracts/${contractId}`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   updateContract: async (contractId: number, payload: any): Promise<any> => {
-    console.log(`[API CALL] PUT /owners/contracts/${contractId}`, payload);
     const response = await api.put(`/owners/contracts/${contractId}`, payload);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   createWarehouse: async (formData: FormData): Promise<any> => {
-    console.log('[API CALL] POST /owners/warehouses (FormData)');
     const response = await api.post('/owners/warehouses', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getWarehouseLocation: async (id: number): Promise<{ locationLat: number, locationLong: number }> => {
-    console.log(`[API CALL] GET /warehouses/${id}/location`);
     const response = await api.get(`/warehouses/${id}/location`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getCertifications: async (): Promise<any[]> => {
-    console.log('[API CALL] GET /certs');
     const response = await api.get('/certs');
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   getSponsorTiers: async (): Promise<any[]> => {
-    console.log('[API CALL] GET /owners/sponsor-tiers');
     const response = await api.get('/owners/sponsor-tiers');
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
   buySponsorTier: async (warehouseId: number | string, sponsorTierId: number): Promise<{ paymentUrl?: string }> => {
-    console.log(`[API CALL] POST /owners/warehouses/${warehouseId}/sponsor`, { sponsorTierId });
     const response = await api.post(`/owners/warehouses/${warehouseId}/sponsor`, { sponsorTierId });
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
 
   getWarehouseRatings: async (warehouseId: number): Promise<WarehouseRatingResponse> => {
-    console.log(`[API CALL] GET /owners/warehouses/${warehouseId}/ratings`);
     const response = await api.get(`/owners/warehouses/${warehouseId}/ratings`);
-    console.log('[API RESPONSE]', response.data);
     return response.data;
   },
 };

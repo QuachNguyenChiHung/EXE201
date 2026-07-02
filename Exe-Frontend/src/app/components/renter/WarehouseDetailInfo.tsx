@@ -30,7 +30,7 @@ export function WarehouseDetailInfo({ warehouse, selectedTiers, selectedSectionI
                 .then(res => {
                     setFetchedLocation({ lat: res.locationLat, long: res.locationLong });
                 })
-                .catch(err => console.error("Failed to fetch location", err));
+                .catch(() => {});
         }
     }, [warehouse.id_warehouse]);
 

@@ -50,7 +50,7 @@ export default function UserRow({ user, onEdit, onViewConversations, onToggleSta
             setDetailLoading(true);
             employeeService.getOwnerDetail(user.id_user)
                 .then(res => { if (mounted) setOwnerDetail(res); })
-                .catch(err => console.error(err))
+                .catch(() => {})
                 .finally(() => { if (mounted) setDetailLoading(false); });
             return () => { mounted = false; };
         }
@@ -60,7 +60,7 @@ export default function UserRow({ user, onEdit, onViewConversations, onToggleSta
             setDetailLoading(true);
             employeeService.getRenterDetail(user.id_user)
                 .then(res => { if (mounted) setRenterDetail(res); })
-                .catch(err => console.error(err))
+                .catch(() => {})
                 .finally(() => { if (mounted) setDetailLoading(false); });
             return () => { mounted = false; };
         }
@@ -80,7 +80,7 @@ export default function UserRow({ user, onEdit, onViewConversations, onToggleSta
                         setActivityStats({ ...res, chartData: formatted });
                     }
                 })
-                .catch(err => console.error(err))
+                .catch(() => {})
                 .finally(() => { if (mounted) setStatsLoading(false); });
             return () => { mounted = false; };
         }

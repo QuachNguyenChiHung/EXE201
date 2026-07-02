@@ -98,7 +98,7 @@ export default function WarehouseRow({
                 .then(res => {
                     if (mounted) setDetailData(res);
                 })
-                .catch(err => console.error("Failed to fetch detail", err))
+                .catch(() => {})
                 .finally(() => {
                     if (mounted) setLoadingDetail(false);
                 });
@@ -145,7 +145,7 @@ export default function WarehouseRow({
                         setViewStats(formatted);
                     }
                 })
-                .catch(err => console.error("Failed to fetch view stats", err))
+                .catch(() => {})
                 .finally(() => {
                     if (mounted) setLoadingStats(false);
                 });

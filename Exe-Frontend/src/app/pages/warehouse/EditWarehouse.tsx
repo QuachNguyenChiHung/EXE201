@@ -47,7 +47,6 @@ export default function WarehouseForm() {
         const locationData = await ownerService.getWarehouseLocation(Number(id));
 
         let rawAddress = data.location_address_text || data.address || "";
-        console.log("[EditWarehouse] rawAddress:", rawAddress);
         // Strip trailing "commune, district, province, commune, province" duplication from corrupted records
         const addrParts = rawAddress.split(",").map(p => p.trim()).filter(Boolean);
         if (
@@ -107,7 +106,6 @@ export default function WarehouseForm() {
           },
         });
       } catch (err: any) {
-        console.error("Fetch warehouse failed", err);
         toast.error("Lỗi khi tải thông tin kho");
       } finally {
         setLoading(false);
@@ -180,7 +178,6 @@ export default function WarehouseForm() {
         toast.success("Đã kích hoạt lại kho lạnh");
       }
     } catch (err: any) {
-      console.error("Lỗi khi thay đổi trạng thái:", err);
       toast.error("Thao tác thất bại. Vui lòng thử lại.");
     } finally {
       setIsTogglingStatus(false);
@@ -251,7 +248,6 @@ export default function WarehouseForm() {
         certFiles,
       };
 
-      console.log("[WarehouseForm] Submitting update for:", warehouse.id_warehouse, dto);
       try {
         await ownerService.updateWarehouse(warehouse.id_warehouse, dto, false, deletedImageIds, deletedCertIds);
       } catch (err: any) {
@@ -272,7 +268,6 @@ export default function WarehouseForm() {
       toast.success("Cập nhật kho lạnh thành công!");
       navigate("/warehouse/my-warehouses");
     } catch (err: any) {
-      console.error("[WarehouseForm] Error updating warehouse:", err);
       const serverMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
       toast.error(serverMsg ? `Cập nhật thất bại: ${serverMsg}` : "Cập nhật thất bại. Vui lòng thử lại.");
     } finally {

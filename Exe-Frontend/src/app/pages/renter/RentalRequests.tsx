@@ -46,7 +46,7 @@ export default function RentalRequests() {
             const { content } = await renterService.getMyContracts(0, 100);
             setContracts(content);
         } catch (err) {
-            console.warn('[RentalRequests] fetchContracts failed', err);
+            // silent
         }
     }, []);
 
@@ -117,7 +117,6 @@ export default function RentalRequests() {
         if (!isPreload) setLoading(true);
         try {
             const dataRes = await renterService.getMyRequests(p, 10, t === 'all' ? undefined : t);
-            console.log('[RentalRequests] raw API response:', JSON.stringify(dataRes.content, null, 2));
             const mapped = (dataRes.content as any[]).map(r => {
                 const details = r.details || [];
 
@@ -156,9 +155,6 @@ export default function RentalRequests() {
                 } as CompositeRentRequest;
             });
 
-            console.log('[RentalRequests] mapped requests:', mapped);
-            console.log('[RentalRequests] warehouseList (mock):', warehouseList);
-
             const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
             setCache(prev => ({ ...prev, [cacheKey]: newData }));
 
@@ -169,7 +165,6 @@ export default function RentalRequests() {
             }
             return newData;
         } catch (err: any) {
-            console.error('Failed to fetch requests', err);
             if (!isPreload) toast.error('Không tải được danh sách yêu cầu');
         } finally {
             if (!isPreload) setLoading(false);

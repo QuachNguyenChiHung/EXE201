@@ -39,7 +39,6 @@ export function WarehouseReviewsSection({ warehouseId, warehouseName, contractId
       const result = await renterService.getWarehouseRatings(warehouseId);
       setData(result);
     } catch (err: any) {
-      console.error('[WarehouseReviewsSection] Failed to fetch reviews:', err);
       setError('Không thể tải đánh giá. Vui lòng thử lại.');
     } finally {
       setLoading(false);

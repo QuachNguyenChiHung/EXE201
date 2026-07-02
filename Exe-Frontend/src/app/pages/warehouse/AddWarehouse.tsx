@@ -136,12 +136,10 @@ export default function AddWarehouse() {
         });
       }
 
-      console.log("[WarehouseForm] Submitting creation for:", dto);
       await ownerService.createWarehouse(formData);
       toast.success("Thêm kho lạnh mới thành công!");
       navigate("/warehouse/my-warehouses");
     } catch (err: any) {
-      console.error("[WarehouseForm] Error adding warehouse:", err);
       toast.error("Thêm mới thất bại. Vui lòng thử lại.");
     } finally {
       setSaving(false);

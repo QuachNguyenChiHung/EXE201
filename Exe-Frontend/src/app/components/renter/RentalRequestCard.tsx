@@ -47,15 +47,11 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
         if (!warehouseId) return;
         renterService.getWarehouseDetail(warehouseId)
             .then((fullWarehouse) => {
-                console.log(`[RentalRequestCard #${request.id_rentRequest}] fetched warehouse detail:`, JSON.stringify(fullWarehouse, null, 2));
                 const sectorNum = request.details?.[0]?.sector;
                 const matched = fullWarehouse.sections?.find((s) => String(s.sector) === String(sectorNum));
-                console.log(`[RentalRequestCard #${request.id_rentRequest}] sectorNum=${sectorNum}, matched section:`, JSON.stringify(matched, null, 2));
                 if (matched) setSectionData(matched);
             })
-            .catch((err) => {
-                console.error(`[RentalRequestCard #${request.id_rentRequest}] getWarehouseDetail error:`, err);
-            });
+            .catch(() => {});
     }, [sectionOpen, sectionData, request.id_warehouse, request.details]);
 
     // Resolve section: prefer fetched data, then warehouse prop, then fallback to request.details
