@@ -60,7 +60,7 @@ export default function SearchWarehouse() {
 
     if (filters.keyword && filters.keyword.trim() !== "") {
       params.keyword = filters.keyword.trim();
-    }
+    }else params.keyword= "";
 
     if (filters.provinces && filters.provinces.length > 0) {
       params.provinces = filters.provinces;
