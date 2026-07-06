@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
-    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building, CheckCircle
+    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building, CheckCircle, Phone, X
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { CompositeWarehouse, CompositeWarehouseSection, CompositeRentRequest, CompositeContract } from "../../../types";
 import { renterService } from "../../../services/renterService";
+import { getUser } from "../../../utils/auth";
 import {
     RequestStatus, STATUS_CONFIG, CARGO_LABEL, UNIT_LABEL, CONTRACT_CFG, fmtDate, fmtCurrency, relativeTime
 } from "./RentalRequestUtils";
@@ -27,6 +28,7 @@ interface RentalRequestCardProps {
 export function RentalRequestCard({ request, warehouse, contract, isExpanded, onToggle, onWithdraw, onSign, onReject, onAcceptOffer, onCounterOffer }: RentalRequestCardProps) {
     const navigate = useNavigate();
     const { users } = useApp();
+    const currentUser = getUser();
     const [sectionOpen, setSectionOpen] = useState(false);
     const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
@@ -35,10 +37,19 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
     const [offerNewPrice, setOfferNewPrice] = useState("");
     const [priceError, setPriceError] = useState("");
     const [sectionData, setSectionData] = useState<CompositeWarehouseSection | undefined>();
+    const [contactInfo, setContactInfo] = useState<{ renterPhone: string; ownerPhone: string } | null>(null);
 
     const status = request.status as RequestStatus;
     const cfg = STATUS_CONFIG[status];
     if (!cfg) return null;
+
+    // Fetch contact info when card expands for an APPROVED request without a contract
+    useEffect(() => {
+        if (!isExpanded || status !== "APPROVED" || contract || contactInfo) return;
+        renterService.getContactInfo(request.id_rentRequest)
+            .then((info) => setContactInfo({ renterPhone: info.renterPhone, ownerPhone: info.ownerPhone }))
+            .catch(() => setContactInfo(null));
+    }, [isExpanded, status, contract, contactInfo, request.id_rentRequest]);
 
     // Fetch full warehouse detail on first expand to get real temp/humidity
     useEffect(() => {
@@ -51,7 +62,7 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                 const matched = fullWarehouse.sections?.find((s) => String(s.sector) === String(sectorNum));
                 if (matched) setSectionData(matched);
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [sectionOpen, sectionData, request.id_warehouse, request.details]);
 
     // Resolve section: prefer fetched data, then warehouse prop, then fallback to request.details
@@ -72,6 +83,7 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
     const ownerUser = warehouse ? users.find((u) => u.id_user === warehouse.id_owner) : undefined;
     const warehouseName = warehouse?.name || request.warehouseName || "Kho không xác định";
     const ownerName = ownerUser?.name || warehouse?.ownerName || request.ownerName || "Chủ kho";
+    const ownerPhone = contactInfo?.ownerPhone || contract?.owner_phone || request.ownerPhone || ownerUser?.phone;
 
     const existingContract = contract;
 
@@ -175,15 +187,6 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                             <span className="font-normal text-xs ml-1" style={{ color: "var(--color-text-muted)" }}>
                                                 /m³/{UNIT_LABEL[request.priceTierUnit ?? "month"]}
                                             </span>
-                                        </p>
-                                    </div>
-                                )}
-                                {request.renterOfferedPrice && (
-                                    <div className="col-span-2">
-                                        <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Giá bạn đề xuất lại</p>
-                                        <p className="text-sm font-bold" style={{ color: "#16a34a" }}>
-                                            {fmtCurrency(request.renterOfferedPrice)}
-                                            <span className="font-normal text-xs ml-1" style={{ color: "var(--color-text-muted)" }}>/m³/tháng</span>
                                         </p>
                                     </div>
                                 )}
@@ -517,12 +520,57 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
 
                             {/* Contracted but no contract object yet */}
                             {status === "APPROVED" && !existingContract && (
-                                <div
-                                    className="flex items-center gap-2 px-3 py-2"
-                                    style={{ background: "rgba(124,58,237,0.07)", borderLeft: "3px solid #7c3aed" }}
-                                >
-                                    <FileText className="h-4 w-4 shrink-0" style={{ color: "#7c3aed" }} />
-                                    <p className="text-xs" style={{ color: "#7c3aed" }}>Yêu cầu đã được chấp nhận. Hợp đồng đang được soạn thảo.</p>
+                                <div className="space-y-2">
+                                    <div
+                                        className="flex items-center gap-2 px-3 py-2"
+                                        style={{ background: "rgba(124,58,237,0.07)", borderLeft: "3px solid #7c3aed" }}
+                                    >
+                                        <FileText className="h-4 w-4 shrink-0" style={{ color: "#7c3aed" }} />
+                                        <p className="text-xs" style={{ color: "#7c3aed" }}>Yêu cầu đã được chấp nhận. Hợp đồng đang được soạn thảo.</p>
+                                    </div>
+
+                                    {/* Owner contact card */}
+                                    {ownerPhone && (
+                                        <div
+                                            className="flex items-start gap-3 px-3 py-2.5 border border-[var(--color-border)]"
+                                            style={{ background: "rgba(34,197,94,0.04)" }}
+                                        >
+                                            <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+                                                    Liên hệ chủ kho để tiến hành thuê kho
+                                                </p>
+                                                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                                                    SĐT chủ kho: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{ownerPhone}</span>
+                                                </p>
+                                            </div>
+                                            <a
+                                                href={`tel:${ownerPhone}`}
+                                                className="px-2.5 py-1.5 text-xs font-medium text-white rounded shrink-0 hover:opacity-80 transition-opacity"
+                                                style={{ background: "#22c55e" }}
+                                            >
+                                                Gọi ngay
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Renter's own phone (same style as owner side — shown when owner contact is present) */}
+                                    {ownerPhone && (
+                                        <div
+                                            className="flex items-start gap-3 px-3 py-2.5 border border-[var(--color-border)]"
+                                            style={{ background: "rgba(34,197,94,0.04)" }}
+                                        >
+                                            <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+                                                    Số điện thoại của bạn (đã cung cấp cho chủ kho)
+                                                </p>
+                                                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                                                    SĐT người thuê: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{currentUser?.phone || "---"}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

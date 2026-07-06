@@ -1,6 +1,6 @@
 import { CompositeRentRequest } from '../../../types/renter';
-import { Send, Eye, MessageSquare, XCircle, FileText, Clock, CheckCircle } from 'lucide-react';
 import React from 'react';
+import { Send, Eye, MessageSquare, XCircle, FileText, Clock, CheckCircle } from 'lucide-react';
 
 export type RequestStatus = CompositeRentRequest['status'];
 export type IncomingRequest = CompositeRentRequest;
@@ -20,8 +20,8 @@ export const CARGO_LABEL: Record<string, string> = {
 export const UNIT_LABEL: Record<string, string> = { month: 'tháng', day: 'ngày', year: 'năm' };
 
 export const STATUS_CFG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  PENDING_PAYMENT: { label: 'Chờ thanh toán', color: '#8b5cf6', icon: <Clock className="h-3 w-3" /> },
   PENDING: { label: 'Đang chờ', color: '#f59e0b', icon: <Clock className="h-3 w-3" /> },
-  NEGOTIATING: { label: 'Đang thương lượng', color: '#3b82f6', icon: <MessageSquare className="h-3 w-3" /> },
   APPROVED: { label: 'Đã chấp nhận', color: '#22c55e', icon: <CheckCircle className="h-3 w-3" /> },
   REJECTED: { label: 'Đã từ chối', color: '#ef4444', icon: <XCircle className="h-3 w-3" /> },
 };
@@ -29,8 +29,8 @@ export const STATUS_CFG: Record<string, { label: string; color: string; icon: Re
 export type FilterTab = 'all' | RequestStatus;
 export const TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
+  { key: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
   { key: 'PENDING', label: 'Đang chờ' },
-  { key: 'NEGOTIATING', label: 'Đang thương lượng' },
   { key: 'APPROVED', label: 'Đã chấp nhận' },
   { key: 'REJECTED', label: 'Đã từ chối' },
 ];

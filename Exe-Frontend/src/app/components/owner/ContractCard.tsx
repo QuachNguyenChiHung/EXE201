@@ -14,6 +14,7 @@ import {
   Hash,
   Snowflake,
   Upload,
+  Phone,
 } from "lucide-react";
 import { fmtCurrency, fmtDate, STATUS_CFG } from "./ContractUtils";
 
@@ -125,6 +126,15 @@ export function ContractCard({
               >
                 <Hash className="h-3 w-3" /> MST:{" "}
                 {contract.renter_tax_code}
+              </span>
+            )}
+            {contract.renterPhone && (
+              <span
+                className="flex items-center gap-1 font-mono"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                <Phone className="h-3 w-3" />
+                {contract.renterPhone}
               </span>
             )}
             {contract.renterCompany &&

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, AlertCircle, FileText, PenLine, XCircle, CheckCircle, Upload } from 'lucide-react';
+import { X, AlertCircle, FileText, PenLine, XCircle, CheckCircle, Upload, Phone } from 'lucide-react';
 import { CompositeContract, ContractDetailDTO } from '../../../types';
 import { toast } from 'sonner';
 
@@ -156,6 +156,7 @@ export function ContractDetailModal({
                                 <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Công ty:</dt><dd>{contract.renterCompany || '—'}</dd></div>
                                 <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>MST:</dt><dd className="font-mono">{contract.renter_tax_code || '—'}</dd></div>
                                 <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Địa chỉ:</dt><dd>{contract.renter_address || '—'}</dd></div>
+                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>ĐT:</dt><dd>{contract.renterPhone || '—'}</dd></div>
                             </dl>
                         </div>
                     </div>

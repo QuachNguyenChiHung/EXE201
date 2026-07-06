@@ -26,7 +26,6 @@ export interface RentRequestCreateDTO {
     durationUnit: string;
     startDate: string;
     endDate: string;
-    renterOfferedPrice: number | null;
     details: RentRequestDetailCreateDTO[];
 }
 
@@ -114,6 +113,11 @@ export const renterService = {
         return response.data;
     },
 
+    payForRentalRequest: async (requestId: number): Promise<{ paymentUrl?: string }> => {
+        const response = await api.post(`/renters/requests/${requestId}/pay`);
+        return response.data;
+    },
+
     getMyRequests: async (page: number = 0, size: number = 6, status?: string): Promise<{ content: any[], totalPages: number, totalElements: number }> => {
         const params: any = { page, size };
         if (status) params.status = status;
@@ -127,6 +131,11 @@ export const renterService = {
 
     cancelRequest: async (requestId: number, reason?: string): Promise<any> => {
         const response = await api.patch(`/renters/requests/${requestId}/cancel`, { reason });
+        return response.data;
+    },
+
+    getContactInfo: async (requestId: number): Promise<{ renterPhone: string; ownerPhone: string; message?: string }> => {
+        const response = await api.get(`/renters/requests/${requestId}/contact`);
         return response.data;
     },
 

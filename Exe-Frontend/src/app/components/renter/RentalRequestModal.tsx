@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Send, Check, Calendar as CalendarIcon, LayoutGrid } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar as CalendarComponent } from '../ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { CompositeWarehouse } from '../../../types';
 import { toast } from 'sonner';
@@ -92,7 +89,6 @@ interface InquiryForm {
     startDate: string;
     endDate: string;
     message: string;
-    renterOfferedPrice: string;
 }
 
 export interface RentalRequestModalProps {
@@ -140,7 +136,6 @@ export function RentalRequestModal({
                 startDate: '',
                 endDate: '',
                 message: '',
-                renterOfferedPrice: '',
             });
         }
     }, [open]);
@@ -178,7 +173,6 @@ export function RentalRequestModal({
         startDate: '',
         endDate: '',
         message: '',
-        renterOfferedPrice: '',
     });
 
     // Sync capacities from parent when they change
@@ -381,7 +375,7 @@ export function RentalRequestModal({
                 };
             });
 
-            await renterService.createRentRequest({
+            const created = await renterService.createRentRequest({
                 warehouseId: warehouse.id_warehouse,
                 cargoDescription: form.cargoType,
                 otherDetail: form.message,
@@ -389,11 +383,20 @@ export function RentalRequestModal({
                 durationUnit: form.durationUnit,
                 startDate: form.startDate,
                 endDate: form.endDate,
-                renterOfferedPrice: form.renterOfferedPrice ? parseFloat(form.renterOfferedPrice) : null,
                 details,
             });
 
             if (cancelled) return;
+
+            // Redirect to VNPay payment first
+            const payment = await renterService.payForRentalRequest(created.id);
+            if (payment.paymentUrl) {
+                window.location.href = payment.paymentUrl;
+                onOpenChange(false);
+                return;
+            }
+
+            // Fallback: show success if no payment URL returned
             setShowSuccess(true);
             onRequestSubmitted?.();
         } catch (error: any) {
@@ -415,9 +418,9 @@ export function RentalRequestModal({
                         <div className="w-16 h-16 bg-[var(--color-primary-300)] rounded-full flex items-center justify-center mx-auto mb-4">
                             <Check className="h-8 w-8 text-[var(--color-primary)]" />
                         </div>
-                        <h3 className="text-xl font-bold mb-2">Gửi yêu cầu thành công!</h3>
+                        <h3 className="text-xl font-bold mb-2">Yêu cầu thuê kho đã được tạo!</h3>
                         <p className="text-sm text-[var(--color-text-secondary)] mb-6">
-                            Chủ kho sẽ sớm liên hệ với bạn để xác nhận và thương lượng giá cả.
+                            Vui lòng hoàn tất thanh toán VNPay. Sau khi thanh toán thành công, yêu cầu sẽ được gửi đến chủ kho.
                         </p>
                         <button
                             onClick={() => onOpenChange(false)}
@@ -681,28 +684,12 @@ export function RentalRequestModal({
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <CalendarIcon className="h-4 w-4 text-[var(--color-text-muted)]" />
                                 </div>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <button
-                                            type="button"
-                                            className="w-full text-sm pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent text-left"
-                                        >
-                                            {form.startDate
-                                                ? format(parseISO(form.startDate), 'dd/MM/yyyy')
-                                                : <span className="text-[var(--color-text-muted)]">dd/mm/yyyy</span>
-                                            }
-                                        </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <CalendarComponent
-                                            mode="single"
-                                            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md"
-                                            selected={form.startDate ? parseISO(form.startDate) : undefined}
-                                            onSelect={date => setForm(f => ({ ...f, startDate: date ? format(date, 'yyyy-MM-dd') : '' }))}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
+                                <input
+                                    type="date"
+                                    className="w-full text-sm pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent"
+                                    value={form.startDate}
+                                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                                />
                             </div>
                         </div>
 
@@ -744,29 +731,6 @@ export function RentalRequestModal({
                                     {' '}= {durationDays.toLocaleString('vi-VN')} ngày)
                                 </p>
                             )}
-                        </div>
-                    </div>
-
-                    {/* ── Offered price ───────────────────────────────────────────── */}
-                    <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--color-text-secondary)]">
-                            Đề xuất tổng giá thuê (tuỳ chọn)
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Nhập giá bạn muốn đề xuất..."
-                                min="10000"
-                                className="w-full text-sm pl-3 pr-12 py-2 border rounded-md focus:outline-none focus:border-[var(--color-primary)] bg-transparent"
-                                value={form.renterOfferedPrice ? Number(form.renterOfferedPrice).toLocaleString('en-US') : ''}
-                                onChange={e => {
-                                    const rawValue = e.target.value.replace(/\D/g, '');
-                                    setForm(f => ({ ...f, renterOfferedPrice: rawValue }));
-                                }}
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-[var(--color-text-muted)] pointer-events-none">
-                                VNĐ
-                            </span>
                         </div>
                     </div>
 
@@ -856,11 +820,11 @@ export function RentalRequestModal({
                             disabled={submitting}
                             className="flex-1 py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-50"
                         >
-                            {submitting ? 'Đang gửi...' : 'Gửi Yêu Cầu Thuê Kho'}
+                            {submitting ? 'Đang chuyển...' : 'Thanh Toán VNPay'}
                         </button>
                     </div>
                     <p className="text-[10px] text-center text-[var(--color-text-muted)]">
-                        Sau khi gửi yêu cầu, chủ kho sẽ liên hệ qua SĐT/Email để thỏa thuận.
+                        Bạn sẽ được chuyển đến VNPay để thanh toán phí đặt cọc trước khi gửi yêu cầu thuê kho.
                     </p>
                 </form>
             </DialogContent>

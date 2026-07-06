@@ -181,7 +181,6 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
               {(() => {
                 if (!request || readOnly) return null;
                 const ownerOffer = request.offeredPrice;
-                const renterOffer = request.renterOfferedPrice;
                 
                 let defaultExpected = 0;
                 if (request.details) {
@@ -191,7 +190,7 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
                   defaultExpected = totalMonthly * durationMultiplier;
                 }
                 
-                if (!ownerOffer && !renterOffer && !defaultExpected) return null;
+                if (!ownerOffer && !defaultExpected) return null;
                 return (
                   <div className="mt-2 flex flex-col gap-2 text-xs">
                     {defaultExpected > 0 && (
@@ -212,16 +211,6 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
                         style={{ borderColor: 'rgba(37, 99, 235, 0.3)', background: 'rgba(37, 99, 235, 0.05)', color: 'var(--color-primary)' }}
                       >
                         <span className="font-semibold block">Chọn giá bạn đã chốt: {ownerOffer.toLocaleString()} VNĐ</span>
-                      </button>
-                    )}
-                    {renterOffer != null && (
-                      <button
-                        type="button"
-                        onClick={() => onChange("monthlyRate", renterOffer)}
-                        className="px-2 py-1.5 rounded border transition-colors cursor-pointer text-left"
-                        style={{ borderColor: 'rgba(34, 197, 94, 0.3)', background: 'rgba(34, 197, 94, 0.05)', color: 'var(--color-success, #22c55e)' }}
-                      >
-                        <span className="font-semibold block">Chọn giá khách đề xuất: {renterOffer.toLocaleString()} VNĐ</span>
                       </button>
                     )}
                   </div>

@@ -75,7 +75,6 @@ export interface CompositeRentRequest extends RentRequest {
   requestedCapacity?: number;
   durationLabel?: string;
   priceTierValue?: number;
-  renterOfferedPrice?: number;
   priceTierUnit?: string;
   priceTierLabel?: string;
   message?: string;
@@ -84,6 +83,7 @@ export interface CompositeRentRequest extends RentRequest {
   sectionIds?: string[] | number[];
   isWholeWarehouse?: boolean;
   ownerName?: string;
+  ownerPhone?: string;
   details?: any[];
 }
 

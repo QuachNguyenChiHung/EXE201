@@ -10,7 +10,7 @@ export const MockWarehouseData: CompositeWarehouse[] = [
     id_warehouse: 1,
     id_owner: 2,
     ownerName: 'Cold Storage Solutions',
-    name: 'Kho lạnh Cát Lái',
+    name: 'Kho lạnh Cát Láis',
     description: 'Kho lạnh hiện đại với công nghệ làm lạnh tiên tiến.',
     address: '123 Đường Cát Lái',
     location_address_text: '123 Đường Cát Lái, Thành phố Thủ Đức',

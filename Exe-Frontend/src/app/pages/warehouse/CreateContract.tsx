@@ -368,12 +368,6 @@ export default function CreateContract() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Tổng giá khách đề xuất</p>
-                    <p className="text-sm font-medium text-green-600">
-                      {request.renterOfferedPrice ? `${request.renterOfferedPrice.toLocaleString()} VNĐ` : 'Không có'}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
                     <p className="text-xs text-gray-500 mb-1">Ghi chú của khách hàng</p>
                     <p className="text-sm bg-gray-50 p-2 rounded border border-gray-100">{request.otherDetail || 'Không có ghi chú'}</p>
                   </div>

@@ -113,7 +113,6 @@ export interface RentRequestResponseDTO {
   renterRejectionReason?: string;
   rejectionReason?: string;
   offeredPrice?: number;
-  renterOfferedPrice?: number;
   ownerNote?: string;
   renterNote?: string;
   details: RentRequestDetailResponseDTO[];

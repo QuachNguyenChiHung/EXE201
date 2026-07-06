@@ -235,9 +235,6 @@ export default function SharedContractDetail() {
                                <div className="mt-3 space-y-1" style={{ fontSize: '13pt' }}>
                                  <p>- Phí thuê dự kiến gốc cho phân khu: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
                                  <p>- Tổng chi phí dự kiến gốc ({requestDetail.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong> <span className="italic text-gray-500 print:text-black" style={{ fontSize: '12pt' }}>*(Ước tính dựa trên đơn giá tháng)</span></p>
-                                 {requestDetail.renterOfferedPrice && (
-                                    <p>- Tổng khách hàng đề xuất: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.renterOfferedPrice)}</strong></p>
-                                 )}
                                  {requestDetail.offeredPrice && (
                                     <p>- Tổng chủ kho chốt giá: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(requestDetail.offeredPrice)}</strong></p>
                                  )}

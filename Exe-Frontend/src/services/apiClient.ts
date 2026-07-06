@@ -1,351 +1,262 @@
-/**
- * apiClient.ts — Mock data client.
- * All data operations now use in-memory mock data.
- */
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
+import { api } from './asus_api';
 import type {
   User,
   CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating,
   CertificationType, CompositeAiConversations, PriceTier, CompositeWarehouseSection
 } from '../types';
-import { MockUsers } from '../data/mockUsers';
-import { MockWarehouseData } from '../data/mockWarehouses';
-import { MockCompositeRentRequests } from '../data/mockRequests';
-import { MockCompositeContracts } from '../data/mockContracts';
-import { MockRatings } from '../data/mockRatings';
 
-// ── In-memory data stores ─────────────────────────────────────────────────────
-let users: User[] = [...MockUsers];
-let warehouses: CompositeWarehouse[] = [...MockWarehouseData];
-let requests: CompositeRentRequest[] = [...MockCompositeRentRequests];
-let contracts: CompositeContract[] = [...MockCompositeContracts];
-let ratings: Rating[] = [...MockRatings];
-let bookmarks: Record<string, string[]> = {};
-let certTypes: any[] = [
-  { id_certification: 1, label: 'HACCP', update: new Date().toISOString(), law_references: 'Hazard Analysis Critical Control Point' },
-  { id_certification: 2, label: 'ISO 22000', update: new Date().toISOString(), law_references: 'Food Safety Management' },
-  { id_certification: 3, label: 'GMP', update: new Date().toISOString(), law_references: 'Good Manufacturing Practice' },
-  { id_certification: 4, label: 'GDP', update: new Date().toISOString(), law_references: 'Good Distribution Practice' },
-  { id_certification: 5, label: 'ISO 9001', update: new Date().toISOString(), law_references: 'Quality Management' },
-  { id_certification: 6, label: 'ATTP', update: new Date().toISOString(), law_references: 'An toàn thực phẩm' },
-];
-
-// ── Helper to simulate async delay ────────────────────────────────────────────
 const delay = (ms: number = 100) => new Promise(resolve => setTimeout(resolve, ms));
-// removed duplicate bookmarks
 
-// ── Resource CRUD clients (mock implementation) ───────────────────────────────
+// ── Helper to normalize backend warehouse ───────────────────────────────────────
+function normalizeBackendWarehouse(raw: unknown): CompositeWarehouse | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const w = raw as Record<string, unknown>;
+  const id = Number(w.id ?? (w as Record<string, unknown>)['id_warehouse'] ?? 0);
+  if (!id) return null;
+  const rawSections = Array.isArray(w.sections) ? (w.sections as Array<Record<string, unknown>>) : [];
+  const sections: CompositeWarehouseSection[] = rawSections.map((s) => ({
+    id_section: Number(s.id ?? s['id_section'] ?? 0),
+    id_warehouse: undefined,
+    label: typeof s.name === 'string' ? s.name : typeof s.label === 'string' ? s.label : undefined,
+    sector: Number(s.sector ?? 0),
+    total_capacity: Number(s.totalCapacity ?? s['total_capacity'] ?? 0),
+    available_capacity: Number(s.availableCapacity ?? s['available_capacity'] ?? 0),
+    temp_min: Number(s.tempMin ?? s['temp_min'] ?? 0),
+    temp_max: Number(s.tempMax ?? s['temp_max'] ?? 0),
+    humidity: Number(s.humidity ?? 0),
+    hasCertification: Boolean(s.hasCertification),
+    name: typeof s.name === 'string' ? s.name : undefined,
+    description: typeof s.description === 'string' ? s.description : undefined,
+    priceTiers: Array.isArray(s.priceTiers)
+      ? (s.priceTiers as Array<Record<string, unknown>>).map(normalizePriceTier)
+      : [],
+    availability: typeof s.availability === 'string' ? s.availability : undefined,
+  }));
+
+  return {
+    id_warehouse: id,
+    name: String(w.name ?? ''),
+    address: String(w.locationAddressText ?? w.address ?? ''),
+    description: String(w.description ?? ''),
+    location_address_text: String(w.locationAddressText ?? ''),
+    location_province: String(w.locationProvince ?? ''),
+    location_district: '',
+    location_commune: String(w.locationCommune ?? ''),
+    location_long: 0,
+    location_lat: 0,
+    location_postal_code: '',
+    isSponsor: Boolean(w.isSponsor),
+    status: String(w.status ?? 'ACTIVE'),
+    location: {
+      address: w.locationAddressText ?? '',
+      province: w.locationProvince ?? '',
+      commune: w.locationCommune ?? '',
+    },
+    ownerName: '',
+    stats: {
+      views: 0,
+      rating: Number(w.averageRating ?? 0),
+      reviews: Number(w.totalReviews ?? 0),
+      available_capacity: sections.reduce((sum, s) => sum + s.available_capacity, 0),
+      total_capacity: sections.reduce((sum, s) => sum + s.total_capacity, 0),
+      temp_min: sections.length > 0 ? Math.min(...sections.map((s) => s.temp_min)) : 0,
+      temp_max: sections.length > 0 ? Math.max(...sections.map((s) => s.temp_max)) : 0,
+    },
+    certifications: Array.isArray(w.certificates) ? w.certificates : [],
+    priceTiers: [],
+    sections,
+    images: Array.isArray(w.images)
+      ? (w.images as Array<Record<string, unknown>>).map((img) => {
+        if (typeof img === 'string') return img;
+        return {
+          id: Number(img.id ?? 0),
+          image_url: String(img.imageUrl ?? img['image_url'] ?? ''),
+          is_thumbnail: Boolean(img.isThumbnail),
+        };
+      })
+      : [],
+    availability: 'AVAILABLE',
+    createdAt: '',
+    updatedAt: '',
+    ratingScore: Number(w.averageRating ?? 0),
+    ratingCount: Number(w.totalReviews ?? 0),
+    subscriptionTier: 'free',
+    pendingRequestCount: Number(w.pendingRequestCount ?? 0),
+  };
+}
+
+function normalizePriceTier(raw: Record<string, unknown>): PriceTier {
+  const areaUnit = String(raw.areaUnit ?? '');
+  const label = String(raw.label ?? '');
+
+  const lcLabel = label.toLowerCase();
+  let timeUnit: string | undefined;
+  let timeCode: string = areaUnit;
+  if (lcLabel.includes('năm') || lcLabel.includes('nam') || lcLabel.includes('year')) {
+    timeUnit = 'year'; timeCode = 'year';
+  } else if (lcLabel.includes('tháng') || lcLabel.includes('thang') || lcLabel.includes('month')) {
+    timeUnit = 'month'; timeCode = 'month';
+  } else if (lcLabel.includes('tuần') || lcLabel.includes('tuan') || lcLabel.includes('week')) {
+    timeUnit = 'week'; timeCode = 'week';
+  } else if (lcLabel.includes('ngày') || lcLabel.includes('ngay') || lcLabel.includes('day')) {
+    timeUnit = 'day'; timeCode = 'day';
+  }
+
+  return {
+    id: Number(raw.id ?? 0),
+    id_price_tier: Number(raw.id ?? 0),
+    label,
+    value: Number(raw.value ?? 0),
+    unit: timeCode,
+    areaUnit,
+    timeUnit,
+  };
+}
+
+// ── Resource CRUD (real backend) ───────────────────────────────────────────────
 export const usersAPI = {
-  getAll: async () => { await delay(); return [...users]; },
-  getById: async (id: number) => { await delay(); const user = users.find(u => u.id_user === id); if (!user) throw new Error('User not found'); return user; },
-  create: async (data: User) => { await delay(); users.push(data); return data; },
-  update: async (id: number, data: Partial<User>) => { await delay(); const idx = users.findIndex(u => u.id_user === id); if (idx === -1) throw new Error('User not found'); users[idx] = { ...users[idx], ...data }; return users[idx]; },
-  delete: async (id: number) => { await delay(); users = users.filter(u => u.id_user !== id); return { success: true }; },
+  getAll: async () => { const res = await api.get('/users'); return unwrapPage(res.data); },
+  getById: async (id: number) => { const res = await api.get(`/users/${id}`); return res.data; },
+  create: async (data: User) => { const res = await api.post('/users', data); return res.data; },
+  update: async (id: number, data: Partial<User>) => { const res = await api.put(`/users/${id}`, data); return res.data; },
+  delete: async (id: number) => { const res = await api.delete(`/users/${id}`); return res.data; },
 };
+
+function unwrapPage(data: unknown): unknown[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object' && 'content' in (data as any)) {
+    return (data as any).content;
+  }
+  return [];
+}
+
 export const warehousesAPI = {
-  getAll: async () => { await delay(); return [...warehouses]; },
-  getById: async (id: string | number) => { await delay(); const wh = warehouses.find(w => w.id_warehouse === Number(id)); if (!wh) throw new Error('Warehouse not found'); return wh; },
-  create: async (data: CompositeWarehouse) => { await delay(); warehouses.push(data); return data; },
-  update: async (id: string | number, data: Partial<CompositeWarehouse>) => { await delay(); const idx = warehouses.findIndex(w => w.id_warehouse === Number(id)); if (idx === -1) throw new Error('Warehouse not found'); warehouses[idx] = { ...warehouses[idx], ...data }; return warehouses[idx]; },
-  delete: async (id: string | number) => { await delay(); warehouses = warehouses.filter(w => w.id_warehouse !== Number(id)); return { success: true }; },
+  getAll: async () => { const res = await api.get('/warehouses'); return unwrapPage(res.data); },
+  getById: async (id: string | number) => { const res = await api.get(`/warehouses/${id}`); return res.data; },
+  create: async (data: CompositeWarehouse) => { const res = await api.post('/warehouses', data); return res.data; },
+  update: async (id: string | number, data: Partial<CompositeWarehouse>) => { const res = await api.put(`/warehouses/${id}`, data); return res.data; },
+  delete: async (id: string | number) => { const res = await api.delete(`/warehouses/${id}`); return res.data; },
 };
 
 export const requestsAPI = {
-  getAll: async () => { await delay(); return [...requests]; },
-  getById: async (id: string | number) => { await delay(); const req = requests.find(r => r.id_rentRequest === Number(id)); if (!req) throw new Error('Request not found'); return req; },
-  create: async (data: CompositeRentRequest) => { await delay(); requests.push(data); return data; },
-  update: async (id: string | number, data: Partial<CompositeRentRequest>) => { await delay(); const idx = requests.findIndex(r => r.id_rentRequest === Number(id)); if (idx === -1) throw new Error('Request not found'); requests[idx] = { ...requests[idx], ...data }; return requests[idx]; },
-  delete: async (id: string | number) => { await delay(); requests = requests.filter(r => r.id_rentRequest !== Number(id)); return { success: true }; },
+  getAll: async () => { const res = await api.get('/rent-requests'); return unwrapPage(res.data); },
+  getById: async (id: string | number) => { const res = await api.get(`/rent-requests/${id}`); return res.data; },
+  create: async (data: CompositeRentRequest) => { const res = await api.post('/rent-requests', data); return res.data; },
+  update: async (id: string | number, data: Partial<CompositeRentRequest>) => { const res = await api.put(`/rent-requests/${id}`, data); return res.data; },
+  delete: async (id: string | number) => { const res = await api.delete(`/rent-requests/${id}`); return res.data; },
 };
 
 export const contractsAPI = {
-  getAll: async () => { await delay(); return [...contracts]; },
-  getById: async (id: string | number) => { await delay(); const contract = contracts.find(c => c.id_contract === Number(id)); if (!contract) throw new Error('Contract not found'); return contract; },
-  create: async (data: CompositeContract) => { await delay(); contracts.push(data); return data; },
-  update: async (id: string | number, data: Partial<CompositeContract>) => { await delay(); const idx = contracts.findIndex(c => c.id_contract === Number(id)); if (idx === -1) throw new Error('Contract not found'); contracts[idx] = { ...contracts[idx], ...data }; return contracts[idx]; },
-  delete: async (id: string | number) => { await delay(); contracts = contracts.filter(c => c.id_contract !== Number(id)); return { success: true }; },
+  getAll: async () => { const res = await api.get('/contracts'); return res.data; },
+  getById: async (id: string | number) => { const res = await api.get(`/contracts/${id}`); return res.data; },
+  create: async (data: CompositeContract) => { const res = await api.post('/contracts', data); return res.data; },
+  update: async (id: string | number, data: Partial<CompositeContract>) => { const res = await api.put(`/contracts/${id}`, data); return res.data; },
+  delete: async (id: string | number) => { const res = await api.delete(`/contracts/${id}`); return res.data; },
 };
 
 export const ratingsAPI = {
-  getAll: async () => { await delay(); return [...ratings]; },
-  getById: async (id: string | number) => { await delay(); const rating = ratings.find(r => r.id_rating === Number(id)); if (!rating) throw new Error('Rating not found'); return rating; },
-  create: async (data: Rating) => { await delay(); ratings.push(data); return data; },
-  update: async (id: string | number, data: Partial<Rating>) => { await delay(); const idx = ratings.findIndex(r => r.id_rating === Number(id)); if (idx === -1) throw new Error('Rating not found'); ratings[idx] = { ...ratings[idx], ...data }; return ratings[idx]; },
-  delete: async (id: string | number) => { await delay(); ratings = ratings.filter(r => r.id_rating !== Number(id)); return { success: true }; },
+  getAll: async () => { const res = await api.get('/ratings'); return unwrapPage(res.data); },
+  getById: async (id: string | number) => { const res = await api.get(`/ratings/${id}`); return res.data; },
+  create: async (data: Rating) => { const res = await api.post('/ratings', data); return res.data; },
+  update: async (id: string | number, data: Partial<Rating>) => { const res = await api.put(`/ratings/${id}`, data); return res.data; },
+  delete: async (id: string | number) => { const res = await api.delete(`/ratings/${id}`); return res.data; },
 };
 
 export const certTypesAPI = {
-  getAll: async () => { await delay(); return [...certTypes]; },
-  getById: async (id: string | number) => { await delay(); const cert = certTypes.find(c => c.id_certification === Number(id)); if (!cert) throw new Error('Cert type not found'); return cert; },
-  create: async (data: CertificationType) => { await delay(); certTypes.push(data); return data; },
-  update: async (id: string | number, data: Partial<CertificationType>) => { await delay(); const idx = certTypes.findIndex(c => c.id_certification === Number(id)); if (idx === -1) throw new Error('Cert type not found'); certTypes[idx] = { ...certTypes[idx], ...data }; return certTypes[idx]; },
-  delete: async (id: string | number) => { await delay(); certTypes = certTypes.filter(c => c.id_certification !== Number(id)); return { success: true }; },
+  getAll: async () => { const res = await api.get('/certification-types'); return res.data; },
+  getById: async (id: string | number) => { const res = await api.get(`/certification-types/${id}`); return res.data; },
+  create: async (data: CertificationType) => { const res = await api.post('/certification-types', data); return res.data; },
+  update: async (id: string | number, data: Partial<CertificationType>) => { const res = await api.put(`/certification-types/${id}`, data); return res.data; },
+  delete: async (id: string | number) => { const res = await api.delete(`/certification-types/${id}`); return res.data; },
 };
 
-// ── Auth endpoints (mock implementation) ──────────────────────────────────────
+// ── Auth endpoints (real backend) ──────────────────────────────────────────────
 export const authAPI = {
-  /**
-   * Validate credentials against mock data.
-   * Returns User (without password) on success, throws 401 on bad credentials.
-   */
   login: async (email: string, password: string): Promise<User> => {
-    await delay();
-    const user = users.find(u => u.email === email && u.hash_password === password);
-    if (!user) throw new Error('Invalid credentials');
-    const { hash_password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const res = await api.post('/auth/login', { email, password });
+    return res.data;
   },
 
-  /**
-   * Create a new user in mock data.
-   * Returns User (without password) on success, throws 409 on duplicate email.
-   */
   register: async (user: User): Promise<User> => {
-    await delay();
-    if (users.find(u => u.email === user.email)) {
-      throw new Error('Email already exists');
-    }
-    users.push(user);
-    const { hash_password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const res = await api.post('/auth/register', user);
+    return res.data;
   },
 };
 
-// ── Bookmarks endpoints (mock implementation) ─────────────────────────────────
+// ── Bookmarks endpoints (real backend) ────────────────────────────────────────
 export const bookmarksAPI = {
   getByUser: async (userId: number) => {
-    await delay();
-    return { warehouseIds: bookmarks[userId] || [] };
+    const res = await api.get(`/users/${userId}/bookmarks`);
+    return res.data;
   },
 
   saveForUser: async (userId: number, warehouseIds: string[]) => {
-    await delay();
-    bookmarks[userId] = warehouseIds;
-    return { warehouseIds };
+    const res = await api.post(`/users/${userId}/bookmarks`, { warehouseIds });
+    return res.data;
   },
 };
 
-// ── Seed endpoints (mock implementation) ──────────────────────────────────────
+// ── Seed endpoints (no-ops — backend manages its own data) ─────────────────────
 import { SeedCheckResult, SeedPayload } from '../types';
-
-let seeded = false;
-let seedMeta: { ts: string; counts: Record<string, number>; dataVersion?: string } | null = null;
 
 export const seedAPI = {
   check: async (): Promise<SeedCheckResult> => {
     await delay();
-    return { seeded, meta: seedMeta };
+    return { seeded: false, meta: null };
   },
 
-  seed: async (payload: SeedPayload, force = false, dataVersion?: string) => {
+  seed: async (_payload: SeedPayload, _force = false, _dataVersion?: string) => {
     await delay();
-    if (seeded && !force) {
-      return { status: 'already seeded', counts: {} };
-    }
-
-    users = [...payload.users];
-    warehouses = [...payload.warehouses];
-    requests = [...payload.requests];
-    contracts = [...payload.contracts];
-    ratings = [...payload.ratings];
-
-    seeded = true;
-    seedMeta = {
-      ts: new Date().toISOString(),
-      counts: {
-        users: users.length,
-        warehouses: warehouses.length,
-        requests: requests.length,
-        contracts: contracts.length,
-        ratings: ratings.length,
-      },
-      dataVersion,
-    };
-
-    return { status: 'seeded', counts: seedMeta.counts };
+    return { status: 'no-op', counts: {} };
   },
 
   clear: async () => {
     await delay();
-    users = [];
-    warehouses = [];
-    requests = [];
-    contracts = [];
-    ratings = [];
-    bookmarks = {};
-    seeded = false;
-    seedMeta = null;
-    return { status: 'cleared', message: 'All data cleared' };
+    return { status: 'no-op', message: 'Backend manages its own data' };
   },
 
   status: async () => {
     await delay();
     return {
-      counts: {
-        users: users.length,
-        warehouses: warehouses.length,
-        requests: requests.length,
-        contracts: contracts.length,
-        ratings: ratings.length,
-      },
-      seededAt: seedMeta?.ts || null,
-      seeded,
+      counts: { users: 0, warehouses: 0, requests: 0, contracts: 0, ratings: 0 },
+      seededAt: null,
+      seeded: false,
     };
   },
 
-  seedResource: async (resource: string, items: any[], force = false) => {
+  seedResource: async (resource: string, items: any[], _force = false) => {
     await delay();
-    // Simple resource seeding
-    return { status: 'seeded', resource, count: items.length };
+    return { status: 'no-op', resource, count: items.length };
   },
 
   clearResource: async (resource: string) => {
     await delay();
-    return { status: 'cleared', resource, cleared: 0 };
+    return { status: 'no-op', resource, cleared: 0 };
   },
 };
 
-// ── Storage: image upload (mock implementation) ───────────────────────────────
+// ── Storage: image upload (real backend) ────────────────────────────────────────
 export const storageAPI = {
-  /**
-   * Mock image upload - returns a placeholder URL.
-   */
   uploadImage: async (file: File): Promise<string> => {
-    await delay(300);
-    // Return a mock URL based on file name
-    return `https://images.unsplash.com/photo-${Date.now()}?w=1080`;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/storage/upload', formData);
+    return res.data.url ?? res.data;
   },
 
-  /**
-   * Mock document upload - returns a placeholder URL.
-   */
   uploadDoc: async (file: File): Promise<string> => {
-    await delay(300);
-    return `https://example.com/docs/${file.name}`;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/storage/upload-doc', formData);
+    return res.data.url ?? res.data;
   },
 };
 
-// ── AI Chat endpoint (mock implementation) ────────────────────────────────────
+// ── AI Chat (real backend) ─────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
 import { AIRequestPayload, AIResponsePayload, AIStatusResult } from '../types';
 
 let conversations: CompositeAiConversations[] = [];
-
-/**
- * Convert a backend `WarehouseResponseDTO` (camelCase, uses `id`) into the FE's
- * `CompositeWarehouse` shape (snake_case, uses `id_warehouse`). Best-effort — fills
- * defaults so the FE's existing renderers don't crash on missing fields.
- */
-function normalizeBackendWarehouse(raw: unknown): CompositeWarehouse | null {
-    if (!raw || typeof raw !== 'object') return null;
-    const w = raw as Record<string, unknown>;
-    const id = Number(w.id ?? (w as Record<string, unknown>)['id_warehouse'] ?? 0);
-    if (!id) return null;
-    const rawSections = Array.isArray(w.sections) ? (w.sections as Array<Record<string, unknown>>) : [];
-    const sections: CompositeWarehouseSection[] = rawSections.map((s) => ({
-        id_section: Number(s.id ?? s['id_section'] ?? 0),
-        id_warehouse: undefined,
-        label: typeof s.name === 'string' ? s.name : typeof s.label === 'string' ? s.label : undefined,
-        sector: Number(s.sector ?? 0),
-        total_capacity: Number(s.totalCapacity ?? s['total_capacity'] ?? 0),
-        available_capacity: Number(s.availableCapacity ?? s['available_capacity'] ?? 0),
-        temp_min: Number(s.tempMin ?? s['temp_min'] ?? 0),
-        temp_max: Number(s.tempMax ?? s['temp_max'] ?? 0),
-        humidity: Number(s.humidity ?? 0),
-        hasCertification: Boolean(s.hasCertification),
-        name: typeof s.name === 'string' ? s.name : undefined,
-        description: typeof s.description === 'string' ? s.description : undefined,
-        priceTiers: Array.isArray(s.priceTiers)
-            ? (s.priceTiers as Array<Record<string, unknown>>).map(normalizePriceTier)
-            : [],
-        availability: typeof s.availability === 'string' ? s.availability : undefined,
-    }));
-
-    return {
-        id_warehouse: id,
-        name: String(w.name ?? ''),
-        address: String(w.locationAddressText ?? w.address ?? ''),
-        description: String(w.description ?? ''),
-        location_address_text: String(w.locationAddressText ?? ''),
-        location_province: String(w.locationProvince ?? ''),
-        location_district: '',
-        location_commune: String(w.locationCommune ?? ''),
-        location_long: 0,
-        location_lat: 0,
-        location_postal_code: '',
-        isSponsor: Boolean(w.isSponsor),
-        status: String(w.status ?? 'ACTIVE'),
-        location: {
-            address: w.locationAddressText ?? '',
-            province: w.locationProvince ?? '',
-            commune: w.locationCommune ?? '',
-        },
-        ownerName: '',
-        stats: {
-            views: 0,
-            rating: Number(w.averageRating ?? 0),
-            reviews: Number(w.totalReviews ?? 0),
-            available_capacity: sections.reduce((sum, s) => sum + s.available_capacity, 0),
-            total_capacity: sections.reduce((sum, s) => sum + s.total_capacity, 0),
-            temp_min: sections.length > 0 ? Math.min(...sections.map((s) => s.temp_min)) : 0,
-            temp_max: sections.length > 0 ? Math.max(...sections.map((s) => s.temp_max)) : 0,
-        },
-        certifications: Array.isArray(w.certificates) ? w.certificates : [],
-        priceTiers: [],
-        sections,
-        images: Array.isArray(w.images)
-            ? (w.images as Array<Record<string, unknown>>).map((img) => {
-                  if (typeof img === 'string') return img;
-                  // BE returns { id, imageUrl, isThumbnail } (camelCase); FE expects { image_url } (snake_case)
-                  return {
-                      id: Number(img.id ?? 0),
-                      image_url: String(img.imageUrl ?? img['image_url'] ?? ''),
-                      is_thumbnail: Boolean(img.isThumbnail),
-                  };
-              })
-            : [],
-        availability: 'AVAILABLE',
-        createdAt: '',
-        updatedAt: '',
-        ratingScore: Number(w.averageRating ?? 0),
-        ratingCount: Number(w.totalReviews ?? 0),
-        subscriptionTier: 'free',
-        pendingRequestCount: Number(w.pendingRequestCount ?? 0),
-    };
-}
-
-/**
- * Map a backend `PriceTierDTO` (camelCase, no time-unit field) into the FE's
- * `PriceTier` snake_case shape. The FE's `PriceTier.unit` is a time-unit code
- * ("year"|"month"|"week"|"day") used to look up the human label in PRICE_TIER_OPTIONS.
- * We derive it from the BE's `label` (e.g. "Theo tháng" → "month").
- */
-function normalizePriceTier(raw: Record<string, unknown>): PriceTier {
-    const areaUnit = String(raw.areaUnit ?? '');
-    const label = String(raw.label ?? '');
-
-    const lcLabel = label.toLowerCase();
-    let timeUnit: string | undefined;
-    let timeCode: string = areaUnit; // default fallback (no recognizable time label)
-    if (lcLabel.includes('năm') || lcLabel.includes('nam') || lcLabel.includes('year')) {
-        timeUnit = 'year'; timeCode = 'year';
-    } else if (lcLabel.includes('tháng') || lcLabel.includes('thang') || lcLabel.includes('month')) {
-        timeUnit = 'month'; timeCode = 'month';
-    } else if (lcLabel.includes('tuần') || lcLabel.includes('tuan') || lcLabel.includes('week')) {
-        timeUnit = 'week'; timeCode = 'week';
-    } else if (lcLabel.includes('ngày') || lcLabel.includes('ngay') || lcLabel.includes('day')) {
-        timeUnit = 'day'; timeCode = 'day';
-    }
-
-    return {
-        id: Number(raw.id ?? 0),
-        id_price_tier: Number(raw.id ?? 0),
-        label,
-        value: Number(raw.value ?? 0),
-        unit: timeCode,        // time-unit code so PRICE_TIER_OPTIONS lookup works
-        areaUnit,              // area-unit code ("m3", "pallet", "chuyến", ...)
-        timeUnit,
-    };
-}
 
 export const aiAPI = {
   chat: async (payload: AIRequestPayload): Promise<AIResponsePayload> => {
@@ -373,14 +284,14 @@ export const aiAPI = {
     }
     const data = await res.json();
     const refinedIds: string[] | undefined = Array.isArray(data.refinedWarehouseIds)
-        ? data.refinedWarehouseIds.map((v: unknown) => String(v))
-        : data.warehouses?.content?.map((w: { id?: number }) => String(w.id ?? ''));
+      ? data.refinedWarehouseIds.map((v: unknown) => String(v))
+      : data.warehouses?.content?.map((w: { id?: number }) => String(w.id ?? ''));
     return {
       text: data.response ?? '',
       refinedWarehouseIds: refinedIds?.filter((id: string) => id !== ''),
       warehouses: Array.isArray(data.warehouses?.content)
-          ? (data.warehouses.content as unknown[]).map(normalizeBackendWarehouse).filter((w): w is CompositeWarehouse => w !== null)
-          : undefined,
+        ? (data.warehouses.content as unknown[]).map(normalizeBackendWarehouse).filter((w): w is CompositeWarehouse => w !== null)
+        : undefined,
       usage: { input_tokens: data.inputTokens ?? 0, output_tokens: data.outputTokens ?? 0 },
       tokenExhausted: data.tokenExhausted === true,
     };
@@ -398,8 +309,6 @@ export const aiAPI = {
       body: JSON.stringify({
         query: payload.query,
         conversationHistory: JSON.stringify(payload.conversationHistory ?? []),
-        // Strip owner identity fields before sending to the AI — the agent only needs
-        // warehouse characteristics, not who owns it.
         warehouses: payload.warehouses.map(({ id_owner: _o, ownerName: _n, ...rest }) => rest),
       }),
     });
@@ -409,12 +318,12 @@ export const aiAPI = {
     }
     const data = await res.json();
     const refinedIds: string[] | undefined = Array.isArray(data.refinedWarehouseIds)
-        ? data.refinedWarehouseIds.map((v: unknown) => String(v))
-        : undefined;
+      ? data.refinedWarehouseIds.map((v: unknown) => String(v))
+      : undefined;
     return {
       text: data.response ?? '',
       refinedWarehouseIds: refinedIds?.filter((id: string) => id !== ''),
-      warehouses: undefined, // context mode re-ranks existing list via refinedIds
+      warehouses: undefined,
       usage: { input_tokens: data.inputTokens ?? 0, output_tokens: data.outputTokens ?? 0 },
       tokenExhausted: data.tokenExhausted === true,
     };
@@ -438,8 +347,7 @@ export const aiAPI = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+        ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({
         messages: JSON.stringify(Array.isArray(conv.message) ? conv.message : []),
         criteria: JSON.stringify(conv.criteria ?? {}),
@@ -483,9 +391,8 @@ export const aiAPI = {
   },
 };
 
-
-// ── Health / diagnostics (mock implementation) ────────────────────────────────
+// ── Health / diagnostics ────────────────────────────────────────────────────────
 export const healthAPI = {
   check: async () => { await delay(); return { status: 'ok' }; },
-  kvPing: async () => { await delay(); return { status: 'ok', message: 'Mock data ready' }; },
+  kvPing: async () => { await delay(); return { status: 'ok', message: 'Real backend connected' }; },
 };

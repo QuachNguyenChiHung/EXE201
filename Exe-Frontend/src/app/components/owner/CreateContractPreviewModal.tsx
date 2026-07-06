@@ -126,9 +126,6 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
                                <div className="mt-3 text-sm space-y-1">
                                  <p>- Phí thuê dự kiến gốc cho phân khu: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalMonthly)}</strong></p>
                                  <p>- Tổng chi phí dự kiến gốc ({request.duration} {unitLabel}): <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}</strong> <span className="text-xs italic text-gray-500">*(Ước tính dựa trên đơn giá tháng)</span></p>
-                                 {request.renterOfferedPrice && (
-                                    <p>- Tổng khách hàng đề xuất: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.renterOfferedPrice)}</strong></p>
-                                 )}
                                  {request.offeredPrice && (
                                     <p>- Tổng chủ kho chốt giá: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.offeredPrice)}</strong></p>
                                  )}

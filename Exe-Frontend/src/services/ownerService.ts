@@ -234,6 +234,16 @@ export const ownerService = {
     return res.data;
   },
 
+  acceptRequest: async (id: string | number): Promise<{ renterPhone: string; ownerPhone: string; message: string }> => {
+    const res = await api.put(`/owners/requests/${id}/accept`);
+    return res.data;
+  },
+
+  rejectRequest: async (id: string | number, reason?: string): Promise<string> => {
+    const res = await api.put(`/owners/requests/${id}/reject`, reason ? { reason } : {});
+    return res.data;
+  },
+
   getRequestDetail: async (id: number): Promise<any> => {
     const response = await api.get(`/requests/${id}`);
     return response.data;

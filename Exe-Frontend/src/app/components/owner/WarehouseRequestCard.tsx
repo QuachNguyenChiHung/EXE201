@@ -1,27 +1,33 @@
 import React, { useState } from 'react';
-import { ChevronDown, User, Building, Phone, Mail, LayoutGrid, Clock, Eye, MessageSquare, XCircle, CheckCircle, FilePlus, ExternalLink, Loader2, Calendar, Building2, Layers, Box } from 'lucide-react';
+import { ChevronDown, Clock, XCircle, CheckCircle, FilePlus, ExternalLink, Loader2, Calendar, Building2, Layers, Box, Phone } from 'lucide-react';
 import { CompositeWarehouse } from '../../../types/warehouse';
 import { CompositeContract } from '../../../types/renter';
-import { IncomingRequest, RequestStatus, STATUS_CFG, CARGO_LABEL, UNIT_LABEL, CONTRACT_CFG, relativeTime, fmtDate, fmtCurrency } from './WarehouseRequestUtils';
+import { IncomingRequest, RequestStatus, STATUS_CFG, CARGO_LABEL, CONTRACT_CFG, relativeTime, fmtDate, fmtCurrency } from './WarehouseRequestUtils';
 import { ownerService } from '../../../services/ownerService';
+import { getUser } from '../../../utils/auth';
 
 interface RequestCardProps {
   req: IncomingRequest;
   warehouse: CompositeWarehouse | undefined;
   existingContract: CompositeContract | undefined;
-  onOpenModal: (r: IncomingRequest) => void;
+  onAccept: (id: string) => Promise<{ renterPhone: string; ownerPhone: string; message: string } | undefined>;
+  onReject: (id: string) => Promise<void>;
   onMarkViewed: (id: string) => void;
   onCreateContract: (requestId: string) => void;
   onViewContract: () => void;
 }
 
 export function WarehouseRequestCard({
-  req, warehouse, existingContract, onOpenModal, onMarkViewed, onCreateContract, onViewContract,
+  req, warehouse, existingContract, onAccept, onReject, onMarkViewed, onCreateContract, onViewContract,
 }: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [sectionOpen, setSectionOpen] = useState(false);
   const [requestDetail, setRequestDetail] = useState<any>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [acceptResult, setAcceptResult] = useState<{ renterPhone: string; ownerPhone: string; message: string } | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const currentUser = getUser();
 
   const handleExpand = async () => {
     const newExpanded = !isExpanded;
@@ -122,7 +128,7 @@ export function WarehouseRequestCard({
                 </div>
               ) : requestDetail ? (
                 <div className="space-y-6">
-                  
+
                   {/* Kho bãi & Đối tác */}
                   <div className="space-y-3">
                     <h3 className="font-semibold text-sm flex items-center gap-1.5 pb-1 border-b" style={{ color: "var(--color-text)", borderColor: "var(--color-border)" }}>
@@ -225,21 +231,13 @@ export function WarehouseRequestCard({
                                 {fmtCurrency(totalExpected)}
                               </span>
                             </div>
-                            {requestDetail.renterOfferedPrice && (
-                                <div className="flex items-center gap-4 text-sm">
-                                  <span style={{ color: "var(--color-text-muted)" }}>Khách hàng đề xuất (trọn gói):</span>
-                                  <span className="font-bold text-orange-600">
-                                    {fmtCurrency(requestDetail.renterOfferedPrice)}
-                                  </span>
-                                </div>
-                            )}
                             {requestDetail.offeredPrice && (
-                                <div className="flex items-center gap-4 text-sm">
-                                  <span style={{ color: "var(--color-text-muted)" }}>Bạn đã chốt giá (trọn gói):</span>
-                                  <span className="font-bold text-green-600">
-                                    {fmtCurrency(requestDetail.offeredPrice)}
-                                  </span>
-                                </div>
+                              <div className="flex items-center gap-4 text-sm">
+                                <span style={{ color: "var(--color-text-muted)" }}>Bạn đã chốt giá (trọn gói):</span>
+                                <span className="font-bold text-green-600">
+                                  {fmtCurrency(requestDetail.offeredPrice)}
+                                </span>
+                              </div>
                             )}
                           </div>
                         );
@@ -260,7 +258,7 @@ export function WarehouseRequestCard({
                       )}
                     </div>
                   )}
-                  
+
                 </div>
               ) : (
                 <div className="text-center py-6">
@@ -345,6 +343,35 @@ export function WarehouseRequestCard({
                     <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22c55e' }} />
                     <p className="text-xs font-semibold" style={{ color: '#22c55e' }}>Đã chấp nhận thương lượng</p>
                   </div>
+                  {acceptResult && (
+                    <div className="flex items-start gap-3 px-3 py-3 border border-[var(--color-border)]" style={{ background: 'rgba(34,197,94,0.04)' }}>
+                      <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
+                          Liên hệ người thuê để tiến hành thuê kho
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          SĐT người thuê: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{acceptResult.renterPhone}</span>
+                        </p>
+                        {acceptResult.message && (
+                          <p className="text-xs mt-1 italic" style={{ color: 'var(--color-text-muted)' }}>{acceptResult.message}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {currentUser?.phone && (
+                    <div className="flex items-start gap-3 px-3 py-3 border border-[var(--color-border)]" style={{ background: 'rgba(34,197,94,0.04)' }}>
+                      <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
+                          Số điện thoại của bạn (đã cung cấp cho người thuê)
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          SĐT chủ kho: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{currentUser.phone}</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {req.owner_note && (
                     <div
                       className="px-3 py-2 text-xs border-l-2"
@@ -404,14 +431,40 @@ export function WarehouseRequestCard({
             <p className="text-[11px] flex-1" style={{ color: 'var(--color-text-muted)' }}>
               Gửi {relativeTime(req.submit_at)}
             </p>
-            {(req.status === 'PENDING' || req.status === 'NEGOTIATING') && (
-              <button
-                onClick={() => onOpenModal(req)}
-                className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                <MessageSquare className="h-3.5 w-3.5" /> Thương lượng
-              </button>
+            {req.status === 'PENDING' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    setAccepting(true);
+                    try {
+                      const result = await onAccept(req.id_rentRequest.toString());
+                      if (result) setAcceptResult(result);
+                    } finally {
+                      setAccepting(false);
+                    }
+                  }}
+                  disabled={accepting}
+                  className="text-xs px-3 py-1.5 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm disabled:opacity-50"
+                  style={{ background: '#22c55e' }}
+                >
+                  {accepting ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />} Chấp nhận
+                </button>
+                <button
+                  onClick={async () => {
+                    setRejecting(true);
+                    try {
+                      await onReject(req.id_rentRequest.toString());
+                    } finally {
+                      setRejecting(false);
+                    }
+                  }}
+                  disabled={rejecting}
+                  className="text-xs px-3 py-1.5 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm disabled:opacity-50"
+                  style={{ background: '#ef4444' }}
+                >
+                  {rejecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />} Từ chối
+                </button>
+              </div>
             )}
             {req.status === 'APPROVED' && !existingContract && (
               <button

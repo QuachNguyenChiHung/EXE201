@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { getUser } from "../../../utils/auth";
-import { ArrowLeft, FileText, Eye, Loader2, Edit3 } from "lucide-react";
+import { ArrowLeft, FileText, Eye, Loader2, Edit3, Phone } from "lucide-react";
 import { ownerService } from "../../../services/ownerService";
 
 const TABS = [
@@ -142,7 +142,12 @@ export default function OwnerContracts() {
                       {c.warehouseName || 'Không rõ'}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {c.renterLegalName || 'Khách hàng'}
+                      <div>{c.renterLegalName || 'Khách hàng'}</div>
+                      {c.renterPhone && (
+                        <div className="flex items-center gap-1 text-[11px] font-mono mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                          <Phone className="h-3 w-3" /> {c.renterPhone}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-semibold text-white uppercase ${

@@ -7,7 +7,6 @@ import { CompositeWarehouse } from '../../../types/warehouse';
 import { ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilterTab, IncomingRequest, RequestStatus, STATUS_CFG, TABS } from '../../components/owner/WarehouseRequestUtils';
-import { WarehouseResponseModal } from '../../components/owner/WarehouseResponseModal';
 import { WarehouseRequestCard } from '../../components/owner/WarehouseRequestCard';
 import { getUser } from '../../../utils/auth';
 
@@ -16,7 +15,6 @@ export default function WarehouseRequests() {
   const user = getUser();
   const { warehouses: warehouseList, loading: appLoading, contracts, updateRequest } = useApp();
   const [tab, setTab] = useState<FilterTab>('all');
-  const [modalReq, setModalReq] = useState<IncomingRequest | null>(null);
 
   // Pagination & Caching
   const [page, setPage] = useState(0);
@@ -45,7 +43,9 @@ export default function WarehouseRequests() {
     if (!isPreload) setLoading(true);
     try {
       const dataRes = await ownerService.getIncomingRequests(p, 10, t === 'all' ? undefined : t);
-      const mapped = (dataRes.content as any[]).map(r => {
+      const mapped = (dataRes.content as any[])
+        .filter(r => r.status !== 'PENDING_PAYMENT')
+        .map(r => {
         const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
         const details = r.details || [];
         const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
@@ -68,7 +68,6 @@ export default function WarehouseRequests() {
           durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
           status: r.status,
           offered_price: r.offeredPrice,
-          renterOfferedPrice: r.renterOfferedPrice,
           owner_note: r.ownerNote,
           rejection_reason: r.rejectionReason,
           renterName: r.renterName,
@@ -125,6 +124,9 @@ export default function WarehouseRequests() {
   const refetchSingleRequest = async (id: string) => {
     try {
       const r = await ownerService.getRequestDetail(Number(id));
+      // Filter out PENDING_PAYMENT — they shouldn't appear on this page
+      if (r.status === 'PENDING_PAYMENT') return;
+
       const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
       const updatedReq: IncomingRequest = {
         ...r,
@@ -139,7 +141,6 @@ export default function WarehouseRequests() {
         durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
         status: r.status,
         offered_price: r.offeredPrice,
-        renterOfferedPrice: r.renterOfferedPrice,
         owner_note: r.ownerNote,
         rejection_reason: r.rejectionReason,
         renterName: r.renterName,
@@ -177,55 +178,32 @@ export default function WarehouseRequests() {
 
   const handleAccept = async (id: string) => {
     try {
-      await ownerService.updateRequestStatus(id, { status: 'APPROVED' });
-      setModalReq(null);
-      toast.success('Đã chấp nhận yêu cầu thuê!');
+      const result = await ownerService.acceptRequest(id);
+      toast.success(result.message || 'Đã chấp nhận yêu cầu thuê!');
       refetchSingleRequest(id);
+      return result;
     } catch (err) {
       toast.error('Không thể chấp nhận yêu cầu');
-    }
-  };
-
-  const handleNegotiate = async (id: string, offeredPrice: number, ownerNote: string) => {
-    try {
-      await ownerService.updateRequestStatus(id, { status: 'PENDING', offeredPrice: offeredPrice, ownerNote: ownerNote });
-      setModalReq(null);
-      toast.success('Đã gửi đề xuất giá. Người thuê sẽ nhận được thông báo!');
-      refetchSingleRequest(id);
-    } catch (err) {
-      toast.error('Không thể gửi đề xuất giá');
+      return undefined;
     }
   };
 
   const handleReject = async (id: string, rejectionReason: string) => {
     try {
-      await ownerService.updateRequestStatus(id, { status: 'REJECTED', rejectionReason: rejectionReason });
-      setModalReq(null);
-      toast.success('Đã từ chối yêu cầu và gửi lý do cho người thuê.');
+      await ownerService.rejectRequest(id, rejectionReason);
+      toast.success('Đã từ chối yêu cầu. Hệ thống sẽ tự động hoàn tiền cho người thuê qua VNPay.');
       refetchSingleRequest(id);
     } catch (err) {
       toast.error('Không thể từ chối yêu cầu');
     }
   };
 
-
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Navbar />
 
-      {modalReq && (
-        <WarehouseResponseModal
-          request={modalReq}
-          warehouse={warehouses[modalReq.id_warehouse as number]}
-          onClose={() => setModalReq(null)}
-          onAccept={handleAccept}
-          onNegotiate={handleNegotiate}
-          onReject={handleReject}
-        />
-      )}
-
+      {/* Header */}
       <div className="bento-container">
-        {/* Header */}
         <div className="bento-header">
           <button
             onClick={() => navigate('/warehouse')}
@@ -298,7 +276,8 @@ export default function WarehouseRequests() {
                 req={req}
                 warehouse={warehouses[req.id_warehouse as number]}
                 existingContract={contracts.find(c => c.id_rent_request === req.id_rentRequest)}
-                onOpenModal={r => setModalReq(r)}
+                onAccept={handleAccept}
+                onReject={id => handleReject(id, '')}
                 onMarkViewed={handleMarkViewed}
                 onCreateContract={id => navigate(`/warehouse/contracts/create/${id}`)}
                 onViewContract={() => navigate(`/warehouse/contracts/create/${req.id_rentRequest}`)}

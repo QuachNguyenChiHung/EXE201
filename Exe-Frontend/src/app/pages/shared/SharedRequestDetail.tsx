@@ -201,14 +201,6 @@ export default function SharedRequestDetail() {
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalExpected)}
                     </span>
                   </div>
-                  {request.renterOfferedPrice && (
-                    <div className="flex justify-between w-full max-w-sm pt-2">
-                      <span className="font-semibold" style={{ color: "var(--color-text)" }}>Tổng khách hàng đề xuất:</span>
-                      <span className="font-bold text-lg text-[var(--color-warning, #f59e0b)]">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(request.renterOfferedPrice)}
-                      </span>
-                    </div>
-                  )}
                   {request.offeredPrice && (
                     <div className="flex justify-between w-full max-w-sm pt-2">
                       <span className="font-semibold" style={{ color: "var(--color-text)" }}>Tổng chủ kho chốt giá:</span>
