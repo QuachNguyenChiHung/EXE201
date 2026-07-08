@@ -3,7 +3,7 @@
  * Replaces Redux with React Context + mock API
  */
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User, CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating } from '../types';
+import type { User, CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating, Notification } from '../types';
 import {
   authAPI,
   warehousesAPI,
@@ -14,6 +14,7 @@ import {
   usersAPI
 } from '../services/apiClient';
 import { renterService } from '../services/renterService';
+import { notificationService } from '../services/notificationService';
 
 interface AppState {
   // Auth
@@ -25,6 +26,7 @@ interface AppState {
   requests: CompositeRentRequest[];
   contracts: CompositeContract[];
   ratings: Rating[];
+  notifications: Notification[];
 
   // Compare
   compareWarehouses: CompositeWarehouse[];
@@ -88,6 +90,11 @@ interface AppContextValue extends AppState {
   // (e.g. employee approving a warehouse that the owner is viewing).
   warehouseRevision: number;
   incrementWarehouseRevision: () => void;
+
+  // Notification actions
+  unreadNotificationCount: number;
+  refreshNotifications: () => Promise<void>;
+  markNotificationsRead: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -100,6 +107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     requests: [],
     contracts: [],
     ratings: [],
+    notifications: [],
     compareWarehouses: [],
     loading: {
       users: false,
@@ -132,6 +140,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+
+  // Poll notifications every 15 seconds while authenticated
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    refreshNotifications();
+    const interval = setInterval(refreshNotifications, 15_000);
+    return () => clearInterval(interval);
+  }, [state.isAuthenticated]);
+
+  // Refresh notifications on window focus / reconnect
+  useEffect(() => {
+    const handleFocus = () => {
+      if (state.isAuthenticated) refreshNotifications();
+    };
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => document.removeEventListener('visibilitychange', handleFocus);
+  }, [state.isAuthenticated]);
 
 
 
@@ -196,6 +221,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return { ...prev, ratings: Array.from(existing.values()) };
     });
+  };
+
+  // Notification actions
+  const refreshNotifications = async () => {
+    if (!state.isAuthenticated) return;
+    try {
+      const notifications = await notificationService.getNotifications();
+      setState(prev => ({ ...prev, notifications }));
+    } catch {
+      // Silently ignore — notifications are non-critical
+    }
+  };
+
+  const markNotificationsRead = async () => {
+    try {
+      await notificationService.markAllRead();
+      setState(prev => ({
+        ...prev,
+        notifications: prev.notifications.map(n => ({ ...n, read: true })),
+      }));
+    } catch {
+      // Silently ignore
+    }
   };
 
   // User actions
@@ -298,6 +346,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, compareWarehouses: [] }));
   };
 
+  const unreadNotificationCount = state.notifications.filter(n => !n.read).length;
+
   const value: AppContextValue = {
     ...state,
     compareIds: state.compareWarehouses.map(w => w.id_warehouse),
@@ -326,17 +376,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearCompare,
     warehouseRevision,
     incrementWarehouseRevision,
+    unreadNotificationCount,
+    refreshNotifications,
+    markNotificationsRead,
   };
 
-  // Auto-load mock data on app start so pages have initial data without needing Data Migration
-  useEffect(() => {
-    // Fire-and-forget — these populate the in-memory mock stores exposed by services/apiClient
-    refreshUsers().catch(() => { });
-    refreshWarehouses().catch(() => { });
-    refreshRequests().catch(() => { });
-    refreshContracts().catch(() => { });
-    refreshRatings().catch(() => { });
-  }, []);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

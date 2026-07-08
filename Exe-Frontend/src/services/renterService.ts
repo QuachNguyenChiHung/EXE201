@@ -222,6 +222,11 @@ export const renterService = {
         return mapContractResponse(response.data);
     },
 
+    cancelContract: async (contractId: number, reason?: string): Promise<CompositeContract> => {
+        const response = await api.patch(`/renters/contracts/${contractId}/cancel`, { reason });
+        return mapContractResponse(response.data);
+    },
+
     // AI SUBSCRIPTION
     getAiTiers: async (): Promise<AiSubscriptionTier[]> => {
         const response = await api.get('/renters/ai-tiers');

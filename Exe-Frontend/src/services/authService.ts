@@ -1,4 +1,5 @@
 import { api } from './asus_api';
+import { getToken, setToken } from '../utils/auth';
 import type { User } from '../types/public';
 
 export interface RegisterRequestDTO {
@@ -13,40 +14,50 @@ export interface RegisterRequestDTO {
 
 export const authService = {
   /**
-   * Login and populate localStorage with the full user profile.
+   * Login and populate localStorage with the user's auth token and identity.
    *
    * Flow:
-   *   1. POST /auth/login → { token, tokenType, email, role }
-   *   2. Save partial user to localStorage (so ProtectedRoute can read it immediately)
-   *   3. GET /users/me    → full profile (name, avatarUrl, phone, company …)
-   *   4. Merge profile into localStorage so Navbar shows the real name
+   *   1. POST /auth/login → { token, email, role }
+   *   2. Save token to a dedicated key so axios interceptor works on every request
+   *   3. Save user profile (without token) so ProtectedRoute can read role immediately
+   *
+   * The full profile (name, avatar, etc.) is fetched lazily by the Navbar on mount,
+   * so a failed profile fetch does NOT invalidate the session.
    */
   login: async (credentials: { email: string; password: string }): Promise<User> => {
     const { data: loginData } = await api.post('/auth/login', credentials);
 
-    const partialUser: Partial<User> & { token: string } = {
-      token: loginData.token,
-      email: loginData.email,
-      role: loginData.role,
-    };
-    localStorage.setItem('user', JSON.stringify(partialUser));
+    setToken(loginData.token);
 
-    // Fetch the full profile so Navbar / dashboard greet the user by name.
-    // This call merges the backend profile into localStorage via mergeProfileIntoUser.
-    const { userService } = await import('./userService');
-    const profile = await userService.getMyProfile();
-    // getMyProfile already updated localStorage; read it back to return the full User.
-    const stored = localStorage.getItem('user');
-    return stored ? (JSON.parse(stored) as User) : (partialUser as User);
+    const user: User = {
+      email: loginData.email,
+      role: loginData.role as User['role'],
+      name: loginData.fullName ?? loginData.email,
+      phone: '',
+      status: 'ACTIVE',
+      create_at: '',
+      id_user: 0,
+    };
+    localStorage.setItem('user', JSON.stringify(user));
+    return user;
   },
 
   logout: async () => {
-    const response = await api.post('/auth/logout');
-    return response.data;
+    setToken(null);
+    localStorage.removeItem('user');
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // ignore — local cleanup already done above
+    }
   },
 
   register: async (data: RegisterRequestDTO): Promise<string> => {
     const response = await api.post('/auth/register', data);
     return response.data;
+  },
+
+  isLoggedIn: (): boolean => {
+    return !!getToken();
   }
 };

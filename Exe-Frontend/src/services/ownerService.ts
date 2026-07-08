@@ -239,6 +239,11 @@ export const ownerService = {
     return res.data;
   },
 
+  getContactInfo: async (requestId: number): Promise<{ renterPhone: string; ownerPhone: string; message?: string }> => {
+    const res = await api.get(`/owners/requests/${requestId}/contact`);
+    return res.data;
+  },
+
   rejectRequest: async (id: string | number, reason?: string): Promise<string> => {
     const res = await api.put(`/owners/requests/${id}/reject`, reason ? { reason } : {});
     return res.data;

@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router';
-import { getUser } from '../../utils/auth';
+import { getUser, getToken } from '../../utils/auth';
 import type { UserRole } from '../../types/public';
 
 interface Props {
@@ -8,8 +8,9 @@ interface Props {
 
 export function ProtectedRoute({ allowedRoles }: Props) {
   const user = getUser();
+  const token = getToken();
 
-  if (!user || !(user as any).token) {
+  if (!user || !token) {
     return <Navigate to="/login" replace />;
   }
 

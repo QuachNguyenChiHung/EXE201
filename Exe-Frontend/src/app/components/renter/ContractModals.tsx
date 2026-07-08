@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { X, AlertCircle, FileText, PenLine, XCircle, CheckCircle, Upload, Phone } from 'lucide-react';
-import { CompositeContract, ContractDetailDTO } from '../../../types';
+import { X, AlertCircle, FileText, PenLine, XCircle, CheckCircle, Printer } from 'lucide-react';
+import { CompositeContract } from '../../../types';
 import { toast } from 'sonner';
 
 function isPendingRenterSign(contract: CompositeContract): boolean {
@@ -94,7 +94,7 @@ export function ContractDetailModal({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
             style={{ background: 'rgba(0,0,0,0.6)' }}
             onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] my-4 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] my-4 max-h-[92vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]"
                     style={{ background: readOnly ? 'var(--color-primary)' : '#f59e0b' }}>
@@ -105,112 +105,135 @@ export function ContractDetailModal({
                             <p className="text-xs text-white/80 font-mono">{contract.contractRef || '—'}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-white/80 hover:text-white">
-                        <X className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => window.print()}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white border border-white/30 hover:bg-white/10 transition-colors">
+                            <Printer className="h-4 w-4" /> In hợp đồng
+                        </button>
+                        <button onClick={onClose} className="text-white/80 hover:text-white">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="p-6 space-y-5 text-sm" style={{ color: 'var(--color-text)' }}>
-                    {/* Title */}
-                    <div className="text-center pb-4 border-b border-[var(--color-border)]">
-                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--color-text-muted)' }}>
-                            CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-                        </p>
-                        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Độc lập – Tự do – Hạnh phúc</p>
-                        <h2 className="text-base font-bold uppercase">{contract.contractTitle || 'HỢP ĐỒNG THUÊ KHO LẠNH'}</h2>
+                {/* Printable contract content */}
+                <style>{`
+                    @media print {
+                        @page { margin: 0; }
+                        body { margin: 1.6cm; background: white; }
+                        body * { visibility: hidden; }
+                        #contract-print-area, #contract-print-area * { visibility: visible; }
+                        #contract-print-area {
+                            position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0;
+                            box-shadow: none !important; border: none !important;
+                        }
+                        #contract-modal-root > * { display: none !important; }
+                        #contract-modal-root { display: block !important; }
+                    }
+                    @media screen {
+                        #contract-print-area {
+                            background: white;
+                        }
+                    }
+                `}</style>
+
+                <div id="contract-print-area" style={{ background: 'white', fontFamily: '"Times New Roman", Times, serif', color: '#000', padding: '24px 28px' }}>
+                    {/* Paper header */}
+                    <div className="text-center mb-4" style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                        <div style={{ fontWeight: 'bold', textDecoration: 'underline', textUnderlineOffset: '4px', fontSize: '14pt', marginTop: '4px' }}>Độc lập - Tự do - Hạnh phúc</div>
+                        <div style={{ fontStyle: 'italic', fontSize: '13pt', marginTop: '12px' }}>
+                            Hôm nay, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
+                        </div>
                     </div>
 
-                    {/* PDF attachment notice */}
-                    {contract.pdfFileName && (
-                        <div className="flex items-center gap-3 px-4 py-3 border border-[var(--color-border)]"
-                            style={{ background: 'rgba(37,99,235,0.05)' }}>
-                            <div className="w-8 h-8 flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
-                                <FileText className="h-4 w-4 text-white" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>File hợp đồng đính kèm</p>
-                                <p className="text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>{contract.pdfFileName}</p>
-                            </div>
-                            <span className="ml-auto text-xs px-2 py-0.5 border"
-                                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-                                <Upload className="h-3 w-3 inline mr-1" /> PDF
-                            </span>
-                        </div>
-                    )}
+                    {/* Title */}
+                    <div className="text-center mb-4">
+                        <div style={{ fontWeight: 'bold', fontSize: '14pt', textTransform: 'uppercase' }}>HỢP ĐỒNG CHO THUÊ KHO BÃI</div>
+                        <div style={{ fontSize: '13pt' }}>Số: {contract.contractRef || contract.id}/{new Date().getFullYear()}/HĐTK</div>
+                    </div>
 
                     {/* Parties */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 border border-[var(--color-border)]" style={{ background: 'var(--color-bg-secondary)' }}>
-                            <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--color-primary)' }}>BÊN A — CHỦ KHO</p>
-                            <dl className="space-y-1.5 text-xs">
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Tên:</dt><dd className="font-semibold">{contract.owner_legal_name || contract.ownerName || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>MST:</dt><dd className="font-mono">{contract.owner_tax_code || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Địa chỉ:</dt><dd>{contract.owner_address || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>ĐT:</dt><dd>{contract.owner_phone || '—'}</dd></div>
-                            </dl>
+                    <div style={{ marginBottom: '16px', fontSize: '13pt', lineHeight: '1.8' }}>
+                        <div style={{ marginBottom: '12px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '14pt' }}>BÊN CHO THUÊ (BÊN A):</span>
+                            <div style={{ paddingLeft: '16px' }}>
+                                <div><strong>Cơ sở / Kho bãi:</strong> {contract.warehouseName || '—'}</div>
+                                <div><strong>Đại diện pháp luật:</strong> {contract.owner_legal_name || contract.ownerName || '—'}</div>
+                                <div><strong>Mã số thuế:</strong> {contract.owner_tax_code || '—'}</div>
+                                <div><strong>Địa chỉ kho:</strong> {contract.owner_address || '—'}</div>
+                                <div><strong>Điện thoại:</strong> {contract.owner_phone || '—'}</div>
+                            </div>
                         </div>
-                        <div className="p-4 border border-[var(--color-border)]" style={{ background: 'rgba(34,197,94,0.05)' }}>
-                            <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--color-success, #22c55e)' }}>BÊN B — NGƯỜI THUÊ (BẠN)</p>
-                            <dl className="space-y-1.5 text-xs">
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Tên:</dt><dd className="font-semibold">{contract.renter_legal_name || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Công ty:</dt><dd>{contract.renterCompany || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>MST:</dt><dd className="font-mono">{contract.renter_tax_code || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Địa chỉ:</dt><dd>{contract.renter_address || '—'}</dd></div>
-                                <div className="flex gap-2"><dt style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>ĐT:</dt><dd>{contract.renterPhone || '—'}</dd></div>
-                            </dl>
+                        <div>
+                            <span style={{ fontWeight: 'bold', fontSize: '14pt' }}>BÊN THUÊ (BÊN B):</span>
+                            <div style={{ paddingLeft: '16px' }}>
+                                <div><strong>Đại diện pháp luật:</strong> {contract.renter_legal_name || contract.renterName || '—'}</div>
+                                <div><strong>Công ty:</strong> {contract.renterCompany || '—'}</div>
+                                <div><strong>Mã số thuế:</strong> {contract.renter_tax_code || '—'}</div>
+                                <div><strong>Địa chỉ:</strong> {contract.renter_address || '—'}</div>
+                                <div><strong>Điện thoại:</strong> {contract.renterPhone || '—'}</div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Key terms */}
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--color-text-muted)' }}>CHI TIẾT HỢP ĐỒNG</p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                            {[
-                                { label: 'Bắt đầu', value: fmtDate(contract.start_at) },
-                                { label: 'Kết thúc', value: fmtDate(contract.end_at) },
-                                { label: 'Dung tích', value: `${capacity.toLocaleString()} m³` },
-                                { label: 'Đơn giá/m³/tháng', value: fmtCur(rate) },
-                            ].map(({ label, value }) => (
-                                <div key={label} className="p-3 border border-[var(--color-border)]" style={{ background: 'var(--color-bg-secondary)' }}>
-                                    <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-                                    <p className="font-semibold text-xs">{value}</p>
-                                </div>
-                            ))}
-                        </div>
-                        {months > 0 && (
-                            <div className="flex items-center justify-between px-4 py-3"
-                                style={{ background: 'rgba(37,99,235,0.07)', borderLeft: '3px solid var(--color-primary)' }}>
-                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                    Tổng giá trị hợp đồng ({months} tháng):
-                                </span>
-                                <span className="font-bold" style={{ color: 'var(--color-primary)' }}>{fmtCur(capacity * rate * months)}</span>
-                            </div>
-                        )}
+                    {/* Contract details */}
+                    <div style={{ marginBottom: '16px', fontSize: '13pt', lineHeight: '1.8' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14pt' }}>ĐIỀU 1: NỘI DUNG HỢP ĐỒNG</div>
+                        <p style={{ marginBottom: '8px' }}>
+                            Bên A đồng ý cho Bên B thuê không gian tại kho bãi <strong>{contract.warehouseName || '—'}</strong>.
+                        </p>
+                        <p style={{ marginBottom: '8px' }}>
+                            <strong>Thời hạn:</strong> Từ ngày {fmtDate(contract.start_at)} đến ngày {fmtDate(contract.end_at)}.
+                        </p>
+                        <p style={{ marginBottom: '8px' }}>
+                            <strong>Dung tích thuê:</strong> {capacity.toLocaleString()} m³ — <strong>Đơn giá:</strong> {fmtCur(rate)} / m³/tháng.
+                        </p>
+                    </div>
+
+                    {/* Contract value */}
+                    <div style={{ marginBottom: '16px', fontSize: '13pt', lineHeight: '1.8' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14pt' }}>ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG & THANH TOÁN</div>
+                        <p style={{ marginBottom: '8px' }}>
+                            Tổng giá trị hợp đồng ({months} tháng): <strong style={{ color: 'var(--color-primary)' }}>{fmtCur(capacity * rate * months)}</strong> <em>(Chưa bao gồm thuế GTGT)</em>.
+                        </p>
+                        <p style={{ marginBottom: '8px' }}>{contract.payment_term || 'Chưa cập nhật phương thức và kỳ hạn thanh toán cụ thể.'}</p>
                     </div>
 
                     {/* Terms */}
-                    {(contract.payment_term || contract.penalty_clause || contract.special_term || contract.cargo_description) && (
-                        <div className="space-y-2 border-t border-[var(--color-border)] pt-4">
-                            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>ĐIỀU KHOẢN</p>
-                            {contract.cargo_description && (
-                                <div><p className="text-[10px] uppercase mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Hàng hóa</p>
-                                    <p className="text-xs">{contract.cargo_description}</p></div>
-                            )}
-                            {contract.payment_term && (
-                                <div><p className="text-[10px] uppercase mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Thanh toán</p>
-                                    <p className="text-xs">{contract.payment_term}</p></div>
-                            )}
-                            {contract.penalty_clause && (
-                                <div><p className="text-[10px] uppercase mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Phạt vi phạm</p>
-                                    <p className="text-xs">{contract.penalty_clause}</p></div>
-                            )}
-                            {contract.special_term && (
-                                <div><p className="text-[10px] uppercase mb-0.5" style={{ color: 'var(--color-text-muted)' }}>Điều khoản đặc biệt</p>
-                                    <p className="text-xs">{contract.special_term}</p></div>
-                            )}
+                    <div style={{ marginBottom: '16px', fontSize: '13pt', lineHeight: '1.8' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14pt' }}>ĐIỀU 3: ĐIỀU KHOẢN PHẠT & CAM KẾT CHUNG</div>
+                        <p style={{ marginBottom: '8px' }}>{contract.penalty_clause || 'Chưa cập nhật các điều khoản phạt vi phạm hợp đồng.'}</p>
+                        <p style={{ marginBottom: '8px' }}>{contract.special_term || 'Chưa có các cam kết hoặc điều khoản đặc biệt nào khác.'}</p>
+                    </div>
+
+                    {/* Cargo */}
+                    {contract.cargo_description && (
+                        <div style={{ marginBottom: '16px', fontSize: '13pt', lineHeight: '1.8' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14pt' }}>ĐIỀU 4: HÀNG HÓA LƯU TRỮ</div>
+                            <p style={{ marginBottom: '8px' }}>{contract.cargo_description}</p>
                         </div>
                     )}
 
+                    {/* Legal effect */}
+                    <div style={{ marginBottom: '24px', fontSize: '13pt', lineHeight: '1.8' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14pt' }}>ĐIỀU 5: HIỆU LỰC HỢP ĐỒNG</div>
+                        <p>Hợp đồng này được tạo và lưu trữ trên hệ thống nền tảng AiLogis, có giá trị pháp lý tương đương văn bản thỏa thuận điện tử giữa các bên.</p>
+                    </div>
+
+                    {/* Signatures */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginTop: '40px', textAlign: 'center', fontSize: '13pt' }}>
+                        <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>ĐẠI DIỆN BÊN A</div>
+                            <div style={{ fontStyle: 'italic', marginBottom: '48px' }}>(Ký, ghi rõ họ tên)</div>
+                            <div style={{ fontWeight: 'bold' }}>{contract.owner_legal_name || contract.ownerName}</div>
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>ĐẠI DIỆN BÊN B</div>
+                            <div style={{ fontStyle: 'italic', marginBottom: '48px' }}>(Ký, ghi rõ họ tên)</div>
+                            <div style={{ fontWeight: 'bold' }}>{contract.renter_legal_name || contract.renterName}</div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Action footer */}

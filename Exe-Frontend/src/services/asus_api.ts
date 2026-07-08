@@ -1,17 +1,16 @@
 import axios from 'axios';
+import { getToken, setToken } from '../utils/auth';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 api.interceptors.request.use((config) => {
-  const user = localStorage.getItem('user');
-
-  if (user) {
-    const token = JSON.parse(user).token;
+  const token = getToken();
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -31,11 +30,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      if (localStorage.getItem('user')) {
-        localStorage.removeItem('user');
-        // If needed, redirect the user to the login page or refresh
-        // window.location.href = '/login';
-      }
+      setToken(null);
     }
     return Promise.reject(error);
   }

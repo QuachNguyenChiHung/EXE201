@@ -1,4 +1,5 @@
 import { api } from './asus_api';
+import { getToken } from '../utils/auth';
 import type {
   User,
   CompositeWarehouse, CompositeRentRequest, CompositeContract, Rating,
@@ -260,8 +261,7 @@ let conversations: CompositeAiConversations[] = [];
 
 export const aiAPI = {
   chat: async (payload: AIRequestPayload): Promise<AIResponsePayload> => {
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
-    const token = user?.token;
+    const token = getToken();
     const res = await fetch(`${API_BASE}/ai/chat`, {
       method: "POST",
       headers: {
@@ -298,8 +298,7 @@ export const aiAPI = {
   },
 
   contextChat: async (payload: { query: string; conversationHistory: { role: "user" | "ai"; content: string }[]; warehouses: CompositeWarehouse[] }): Promise<AIResponsePayload> => {
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
-    const token = user?.token;
+    const token = getToken();
     const res = await fetch(`${API_BASE}/ai/context-chat`, {
       method: 'POST',
       headers: {
@@ -341,8 +340,7 @@ export const aiAPI = {
   },
 
   saveConversation: async (conv: CompositeAiConversations): Promise<CompositeAiConversations> => {
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
-    const token = user?.token;
+    const token = getToken();
     await fetch(`${API_BASE}/ai/conversations`, {
       method: 'POST',
       headers: {
@@ -360,8 +358,7 @@ export const aiAPI = {
   },
 
   getConversationsByUser: async (_userId: number): Promise<CompositeAiConversations[]> => {
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
-    const token = user?.token;
+    const token = getToken();
     const res = await fetch(`${API_BASE}/ai/conversations/my`, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });

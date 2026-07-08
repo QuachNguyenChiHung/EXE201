@@ -6,9 +6,8 @@ import { CompositeContract, CompositeWarehouse, ContractDetailDTO } from '../../
 import { ArrowLeft, Package, Snowflake } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { FilterTab, mapBackendStatus } from '../../components/renter/RentedPropertyUtils';
+import { FilterTab } from '../../components/renter/RentedPropertyUtils';
 import { RentedPropertyFilters } from '../../components/renter/RentedPropertyFilters';
-import { ContractDetailModal, RejectContractModal } from '../../components/renter/ContractModals';
 import { RentedPropertyCard } from '../../components/renter/RentedPropertyCard';
 import { getUser } from '../../../utils/auth';
 import { renterService } from '../../../services/renterService';
@@ -19,8 +18,6 @@ export default function RentedProperties() {
   const { warehouses: warehouseList, refreshWarehouses } = useApp();
 
   const [tab, setTab] = useState<FilterTab>('all');
-  const [viewingContract, setViewingContract] = useState<CompositeContract | null>(null);
-  const [rejectingContract, setRejectingContract] = useState<CompositeContract | null>(null);
   const [renterContracts, setRenterContracts] = useState<CompositeContract[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(true);
 
@@ -93,34 +90,21 @@ export default function RentedProperties() {
 
   const handleCancel = async (id: number) => {
     try {
-      await renterService.rejectContract(id, 'Huỷ theo yêu cầu của người thuê.');
+      await renterService.cancelContract(id, 'Huỷ theo yêu cầu của người thuê.');
       await fetchContracts();
-      toast.success('Đã huỷ hợp đồng.');
+      toast.success('Đã hủy hợp đồng.');
     } catch (err) {
-      toast.error((err as any)?.message ?? 'Không thể huỷ hợp đồng');
+      toast.error((err as any)?.message ?? 'Không thể hủy hợp đồng');
     }
   };
 
-  const handleAcceptContract = async (id: number) => {
+  const handleSign = async (id: number) => {
     try {
       await renterService.signContract(id);
       await fetchContracts();
-      setViewingContract(null);
-      toast.success('Đã ký xác nhận hợp đồng! Hợp đồng hiện đang có hiệu lực.');
+      toast.success('Đã ký xác nhận hợp đồng!');
     } catch (err) {
-      toast.error((err as any)?.message ?? 'Không thể xác nhận hợp đồng');
-    }
-  };
-
-  const handleRejectContract = async (id: number, reason: string) => {
-    try {
-      await renterService.rejectContract(id, reason);
-      await fetchContracts();
-      setRejectingContract(null);
-      setViewingContract(null);
-      toast.success('Đã gửi phản hồi từ chối. Chủ kho sẽ chỉnh sửa và gửi lại.');
-    } catch (err) {
-      toast.error((err as any)?.message ?? 'Không thể từ chối hợp đồng');
+      toast.error((err as any)?.message ?? 'Không thể ký hợp đồng');
     }
   };
 
@@ -138,23 +122,6 @@ export default function RentedProperties() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pb-20">
       <Navbar />
-
-      {viewingContract && (
-        <ContractDetailModal
-          contract={viewingContract}
-          onAccept={() => handleAcceptContract(viewingContract.id_contract)}
-          onReject={() => { setRejectingContract(viewingContract); setViewingContract(null); }}
-          onClose={() => setViewingContract(null)}
-        />
-      )}
-
-      {rejectingContract && (
-        <RejectContractModal
-          contractRef={rejectingContract.contractRef}
-          onConfirm={reason => handleRejectContract(rejectingContract.id_contract, reason)}
-          onClose={() => setRejectingContract(null)}
-        />
-      )}
 
       <div className="max-w-[1000px] w-full mx-auto px-4 py-8">
         {/* ── Header ── */}
@@ -228,14 +195,9 @@ export default function RentedProperties() {
                 contract={contract}
                 warehouse={warehouses[contract.id_warehouse?.toString() || '']}
                 onViewContract={() => {
-                  const mapped = mapBackendStatus(contract.status, contract.ownerSigned, contract.renterSigned);
-                  if (mapped === 'pending_renter') {
-                    setViewingContract(contract);
-                  } else {
-                    navigate(`/shared/contracts/${contract.id_contract}`);
-                  }
+                  navigate(`/shared/contracts/${contract.id_contract}`);
                 }}
-                onRejectContract={() => setRejectingContract(contract)}
+                onSignContract={() => handleSign(contract.id_contract)}
                 onCancelContract={() => handleCancel(contract.id_contract)}
               />
             ))}

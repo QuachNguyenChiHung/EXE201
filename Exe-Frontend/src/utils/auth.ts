@@ -1,8 +1,23 @@
 import { User } from '../types';
 
+const USER_KEY = 'user';
+const TOKEN_KEY = 'auth_token';
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string | null) {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
 export function getUser(): User | null {
   try {
-    const stored = localStorage.getItem('user');
+    const stored = localStorage.getItem(USER_KEY);
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
@@ -11,9 +26,10 @@ export function getUser(): User | null {
 
 export function setUser(user: User | null) {
   if (user) {
-    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
   } else {
-    localStorage.removeItem('user');
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   }
 }
 

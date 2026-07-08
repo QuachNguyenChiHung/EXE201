@@ -32,15 +32,51 @@ export function WarehouseRequestCard({
   const handleExpand = async () => {
     const newExpanded = !isExpanded;
     setIsExpanded(newExpanded);
-    if (newExpanded && !requestDetail) {
-      setIsLoadingDetail(true);
-      try {
-        const data = await ownerService.getRequestDetail(req.id_rentRequest || (req as any).id);
-        setRequestDetail(data);
-      } catch (err) {
-        // silent
-      } finally {
-        setIsLoadingDetail(false);
+    if (newExpanded) {
+      if (!requestDetail) {
+        setIsLoadingDetail(true);
+        try {
+          const data = await ownerService.getRequestDetail(req.id_rentRequest || (req as any).id);
+          setRequestDetail(data);
+          // For already-approved requests, fetch contact info to get fresh phone numbers
+          if (req.status === 'APPROVED' && !acceptResult) {
+            try {
+              const contact = await ownerService.getContactInfo(req.id_rentRequest || (req as any).id);
+              setAcceptResult({
+                renterPhone: contact.renterPhone || currentUser?.phone || '',
+                ownerPhone: contact.ownerPhone || currentUser?.phone || '',
+                message: contact.message || 'Thông tin liên hệ đã được mở khóa',
+              });
+            } catch {
+              // Fallback to data from getRequestDetail
+              const renterPhone = data.renterPhone || req.renterPhone || '';
+              const ownerPhone = data.ownerPhone || currentUser?.phone || '';
+              if (renterPhone || ownerPhone) {
+                setAcceptResult({ renterPhone, ownerPhone, message: 'Thông tin liên hệ đã được mở khóa' });
+              }
+            }
+          }
+        } catch (err) {
+          // silent
+        } finally {
+          setIsLoadingDetail(false);
+        }
+      } else if (req.status === 'APPROVED' && !acceptResult) {
+        // Detail already loaded but still need contact info — use getContactInfo
+        try {
+          const contact = await ownerService.getContactInfo(req.id_rentRequest || (req as any).id);
+          setAcceptResult({
+            renterPhone: contact.renterPhone || currentUser?.phone || '',
+            ownerPhone: contact.ownerPhone || currentUser?.phone || '',
+            message: contact.message || 'Thông tin liên hệ đã được mở khóa',
+          });
+        } catch {
+          const renterPhone = requestDetail.renterPhone || req.renterPhone || '';
+          const ownerPhone = requestDetail.ownerPhone || currentUser?.phone || '';
+          if (renterPhone || ownerPhone) {
+            setAcceptResult({ renterPhone, ownerPhone, message: 'Thông tin liên hệ đã được mở khóa' });
+          }
+        }
       }
     }
   };
@@ -343,16 +379,23 @@ export function WarehouseRequestCard({
                     <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22c55e' }} />
                     <p className="text-xs font-semibold" style={{ color: '#22c55e' }}>Đã chấp nhận thương lượng</p>
                   </div>
-                  {acceptResult && (
+                  {acceptResult && (acceptResult.renterPhone || acceptResult.ownerPhone) && (
                     <div className="flex items-start gap-3 px-3 py-3 border border-[var(--color-border)]" style={{ background: 'rgba(34,197,94,0.04)' }}>
                       <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
-                          Liên hệ người thuê để tiến hành thuê kho
+                          Liên hệ để tiến hành thuê kho
                         </p>
-                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                          SĐT người thuê: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{acceptResult.renterPhone}</span>
-                        </p>
+                        {acceptResult.renterPhone && (
+                          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                            SĐT người thuê: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{acceptResult.renterPhone}</span>
+                          </p>
+                        )}
+                        {acceptResult.ownerPhone && (
+                          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                            SĐT chủ kho: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{acceptResult.ownerPhone}</span>
+                          </p>
+                        )}
                         {acceptResult.message && (
                           <p className="text-xs mt-1 italic" style={{ color: 'var(--color-text-muted)' }}>{acceptResult.message}</p>
                         )}

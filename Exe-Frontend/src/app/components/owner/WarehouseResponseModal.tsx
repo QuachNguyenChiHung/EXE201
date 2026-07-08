@@ -20,11 +20,13 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
   const isPendingPayment = request.status === 'PENDING_PAYMENT';
   const [phase, setPhase] = useState<ModalPhase>('action');
   const [loading, setLoading] = useState(false);
+  const [chosen, setChosen] = useState<'accept' | 'reject' | null>(null);
   const [acceptResult, setAcceptResult] = useState<AcceptResult | null>(null);
   const [rejectResult, setRejectResult] = useState<string | null>(null);
   const [reason, setReason] = useState('');
 
   const handleAcceptPayment = async () => {
+    setChosen('accept');
     setLoading(true);
     try {
       const result = await ownerService.acceptRequest(request.id_rentRequest.toString());
@@ -32,13 +34,14 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
       setPhase('accept-result');
     } catch (err: any) {
       toast.error(err?.response?.data || 'Không thể chấp nhận yêu cầu');
-    } finally {
+      setChosen(null);
       setLoading(false);
     }
   };
 
   const handleRejectPayment = async () => {
     if (!reason.trim()) { toast.error('Vui lòng nhập lý do từ chối'); return; }
+    setChosen('reject');
     setLoading(true);
     try {
       const msg = await ownerService.rejectRequest(request.id_rentRequest.toString(), reason);
@@ -46,26 +49,32 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
       setPhase('reject-result');
     } catch (err: any) {
       toast.error(err?.response?.data || 'Không thể từ chối yêu cầu');
-    } finally {
+      setChosen(null);
       setLoading(false);
     }
   };
 
   const handleGeneralAccept = async () => {
+    setChosen('accept');
     setLoading(true);
     try {
       await onAccept(request.id_rentRequest.toString());
-    } finally {
+    } catch (err: any) {
+      toast.error(err?.response?.data || 'Không thể chấp nhận yêu cầu');
+      setChosen(null);
       setLoading(false);
     }
   };
 
   const handleGeneralReject = async () => {
     if (!reason.trim()) { toast.error('Vui lòng nhập lý do từ chối'); return; }
+    setChosen('reject');
     setLoading(true);
     try {
       await onReject(request.id_rentRequest.toString(), reason);
-    } finally {
+    } catch (err: any) {
+      toast.error(err?.response?.data || 'Không thể từ chối yêu cầu');
+      setChosen(null);
       setLoading(false);
     }
   };
@@ -190,13 +199,15 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
 
             <button
               onClick={handleAcceptPayment}
-              disabled={loading}
+              disabled={loading || chosen !== null}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-lg border-2 transition-all disabled:opacity-50"
               style={{ borderColor: '#22c55e', background: 'rgba(34,197,94,0.04)' }}
             >
-              {loading
+              {chosen === 'reject'
                 ? <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: '#22c55e' }} />
-                : <CheckCircle className="h-5 w-5 shrink-0" style={{ color: '#22c55e' }} />}
+                : loading && chosen === 'accept'
+                  ? <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: '#22c55e' }} />
+                  : <CheckCircle className="h-5 w-5 shrink-0" style={{ color: '#22c55e' }} />}
               <div className="text-left">
                 <p className="text-sm font-bold" style={{ color: '#22c55e' }}>Chấp nhận yêu cầu</p>
                 <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Hiển thị SĐT người thuê để liên hệ</p>
@@ -205,13 +216,15 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
 
             <button
               onClick={handleRejectPayment}
-              disabled={loading}
+              disabled={loading || chosen !== null}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-lg border-2 transition-all disabled:opacity-50"
               style={{ borderColor: '#ef4444', background: 'rgba(239,68,68,0.04)' }}
             >
-              {loading
+              {chosen === 'accept'
                 ? <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: '#ef4444' }} />
-                : <XCircle className="h-5 w-5 shrink-0" style={{ color: '#ef4444' }} />}
+                : loading && chosen === 'reject'
+                  ? <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: '#ef4444' }} />
+                  : <XCircle className="h-5 w-5 shrink-0" style={{ color: '#ef4444' }} />}
               <div className="text-left">
                 <p className="text-sm font-bold" style={{ color: '#ef4444' }}>Từ chối yêu cầu</p>
                 <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Hệ thống sẽ tự động hoàn tiền cho người thuê</p>
@@ -227,7 +240,8 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
                 placeholder="Nhập lý do từ chối (nếu cần)..."
                 value={reason}
                 onChange={e => setReason(e.target.value)}
-                className="w-full text-sm px-3 py-2 border resize-none focus:outline-none transition-colors"
+                disabled={chosen !== null}
+                className="w-full text-sm px-3 py-2 border resize-none focus:outline-none transition-colors disabled:opacity-50"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
               />
             </div>
@@ -236,7 +250,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
           <div className="px-5 pb-5">
             <button
               onClick={onClose}
-              disabled={loading}
+              disabled={chosen !== null}
               className="w-full py-2.5 text-sm border transition-colors disabled:opacity-50"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
             >
@@ -285,13 +299,15 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
         <div className="px-5 py-5 space-y-4">
           <button
             onClick={handleGeneralAccept}
-            disabled={loading}
+            disabled={loading || chosen !== null}
             className="w-full flex items-center gap-3 px-4 py-3.5 rounded-lg border-2 transition-all disabled:opacity-50"
             style={{ borderColor: '#22c55e', background: 'rgba(34,197,94,0.04)' }}
           >
-            {loading
+            {chosen === 'reject'
               ? <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: '#22c55e' }} />
-              : <CheckCircle className="h-5 w-5 shrink-0" style={{ color: '#22c55e' }} />}
+              : loading && chosen === 'accept'
+                ? <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: '#22c55e' }} />
+                : <CheckCircle className="h-5 w-5 shrink-0" style={{ color: '#22c55e' }} />}
             <div className="text-left">
               <p className="text-sm font-bold" style={{ color: '#22c55e' }}>Chấp nhận yêu cầu</p>
               <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Chuyển yêu cầu sang trạng thái Đã chấp nhận</p>
@@ -307,7 +323,8 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
               placeholder="Rất tiếc, kho hiện đã được đặt kín trong thời gian yêu cầu..."
               value={reason}
               onChange={e => setReason(e.target.value)}
-              className="w-full text-sm px-3 py-2 border resize-none focus:outline-none transition-colors"
+              disabled={chosen !== null}
+              className="w-full text-sm px-3 py-2 border resize-none focus:outline-none transition-colors disabled:opacity-50"
               style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
             />
           </div>
@@ -316,19 +333,23 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
         <div className="px-5 pb-5 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 text-sm border transition-colors"
+            disabled={chosen !== null}
+            className="flex-1 py-2.5 text-sm border transition-colors disabled:opacity-50"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
           >
             Huỷ
           </button>
           <button
             onClick={handleGeneralReject}
-            disabled={loading || !reason.trim()}
+            disabled={loading || !reason.trim() || chosen !== null}
             className="flex-1 py-2.5 text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50"
             style={{ background: '#ef4444' }}
           >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            <XCircle className="h-4 w-4" /> Xác nhận từ chối
+            {chosen === 'accept'
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : loading && chosen === 'reject'
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <XCircle className="h-4 w-4" />} Xác nhận từ chối
           </button>
         </div>
       </div>

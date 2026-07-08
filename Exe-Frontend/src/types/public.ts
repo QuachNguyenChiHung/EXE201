@@ -80,6 +80,13 @@ export interface CompositeAiConversations extends AiConversations {
   warehouseCount?: number;
 }
 
+export interface Notification {
+  id: number;
+  message: string;
+  createdAt: string;
+  read: boolean;
+}
+
 export interface FilterOptions {
   provinces: string[];
   cities: string[];

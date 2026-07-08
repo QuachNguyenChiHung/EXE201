@@ -12,7 +12,7 @@ interface RentedPropertyCardProps {
     contract: CompositeContract;
     warehouse: CompositeWarehouse | undefined;
     onViewContract: () => void;
-    onRejectContract: () => void;
+    onSignContract: () => void;
     onCancelContract: () => void;
 }
 
@@ -20,7 +20,7 @@ export function RentedPropertyCard({
     contract,
     warehouse,
     onViewContract,
-    onRejectContract,
+    onSignContract,
     onCancelContract,
 }: RentedPropertyCardProps) {
     const navigate = useNavigate();
@@ -268,12 +268,17 @@ export function RentedPropertyCard({
                                 <>
                                     <button
                                         onClick={onViewContract}
-                                        className="flex items-center justify-center gap-2 text-white text-sm px-4 py-2"
-                                        style={{ background: '#f59e0b' }}>
-                                        <PenLine className="h-3.5 w-3.5" /> Xem & Ký kết
+                                        className="flex items-center justify-center gap-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm px-4 py-2 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors">
+                                        <FileText className="h-3.5 w-3.5" /> Xem
                                     </button>
                                     <button
-                                        onClick={onRejectContract}
+                                        onClick={onSignContract}
+                                        className="flex items-center justify-center gap-2 text-white text-sm px-4 py-2"
+                                        style={{ background: '#f59e0b' }}>
+                                        <PenLine className="h-3.5 w-3.5" /> Ký kết
+                                    </button>
+                                    <button
+                                        onClick={onViewContract}
                                         className="flex items-center justify-center gap-2 border text-sm px-4 py-2 transition-colors"
                                         style={{ borderColor: 'var(--color-error)', color: 'var(--color-error)' }}>
                                         <XCircle className="h-3.5 w-3.5" /> Từ chối

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { CompositeWarehouse } from '../../../types';
 import { toast } from 'sonner';
 import { renterService } from '../../../services/renterService';
+import { userService } from '../../../services/userService';
 import { getUser } from '../../../utils/auth';
 import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
 
@@ -199,17 +200,19 @@ export function RentalRequestModal({
         setForm(f => ({ ...f, endDate: computeEndDate(form.startDate, val, form.durationUnit) }));
     }, [form.startDate, form.durationValue, form.durationUnit]);
 
-    // Populate user info
+    // Fetch latest profile when modal opens so phone/email are always up-to-date
     useEffect(() => {
-        if (user) {
-            setForm(f => ({
-                ...f,
-                name: f.name || user.name || '',
-                phone: f.phone || user.phone || '',
-                email: f.email || user.email || '',
-            }));
+        if (open) {
+            userService.getMyProfile().then(profile => {
+                setForm(f => ({
+                    ...f,
+                    name: f.name || profile.fullName || user?.name || '',
+                    phone: f.phone || profile.phone || user?.phone || '',
+                    email: f.email || profile.email || user?.email || '',
+                }));
+            });
         }
-    }, []);
+    }, [open]);
 
     const durationDays = useMemo(() => {
         const val = parseFloat(form.durationValue);

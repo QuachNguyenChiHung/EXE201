@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getUser, setUser, getBookmarks } from "../../utils/auth";
 import { authService } from "../../services/authService";
 import { userService } from "../../services/userService";
+import { useApp } from "../../context/AppContext";
 import { toast } from "sonner";
 import {
   Warehouse,
@@ -97,12 +98,33 @@ function NavRawBtn({
   );
 }
 
+// ─── Relative time helper ───────────────────────────────────────────────────────
+function formatRelativeTime(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return "Vừa xong";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} giờ trước`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 30) return `${diffDay} ngày trước`;
+    return date.toLocaleDateString("vi-VN");
+  } catch {
+    return dateStr;
+  }
+}
+
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export function Navbar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [user, setUserState] = useState(getUser());
   const [bookmarkCount, setBookmarkCount] = useState(getBookmarks().length);
+  const app = useApp();
 
   // Normalize role to lowercase for consistent comparisons (stored roles are uppercase)
   const role = user?.role ? (user.role as string).toLowerCase() : null;
@@ -133,12 +155,11 @@ export function Navbar() {
   const handleLogout = async () => {
     try {
       await authService.logout();
-      setUser(null);
-      setUserState(null);
-      navigate("/");
-    } catch (error) {
-      toast.error('Đăng xuất thất bại do lỗi kết nối!');
+    } catch {
+      // authService.logout already cleared localStorage, proceed to navigate
     }
+    setUserState(null);
+    navigate("/");
   };
 
   const getDashboardLink = () => {
@@ -322,6 +343,66 @@ export function Navbar() {
                     Gói VIP
                   </NavBtn>
                 </>
+              )}
+
+              {/* ── Notification Bell ── */}
+              {isAuthenticated && user && (
+                <div className="flex items-center ml-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-none gap-2 min-w-0 px-2 relative"
+                        aria-label="Notifications"
+                      >
+                        <Bell className="h-4 w-4" />
+                        {app.unreadNotificationCount > 0 && (
+                          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white rounded-full bg-red-500 px-1">
+                            {app.unreadNotificationCount > 99 ? "99+" : app.unreadNotificationCount}
+                          </span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-80 rounded-none border border-[var(--color-border)] bg-white max-h-96 overflow-y-auto"
+                    >
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
+                        <span className="font-semibold text-sm">Thông báo</span>
+                        {app.unreadNotificationCount > 0 && (
+                          <button
+                            onClick={() => app.markNotificationsRead()}
+                            className="text-xs text-[var(--color-primary)] hover:underline"
+                          >
+                            Đánh dấu đã đọc
+                          </button>
+                        )}
+                      </div>
+                      {app.notifications.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-gray-400">
+                          Chưa có thông báo nào
+                        </div>
+                      ) : (
+                        <div className="py-1">
+                          {app.notifications.slice(0, 20).map((n) => (
+                            <div
+                              key={n.id}
+                              className={`px-3 py-2 border-b border-[var(--color-border)] last:border-0 ${
+                                !n.read ? "bg-blue-50" : ""
+                              }`}
+                            >
+                              <p className="text-sm text-gray-800 leading-snug">{n.message}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {formatRelativeTime(n.createdAt)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               )}
 
               {/* ── User dropdown ── */}

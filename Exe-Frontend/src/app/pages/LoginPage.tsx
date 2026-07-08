@@ -30,7 +30,6 @@ export default function LoginPage() {
     setAuthError(null);
     try {
       const user = await authService.login({ email, password });
-      localStorage.setItem('user', JSON.stringify(user));
 
       toast.success("Đăng nhập thành công!");
       if (user.role === "RENTER") navigate("/renter");
