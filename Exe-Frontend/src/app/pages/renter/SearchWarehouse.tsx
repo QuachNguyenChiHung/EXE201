@@ -45,7 +45,7 @@ export default function SearchWarehouse() {
     renterService
       .getFilterMeta()
       .then((meta) => setFilterMeta(meta))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   /**
@@ -60,7 +60,7 @@ export default function SearchWarehouse() {
 
     if (filters.keyword && filters.keyword.trim() !== "") {
       params.keyword = filters.keyword.trim();
-    }else params.keyword= "";
+    } else params.keyword = "";
 
     if (filters.provinces && filters.provinces.length > 0) {
       params.provinces = filters.provinces;
@@ -216,11 +216,10 @@ export default function SearchWarehouse() {
           {/* Filter toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`flex items-center gap-1.5 px-3 h-8 text-[13px] font-medium border rounded transition-colors shrink-0 ${
-              sidebarOpen
+            className={`flex items-center gap-1.5 px-3 h-8 text-[13px] font-medium border rounded transition-colors shrink-0 ${sidebarOpen
                 ? "bg-blue-50 text-blue-600 border-blue-200"
                 : "text-gray-600 border-gray-300 bg-white hover:bg-gray-50"
-            }`}
+              }`}
           >
             <FilterIcon size={14} /> {sidebarOpen ? "Ẩn bộ lọc" : "Bộ lọc"}
           </button>

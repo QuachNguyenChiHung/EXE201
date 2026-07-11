@@ -32,6 +32,13 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = user?.role === 'OWNER';
+  // Show the company section when:
+  //  • the user is an OWNER (always editable), OR
+  //  • the user already has a company linked to their profile
+  //    (e.g. a RENTER who registered with a company name + tax code).
+  // The backend's `User` entity allows any role to own a company.
+  const hasCompany = !!profile?.company?.id;
+  const showCompanySection = isOwner || hasCompany;
 
   // Load profile on mount
   useEffect(() => {
@@ -75,7 +82,10 @@ export default function ProfilePage() {
     } else if (!/^[\d\s+()-]{7,15}$/.test(form.phone.trim())) {
       errors.phone = 'Số điện thoại không hợp lệ';
     }
-    if (isOwner && form.companyTaxCode && !/^\d{10,14}$/.test(form.companyTaxCode.replace(/\s/g, ''))) {
+    if (!form.gender) {
+      errors.gender = 'Vui lòng chọn giới tính';
+    }
+    if (showCompanySection && form.companyTaxCode && !/^\d{10,14}$/.test(form.companyTaxCode.replace(/\s/g, ''))) {
       errors.companyTaxCode = 'Mã số thuế phải có 10–14 chữ số';
     }
     setFormErrors(errors);
@@ -299,18 +309,28 @@ export default function ProfilePage() {
 
               {/* Gender */}
               <div>
-                <Label htmlFor="gender">Giới tính</Label>
+                <Label htmlFor="gender">
+                  Giới tính <span className="text-[var(--color-error)]">*</span>
+                </Label>
                 <select
                   id="gender"
                   value={form.gender}
-                  onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
-                  className="mt-1 flex h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  onChange={(e) => setField('gender', e.target.value)}
+                  className="mt-1 flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{
+                    borderColor: formErrors.gender
+                      ? 'var(--color-error, #ef4444)'
+                      : 'var(--color-border)',
+                  }}
                 >
                   <option value="">— Chọn giới tính —</option>
                   <option value="MALE">Nam</option>
                   <option value="FEMALE">Nữ</option>
                   <option value="OTHER">Khác</option>
                 </select>
+                {formErrors.gender && (
+                  <p className="mt-1 text-xs text-[var(--color-error)]">{formErrors.gender}</p>
+                )}
               </div>
 
               {/* Role — read-only */}
@@ -349,8 +369,8 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          {/* Company info card — owner only */}
-          {isOwner && (
+          {/* Company info card — shown for OWNERs and for any user who already has a company linked */}
+          {showCompanySection && (
             <Card className="bento-card p-6">
               <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-[var(--color-primary)]" />

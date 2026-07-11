@@ -65,9 +65,9 @@ export function WarehouseDashboardList({ warehouses }: WarehouseDashboardListPro
             <div className="p-5 space-y-3">
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h3 className="">{w.name}</h3>
-                <SponsorBadge sponsorType={w.sponsor_type} size="sm" label={w.sponsorTierLabel} />
-              </div>
+                  <h3 className="">{w.name}</h3>
+                  <SponsorBadge sponsorType={w.sponsor_type} size="sm" label={w.sponsorTierLabel} />
+                </div>
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   {formatShortAddress({
                     province: w.location_province,

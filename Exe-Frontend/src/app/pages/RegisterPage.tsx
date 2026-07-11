@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Warehouse, Building2, CheckCircle2, Loader2 } from 'lucide-react';
-import { UserRole, User } from '../../types';
+import { UserRole } from '../../types';
 import logoUrl from '../../assets/logo.png';
 import { toast } from 'sonner';
 
@@ -16,9 +16,10 @@ export default function RegisterPage() {
   const [role, setRole] = useState<UserRole>(initialRole);
   const [formData, setFormData] = useState({
     email: '', password: '', confirmPassword: '', name: '', phone: '',
-    company_name: '', company_tax_code: '', img_link: '', hash_tax_code: ''
+    company_name: '', company_tax_code: ''
   });
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -40,7 +41,16 @@ export default function RegisterPage() {
       toast.error('Mật khẩu xác nhận không khớp');
       return;
     }
+    if (
+      formData.company_tax_code &&
+      !/^\d{10,14}$/.test(formData.company_tax_code.replace(/\s/g, ''))
+    ) {
+      setErrors({ company_tax_code: 'Mã số thuế phải có 10–14 chữ số' });
+      toast.error('Mã số thuế phải có 10–14 chữ số');
+      return;
+    }
 
+    setErrors({});
     setLoading(true);
     setAuthError(null);
 
@@ -64,17 +74,6 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string | null;
-      if (result) set('img_link', result);
-    };
-    reader.readAsDataURL(file);
   };
 
   const roles: { value: UserRole; icon: React.ReactNode; label: string; desc: string }[] = [
@@ -250,7 +249,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Phone + User Tax Code */}
+            {/* Phone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="phone">Số điện thoại</Label>
@@ -264,30 +263,6 @@ export default function RegisterPage() {
                   className="rounded-none"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="hash_tax_code">Mã số thuế cá nhân</Label>
-                <Input
-                  id="hash_tax_code"
-                  placeholder="Nhập mã số thuế cá nhân"
-                  value={formData.hash_tax_code}
-                  onChange={e => set('hash_tax_code', e.target.value)}
-                  disabled={loading}
-                  className="rounded-none"
-                />
-              </div>
-            </div>
-
-            {/* Avatar upload */}
-            <div className="space-y-1.5">
-              <Label htmlFor="img_link">Ảnh đại diện</Label>
-              <input
-                id="img_link"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                disabled={loading}
-                className="rounded-none p-2 block w-full text-sm border-2 border-black text-[var(--color-text-secondary)]"
-              />
             </div>
 
             {/* Company Info */}
@@ -309,10 +284,28 @@ export default function RegisterPage() {
                   id="company_tax_code"
                   placeholder="Mã số thuế công ty"
                   value={formData.company_tax_code}
-                  onChange={e => set('company_tax_code', e.target.value)}
+                  onChange={e => {
+                    set('company_tax_code', e.target.value);
+                    if (errors.company_tax_code) {
+                      setErrors(prev => {
+                        const { company_tax_code: _omit, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
                   disabled={loading}
                   className="rounded-none"
+                  style={
+                    errors.company_tax_code
+                      ? { borderColor: 'var(--color-error, #ef4444)' }
+                      : undefined
+                  }
                 />
+                {errors.company_tax_code && (
+                  <p className="text-xs" style={{ color: 'var(--color-error, #ef4444)' }}>
+                    {errors.company_tax_code}
+                  </p>
+                )}
               </div>
             </div>
 

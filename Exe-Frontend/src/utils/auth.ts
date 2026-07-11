@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { User } from '../types';
 
 const USER_KEY = 'user';
@@ -49,9 +50,31 @@ export function setBookmarks(ids: string[]) {
 export function toggleBookmark(id: string): string[] {
   const bookmarks = getBookmarks();
   const index = bookmarks.indexOf(id);
-  const newBookmarks = index >= 0 
+  const newBookmarks = index >= 0
     ? bookmarks.filter(b => b !== id)
     : [...bookmarks, id];
   setBookmarks(newBookmarks);
   return newBookmarks;
+}
+
+/**
+ * Reactive hook that returns the currently-logged-in user and re-renders the
+ * caller whenever the user object in localStorage changes — either from a
+ * cross-tab `storage` event or from same-tab updates emitted by `userService`
+ * (`window.dispatchEvent(new Event('storage'))`).
+ *
+ * Use this instead of `getUser()` whenever the component needs to react to
+ * profile updates (e.g. after `userService.getMyProfile()` merges fresh data
+ * into localStorage).
+ */
+export function useCurrentUser(): User | null {
+  const [user, setUser] = useState<User | null>(getUser());
+
+  useEffect(() => {
+    const sync = () => setUser(getUser());
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+
+  return user;
 }

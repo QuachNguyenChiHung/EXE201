@@ -7,19 +7,13 @@ import { renterService } from '../../../services/renterService';
 import { userService } from '../../../services/userService';
 import { getUser } from '../../../utils/auth';
 import { PRICE_TIER_OPTIONS } from '../owner/WarehouseFormUtils';
+import {
+    calcSectionCost,
+    tierUnitLabelVi,
+    unitMonths,
+} from '../../utils/rentalCost';
 
 // ─── Time unit constants & conversion ─────────────────────────────────────────
-
-const DAYS_PER_UNIT: Record<string, number> = {
-    day: 1, week: 7, month: 30, year: 365,
-};
-
-const UNIT_CONVERSION: Record<string, Record<string, number>> = {
-    day: { day: 1, week: 1 / 7, month: 1 / 30, year: 1 / 365 },
-    week: { day: 7, week: 1, month: 7 / 30, year: 7 / 365 },
-    month: { day: 30, week: 30 / 7, month: 1, year: 1 / 12 },
-    year: { day: 365, week: 365 / 7, month: 12, year: 1 },
-};
 
 const TIER_RANK: Record<string, number> = { day: 0, week: 1, month: 2, year: 3 };
 
@@ -46,14 +40,6 @@ function getAllowedDurationUnits(restrictiveUnit: string): string[] {
     return unitOrder.filter(u => (TIER_RANK[u] ?? 0) >= restrictiveRank);
 }
 
-function calcSectionCost(
-    tierValue: number, tierUnit: string,
-    durValue: number, durUnit: string, rentedArea: number
-): number {
-    const conversion = UNIT_CONVERSION[durUnit]?.[tierUnit] ?? 1;
-    return tierValue * durValue * conversion * rentedArea;
-}
-
 function computeEndDate(startDate: string, value: number, unit: string): string {
     if (!startDate || value <= 0) return '';
     const end = new Date(startDate);
@@ -66,15 +52,14 @@ function computeEndDate(startDate: string, value: number, unit: string): string 
 }
 
 function rentalDays(value: number, unit: string): number {
-    return value * (DAYS_PER_UNIT[unit] ?? 1);
-}
-
-function rentalMonths(value: number, unit: string): number {
-    return rentalDays(value, unit) / 30;
+    return value * (1 / unitMonths(unit));
 }
 
 function unitLabel(unit: string): string {
-    return PRICE_TIER_OPTIONS.find(o => o.unit === unit)?.label?.replace('Giá theo ', '') ?? unit;
+    return (
+        PRICE_TIER_OPTIONS.find(o => o.unit === unit)?.label?.replace('Giá theo ', '') ??
+        tierUnitLabelVi(unit)
+    );
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -305,6 +290,8 @@ export function RentalRequestModal({
             .map(s => s.name || `Phân khu ${s.sector}`),
         [selectedSections, selectedTiers]
     );
+
+    const hasSelectedTier = Object.keys(selectedTiers).length > 0;
 
     const totalCost = useMemo(
         () => sectionBreakdown.reduce((sum, b) => sum + (b?.cost ?? 0), 0),
@@ -705,13 +692,15 @@ export function RentalRequestModal({
                                     type="number"
                                     required
                                     min="1"
+                                    disabled={!hasSelectedTier}
                                     placeholder="0"
-                                    className="w-20 text-sm px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-transparent text-center font-semibold"
+                                    className="w-20 text-sm px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-transparent text-center font-semibold disabled:bg-[var(--color-bg-secondary)] disabled:text-[var(--color-text-muted)] disabled:cursor-not-allowed"
                                     value={form.durationValue}
                                     onChange={e => setForm(f => ({ ...f, durationValue: e.target.value }))}
                                 />
                                 <select
-                                    className="flex-1 text-sm px-3 py-2 border-2 border-black rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-white text-[var(--color-primary)] font-bold shadow-sm cursor-pointer"
+                                    disabled={!hasSelectedTier}
+                                    className="flex-1 text-sm px-3 py-2 border-2 border-black rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] bg-white text-[var(--color-primary)] font-bold shadow-sm cursor-pointer disabled:bg-[var(--color-bg-secondary)] disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border)] disabled:cursor-not-allowed"
                                     value={form.durationUnit}
                                     onChange={e => setForm(f => ({ ...f, durationUnit: e.target.value as any }))}
                                 >
@@ -722,6 +711,11 @@ export function RentalRequestModal({
                                     ))}
                                 </select>
                             </div>
+                            {!hasSelectedTier && selectedSections.length > 0 && (
+                                <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)] italic">
+                                    Vui lòng chọn gói giá thuê trước để nhập thời lượng.
+                                </p>
+                            )}
                             {/* End date preview */}
                             {form.startDate && form.endDate && (
                                 <p className="mt-1.5 text-xs text-[var(--color-text-muted)] italic">

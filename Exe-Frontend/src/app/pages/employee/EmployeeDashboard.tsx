@@ -28,12 +28,12 @@ export default function EmployeeDashboard() {
         const list = Array.isArray(c) ? c : ((c as any)?.content || (c as any)?.data || (c as any)?.contracts || []);
         setContractList(list);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // fetch employee statistics
     employeeService.getStatistics()
       .then(r => setStatsData(r))
-      .catch(() => {});
+      .catch(() => { });
   }, [user?.role, navigate]);
 
   // ── Stats from mock data ──────────────────────────────────────────────────

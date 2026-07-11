@@ -7,7 +7,7 @@ export interface RegisterRequestDTO {
   password: string;
   fullName: string;
   phone: string;
-  role: string;
+  role: 'RENTER' | 'OWNER';
   companyName?: string;
   companyTaxCode?: string;
 }

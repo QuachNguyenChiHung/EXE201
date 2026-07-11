@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Navbar } from '../../components/Navbar';
 import { useApp } from '../../../context/AppContext';
 import { ownerService } from '../../../services/ownerService';
+import { userService } from '../../../services/userService';
 import { CompositeWarehouse } from '../../../types/warehouse';
 import { ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -46,44 +47,44 @@ export default function WarehouseRequests() {
       const mapped = (dataRes.content as any[])
         .filter(r => r.status !== 'PENDING_PAYMENT')
         .map(r => {
-        const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
-        const details = r.details || [];
-        const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
-        const sectionName = details.length > 1
-          ? `${details.length} phân khu`
-          : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
-        const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
-        const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
+          const matchingWarehouse = warehouseList.find(w => w.name === r.warehouseName);
+          const details = r.details || [];
+          const requestedCapacity = details.reduce((sum: number, d: any) => sum + (d.rentedArea || 0), 0) || undefined;
+          const sectionName = details.length > 1
+            ? `${details.length} phân khu`
+            : (details[0]?.sector ? `Phân khu ${details[0].sector}` : undefined);
+          const priceTierLabel = details.length > 1 ? 'Nhiều phân khu' : details[0]?.priceTierLabel;
+          const priceTierValue = details.length > 1 ? undefined : details[0]?.priceTierValue;
 
-        return {
-          ...r,
-          id_rentRequest: r.id || r.id_rentRequest,
-          id_warehouse: matchingWarehouse?.id_warehouse,
-          cargo_description: r.cargoDescription,
-          cargoType: r.cargoDescription,
-          other_detail: r.otherDetail,
-          message: r.otherDetail,
-          duration: r.duration,
-          duration_unit: r.durationUnit,
-          durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
-          status: r.status,
-          offered_price: r.offeredPrice,
-          owner_note: r.ownerNote,
-          rejection_reason: r.rejectionReason,
-          renterName: r.renterName,
-          renterPhone: r.renterPhone || 'N/A',
-          renterEmail: r.renterEmail || 'N/A',
-          renterCompanyName: r.renterCompanyName,
-          renterCompanyTaxCode: r.renterCompanyTaxCode,
-          requestedCapacity,
-          priceTierLabel,
-          priceTierValue,
-          sectionName,
-          start_date: r.startDate,
-          end_date: r.endDate,
-          submit_at: r.createdAt || r.submit_at || new Date().toISOString()
-        } as IncomingRequest;
-      });
+          return {
+            ...r,
+            id_rentRequest: r.id || r.id_rentRequest,
+            id_warehouse: matchingWarehouse?.id_warehouse,
+            cargo_description: r.cargoDescription,
+            cargoType: r.cargoDescription,
+            other_detail: r.otherDetail,
+            message: r.otherDetail,
+            duration: r.duration,
+            duration_unit: r.durationUnit,
+            durationLabel: `${r.duration} ${r.durationUnit === 'MONTH' ? 'tháng' : r.durationUnit === 'YEAR' ? 'năm' : r.durationUnit || ''}`.trim(),
+            status: r.status,
+            offered_price: r.offeredPrice,
+            owner_note: r.ownerNote,
+            rejection_reason: r.rejectionReason,
+            renterName: r.renterName,
+            renterPhone: r.renterPhone || 'N/A',
+            renterEmail: r.renterEmail || 'N/A',
+            renterCompanyName: r.renterCompanyName,
+            renterCompanyTaxCode: r.renterCompanyTaxCode,
+            requestedCapacity,
+            priceTierLabel,
+            priceTierValue,
+            sectionName,
+            start_date: r.startDate,
+            end_date: r.endDate,
+            submit_at: r.createdAt || r.submit_at || new Date().toISOString()
+          } as IncomingRequest;
+        });
 
       const newData = { list: mapped, totalPages: dataRes.totalPages, totalElements: dataRes.totalElements };
       setCache(prev => ({ ...prev, [cacheKey]: newData }));
@@ -110,6 +111,15 @@ export default function WarehouseRequests() {
       }
     });
   }, [page, tab, user?.email, appLoading.warehouses]);
+
+  // Hydrate the owner's profile (phone, name, avatar) on first load so the
+  // contact card inside each request card can show the owner's own number.
+  useEffect(() => {
+    if (!user || user.role !== 'OWNER') return;
+    if (user.token && !user.phone) {
+      userService.getMyProfile().catch(() => { /* non-fatal */ });
+    }
+  }, [user]);
 
   const invalidateAndRefetch = () => {
     setCache({});

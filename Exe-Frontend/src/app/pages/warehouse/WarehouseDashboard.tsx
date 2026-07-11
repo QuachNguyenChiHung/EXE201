@@ -24,9 +24,9 @@ export default function WarehouseDashboard() {
       return;
     }
 
-    ownerService.getMyWarehouses(0, 10, 'all').then(res => setWarehouses(res.content)).catch(() => {});
+    ownerService.getMyWarehouses(0, 10, 'all').then(res => setWarehouses(res.content)).catch(() => { });
 
-    ownerService.getOwnerStatistics().then(setOwnerStats).catch(() => {});
+    ownerService.getOwnerStatistics().then(setOwnerStats).catch(() => { });
   }, [user?.role, navigate]);
 
 

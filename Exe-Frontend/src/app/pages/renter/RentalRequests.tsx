@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { useApp } from '../../../context/AppContext';
 import { renterService } from '../../../services/renterService';
+import { userService } from '../../../services/userService';
 import { Send, ArrowLeft, ClipboardList, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { CompositeWarehouse, CompositeRentRequest, CompositeContract } from "../../../types";
@@ -40,6 +41,16 @@ export default function RentalRequests() {
             navigate("/login");
         }
     }, [user, navigate]);
+
+    // Hydrate the current user's profile (phone, name, avatar) so the contact
+    // cards inside each request card can display the renter's own phone number
+    // alongside the owner's.
+    useEffect(() => {
+        if (!user || user.role !== "RENTER") return;
+        if (user.token && !user.phone) {
+            userService.getMyProfile().catch(() => { /* non-fatal */ });
+        }
+    }, [user]);
 
     const fetchContracts = useCallback(async () => {
         try {

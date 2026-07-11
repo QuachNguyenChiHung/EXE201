@@ -4,7 +4,14 @@ import { CompositeWarehouse } from '../../../types/warehouse';
 import { CompositeContract } from '../../../types/renter';
 import { IncomingRequest, RequestStatus, STATUS_CFG, CARGO_LABEL, CONTRACT_CFG, relativeTime, fmtDate, fmtCurrency } from './WarehouseRequestUtils';
 import { ownerService } from '../../../services/ownerService';
-import { getUser } from '../../../utils/auth';
+import { useCurrentUser } from '../../../utils/auth';
+import { PRICE_TIER_OPTIONS } from './WarehouseFormUtils';
+import {
+  calcSectionCost,
+  sumRequestCost,
+  unitMonths,
+  tierUnitLabelVi,
+} from '../../utils/rentalCost';
 
 interface RequestCardProps {
   req: IncomingRequest;
@@ -27,7 +34,7 @@ export function WarehouseRequestCard({
   const [acceptResult, setAcceptResult] = useState<{ renterPhone: string; ownerPhone: string; message: string } | null>(null);
   const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
-  const currentUser = getUser();
+  const currentUser = useCurrentUser();
 
   const handleExpand = async () => {
     const newExpanded = !isExpanded;
@@ -144,15 +151,15 @@ export function WarehouseRequestCard({
         />
       </button>
 
-      {/* ── Expanded: two-box layout ── */}
+      {/* ── Expanded: stacked layout (customer request on top, owner response below) ── */}
       {isExpanded && (
         <div className="border-t border-[var(--color-border)]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px" style={{ background: 'var(--color-border)' }}>
+          <div className="flex flex-col" style={{ background: 'var(--color-border)' }}>
 
             {/* ┌──────────────────────────────┐
                 │    YÊU CẦU TỪ KHÁCH HÀNG    │
                 └──────────────────────────────┘ */}
-            <div className="p-4 space-y-4 border-r border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
+            <div className="p-4 space-y-4 border-b border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest pb-2 border-b border-[var(--color-border)]" style={{ color: 'var(--color-text-muted)' }}>
                 Yêu cầu từ khách hàng
               </p>
@@ -216,53 +223,80 @@ export function WarehouseRequestCard({
                         <Layers className="h-4 w-4" style={{ color: "var(--color-primary)" }} /> Phân khu được chọn
                       </h3>
                       <div className="space-y-3">
-                        {requestDetail.details.map((detail: any, idx: number) => (
-                          <div key={idx} className="border border-[var(--color-border)] rounded-sm p-3" style={{ background: 'var(--color-bg-secondary)' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-semibold text-sm" style={{ color: "var(--color-text)" }}>Khu vực {detail.sector}</span>
-                              <span className="px-2 py-0.5 rounded text-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]">
-                                {detail.priceTierLabel}
-                              </span>
-                            </div>
-                            <div className="space-y-1.5 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-[var(--color-text-muted)]">Diện tích thuê:</span>
-                                <span className="font-medium">{detail.rentedArea} {detail.areaUnit}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-[var(--color-text-muted)]">Đơn giá:</span>
-                                <span className="font-medium">
-                                  {fmtCurrency(detail.priceTierValue || 0)} / {detail.areaUnit}
+                        {requestDetail.details.map((detail: any, idx: number) => {
+                          // Recover the tier's rate unit from its Vietnamese label
+                          // (the DTO doesn't expose `unit` directly — only `priceTierLabel`).
+                          const tierUnit = PRICE_TIER_OPTIONS.find(o => o.label === detail.priceTierLabel)?.unit
+                            ?? 'month';
+                          const tierUnitVi = tierUnitLabelVi(tierUnit);
+                          const sectionCost = calcSectionCost(
+                            detail.priceTierValue || 0,
+                            tierUnit,
+                            requestDetail.duration || 0,
+                            requestDetail.durationUnit || 'month',
+                            detail.rentedArea || 0,
+                          );
+                          return (
+                            <div key={idx} className="border border-[var(--color-border)] rounded-sm p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-sm" style={{ color: "var(--color-text)" }}>Khu vực {detail.sector}</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                                  {detail.priceTierLabel}
                                 </span>
                               </div>
-                              <div className="flex justify-between pt-1.5 mt-1.5 border-t border-[var(--color-border)]">
-                                <span className="font-semibold" style={{ color: "var(--color-text)" }}>Thành tiền/tháng:</span>
-                                <span className="font-bold" style={{ color: "var(--color-primary)" }}>
-                                  {fmtCurrency((detail.rentedArea || 0) * (detail.priceTierValue || 0))}
-                                </span>
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-[var(--color-text-muted)]">Diện tích thuê:</span>
+                                  <span className="font-medium">{detail.rentedArea} {detail.areaUnit}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-[var(--color-text-muted)]">Đơn giá:</span>
+                                  <span className="font-medium">
+                                    {fmtCurrency(detail.priceTierValue || 0)} /{tierUnitVi}/{detail.areaUnit}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between pt-1.5 mt-1.5 border-t border-[var(--color-border)]">
+                                  <span className="font-semibold" style={{ color: "var(--color-text)" }}>
+                                    Thành tiền ({requestDetail.duration} {tierUnitLabelVi(requestDetail.durationUnit || 'month')}):
+                                  </span>
+                                  <span className="font-bold" style={{ color: "var(--color-primary)" }}>
+                                    {fmtCurrency(sectionCost)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
-                      {/* Tổng ước tính */}
+                      {/* Tổng ước tính — uses the same per-section formula as the renter modal,
+                          so the owner and renter sides always agree. */}
                       {(() => {
-                        const totalMonthly = requestDetail.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
-                        const isYears = requestDetail.durationUnit === 'YEARS' || requestDetail.durationUnit === 'Năm';
-                        const durationMultiplier = isYears ? (requestDetail.duration * 12) : (requestDetail.duration || 1);
-                        const totalExpected = totalMonthly * durationMultiplier;
-                        const unitLabel = requestDetail.durationUnit === 'MONTHS' || requestDetail.durationUnit === 'Tháng' ? 'Tháng' : isYears ? 'Năm' : requestDetail.durationUnit;
+                        const totalMonthly = requestDetail.details.reduce(
+                          (acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue),
+                          0,
+                        );
+                        // Same formula as the renter submit preview — applies per-section unit conversion.
+                        const totalExpected = sumRequestCost(
+                          requestDetail.details.map((d: any) => ({
+                            tierValue: d.priceTierValue || 0,
+                            tierUnit: PRICE_TIER_OPTIONS.find(o => o.label === d.priceTierLabel)?.unit ?? 'month',
+                            rentedArea: d.rentedArea || 0,
+                          })),
+                          requestDetail.duration || 0,
+                          requestDetail.durationUnit || 'month',
+                        );
+                        const durationLabel = tierUnitLabelVi(requestDetail.durationUnit || 'month');
                         return (
                           <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex flex-col items-end gap-1.5">
                             <div className="flex items-center gap-4 text-xs">
-                              <span style={{ color: "var(--color-text-muted)" }}>Tổng tiền thuê/tháng:</span>
+                              <span style={{ color: "var(--color-text-muted)" }}>Tổng tiền thuê/tháng (nếu áp giá tháng):</span>
                               <span className="font-bold" style={{ color: "var(--color-text)" }}>
                                 {fmtCurrency(totalMonthly)}
                               </span>
                             </div>
                             <div className="flex items-center gap-4 text-sm">
-                              <span style={{ color: "var(--color-text-muted)" }}>Ước tính doanh thu ({requestDetail.duration} {unitLabel}):</span>
+                              <span style={{ color: "var(--color-text-muted)" }}>Ước tính doanh thu ({requestDetail.duration} {durationLabel}):</span>
                               <span className="font-bold" style={{ color: "var(--color-primary)" }}>
                                 {fmtCurrency(totalExpected)}
                               </span>
@@ -287,9 +321,9 @@ export function WarehouseRequestCard({
                       {requestDetail.otherDetail && (
                         <div
                           className="px-3 py-2 text-xs border-l-2"
-                          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }}
+                          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
                         >
-                          {requestDetail.otherDetail}
+                          Lời nhắn: {requestDetail.otherDetail}
                         </div>
                       )}
                     </div>

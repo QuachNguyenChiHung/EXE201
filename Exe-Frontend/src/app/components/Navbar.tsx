@@ -388,9 +388,8 @@ export function Navbar() {
                           {app.notifications.slice(0, 20).map((n) => (
                             <div
                               key={n.id}
-                              className={`px-3 py-2 border-b border-[var(--color-border)] last:border-0 ${
-                                !n.read ? "bg-blue-50" : ""
-                              }`}
+                              className={`px-3 py-2 border-b border-[var(--color-border)] last:border-0 ${!n.read ? "bg-blue-50" : ""
+                                }`}
                             >
                               <p className="text-sm text-gray-800 leading-snug">{n.message}</p>
                               <p className="text-xs text-gray-400 mt-0.5">

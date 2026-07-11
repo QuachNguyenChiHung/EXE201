@@ -131,7 +131,7 @@ export default function AISearchWarehouse() {
                 const list = data.content || [];
                 setWarehouseEntitiesList(list);
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setCandidatesLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -171,7 +171,7 @@ export default function AISearchWarehouse() {
                     output: latest.total_output_tokens ?? 0,
                 };
             })
-            .catch(() => {});
+            .catch(() => { });
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -205,7 +205,7 @@ export default function AISearchWarehouse() {
                 create_at: conversationCreatedAtRef.current,
                 update_at: new Date().toISOString(),
             };
-            aiAPI.saveConversation(record).catch(() => {});
+            aiAPI.saveConversation(record).catch(() => { });
         },
         [currentUser],
     );

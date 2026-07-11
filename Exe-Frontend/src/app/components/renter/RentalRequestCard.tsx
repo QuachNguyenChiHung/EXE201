@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
-    MapPin, ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building, CheckCircle, Phone, X
+    ChevronDown, LayoutGrid, Clock, XCircle, MessageSquare, FileText, AlertCircle, ExternalLink, Building, CheckCircle, Phone, X, Layers
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { CompositeWarehouse, CompositeWarehouseSection, CompositeRentRequest, CompositeContract } from "../../../types";
 import { renterService } from "../../../services/renterService";
-import { getUser } from "../../../utils/auth";
+import { useCurrentUser } from "../../../utils/auth";
 import {
     RequestStatus, STATUS_CONFIG, CARGO_LABEL, UNIT_LABEL, CONTRACT_CFG, fmtDate, fmtCurrency, relativeTime
 } from "./RentalRequestUtils";
+import { calcSectionCost, sumRequestCost, tierUnitLabelVi } from "../../utils/rentalCost";
+import { PRICE_TIER_OPTIONS } from "../owner/WarehouseFormUtils";
 
 interface RentalRequestCardProps {
     request: CompositeRentRequest;
@@ -28,7 +30,7 @@ interface RentalRequestCardProps {
 export function RentalRequestCard({ request, warehouse, contract, isExpanded, onToggle, onWithdraw, onSign, onReject, onAcceptOffer, onCounterOffer }: RentalRequestCardProps) {
     const navigate = useNavigate();
     const { users } = useApp();
-    const currentUser = getUser();
+    const currentUser = useCurrentUser();
     const [sectionOpen, setSectionOpen] = useState(false);
     const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
@@ -43,13 +45,13 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
     const cfg = STATUS_CONFIG[status];
     if (!cfg) return null;
 
-    // Fetch contact info when card expands for an APPROVED request without a contract
+    // Fetch contact info when card expands for an APPROVED request (regardless of contract state)
     useEffect(() => {
-        if (!isExpanded || status !== "APPROVED" || contract || contactInfo) return;
+        if (!isExpanded || status !== "APPROVED" || contactInfo) return;
         renterService.getContactInfo(request.id_rentRequest)
             .then((info) => setContactInfo({ renterPhone: info.renterPhone, ownerPhone: info.ownerPhone }))
             .catch(() => setContactInfo(null));
-    }, [isExpanded, status, contract, contactInfo, request.id_rentRequest]);
+    }, [isExpanded, status, contactInfo, request.id_rentRequest]);
 
     // Fetch full warehouse detail on first expand to get real temp/humidity
     useEffect(() => {
@@ -84,6 +86,7 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
     const warehouseName = warehouse?.name || request.warehouseName || "Kho không xác định";
     const ownerName = ownerUser?.name || warehouse?.ownerName || request.ownerName || "Chủ kho";
     const ownerPhone = contactInfo?.ownerPhone || contract?.owner_phone || request.ownerPhone || ownerUser?.phone;
+    const renterPhone = contactInfo?.renterPhone || request.renterPhone || currentUser?.phone;
 
     const existingContract = contract;
 
@@ -138,479 +141,587 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                 />
             </button>
 
-            {/* ── Expanded: two-box layout ── */}
+            {/* ── Expanded: stacked layout ── */}
             {isExpanded && (
-                <div className="border-t border-[var(--color-border)]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-px" style={{ background: "var(--color-border)" }}>
+                <div className="border-t border-[var(--color-border)] divide-y divide-[var(--color-border)]">
 
-                        {/* ┌─────────────────────────────┐
+                    {/* ┌─────────────────────────────┐
                             │       YÊU CẦU CỦA BẠN       │
                             └─────────────────────────────┘ */}
-                        <div className="p-4 space-y-3" style={{ background: "var(--color-surface)" }}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest pb-2 border-b border-[var(--color-border)]" style={{ color: "var(--color-text-muted)" }}>
-                                Yêu cầu của bạn
-                            </p>
+                    <div className="p-4 space-y-3" style={{ background: "var(--color-surface)" }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest pb-2 border-b border-[var(--color-border)]" style={{ color: "var(--color-text-muted)" }}>
+                            Yêu cầu của bạn
+                        </p>
 
-                            {/* Key fields */}
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                                <div>
-                                    <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Dung tích</p>
-                                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                                        {request.requestedCapacity?.toLocaleString() || 0} m³
-                                    </p>
-                                </div>
-                                {request.cargoType && (
-                                    <div>
-                                        <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Loại hàng</p>
-                                        <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                                            {CARGO_LABEL[request.cargoType] ?? request.cargoType}
-                                        </p>
-                                    </div>
-                                )}
-                                <div>
-                                    <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Từ ngày</p>
-                                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{fmtDate(request.start_date)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>
-                                        {request.end_date ? "Đến ngày" : "Thời hạn"}
-                                    </p>
-                                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                                        {request.end_date ? fmtDate(request.end_date) : (request.durationLabel ?? `${request.duration} ${UNIT_LABEL[request.duration_unit] ?? request.duration_unit}`)}
-                                    </p>
-                                </div>
-                                {request.priceTierValue && (
-                                    <div className="col-span-2">
-                                        <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Giá mục tiêu</p>
-                                        <p className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
-                                            {fmtCurrency(request.priceTierValue)}
-                                            <span className="font-normal text-xs ml-1" style={{ color: "var(--color-text-muted)" }}>
-                                                /m³/{UNIT_LABEL[request.priceTierUnit ?? "month"]}
-                                            </span>
-                                        </p>
-                                    </div>
-                                )}
+                        {/* Key fields */}
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                            <div>
+                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Dung tích</p>
+                                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                                    {request.requestedCapacity?.toLocaleString() || 0} m³
+                                </p>
                             </div>
-
-                            {/* Message */}
-                            {request.message && (
-                                <div
-                                    className="px-3 py-2 text-xs border-l-2"
-                                    style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
-                                >
-                                    {request.message}
+                            {request.cargoType && (
+                                <div>
+                                    <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Loại hàng</p>
+                                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                                        {CARGO_LABEL[request.cargoType] ?? request.cargoType}
+                                    </p>
                                 </div>
                             )}
+                            <div>
+                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Từ ngày</p>
+                                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{fmtDate(request.start_date)}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>
+                                    {request.end_date ? "Đến ngày" : "Thời hạn"}
+                                </p>
+                                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                                    {request.end_date ? fmtDate(request.end_date) : (request.durationLabel ?? `${request.duration} ${UNIT_LABEL[request.duration_unit] ?? request.duration_unit}`)}
+                                </p>
+                            </div>
+                        </div>
 
-                            {/* Section toggle */}
-                            {section && (
-                                <div>
+                        {/* Message */}
+                        {request.message && (
+                            <div
+                                className="px-3 py-2 text-xs border-l-2"
+                                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                            >
+                                Lời nhắn: {request.message}
+                            </div>
+                        )}
+
+                        {/* All sections */}
+                        {request.details && request.details.length > 0 && (
+                            <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>
+                                        <Layers className="inline h-3 w-3 mr-1" />
+                                        Phân khu đã chọn ({request.details.length})
+                                    </p>
                                     <button
                                         onClick={() => setSectionOpen((o) => !o)}
-                                        className="flex items-center gap-1.5 text-xs transition-colors"
+                                        className="text-[10px] flex items-center gap-1 hover:underline"
                                         style={{ color: "var(--color-primary)" }}
                                     >
-                                        <LayoutGrid className="h-3 w-3 shrink-0" />
-                                        <span className="font-semibold">{section.name}</span>
+                                        {sectionOpen ? "Thu gọn chi tiết" : "Xem nhiệt độ/độ ẩm"}
                                         <ChevronDown
                                             className="h-3 w-3 transition-transform"
                                             style={{ transform: sectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}
                                         />
                                     </button>
-                                    {sectionOpen && (
-                                        <div
-                                            className="mt-2 border border-[var(--color-border)] p-3 grid grid-cols-2 gap-x-4 gap-y-2"
-                                            style={{ background: "var(--color-bg-secondary)" }}
-                                        >
-                                            <div>
-                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Nhiệt độ</p>
-                                                <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
-                                                    {typeof section.temp_min === 'number' && typeof section.temp_max === 'number'
-                                                        ? `${section.temp_min}°C ~ ${section.temp_max}°C`
-                                                        : `${section.temp_min ?? '-'}°C ~ ${section.temp_max ?? '-'}`}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Độ ẩm</p>
-                                                <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
-                                                    {typeof section.humidity === 'number' ? `${section.humidity}%` : (section.humidity ?? '-')}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Sức chứa</p>
-                                                <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
-                                                    {section.total_capacity?.toLocaleString()} m³
-                                                </p>
-                                            </div>
-                                            {section.description && (
-                                                <div className="col-span-2">
-                                                    <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Mô tả</p>
-                                                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>{section.description}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
-                            )}
-                        </div>
-
-                        {/* ┌─────────────────────────────┐
-                            │     PHẢN HỒI TỪ CHỦ KHO     │
-                            └─────────────────────────────┘ */}
-                        <div className="p-4 space-y-3" style={{ background: "var(--color-surface)" }}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest pb-2 border-b border-[var(--color-border)]" style={{ color: "var(--color-text-muted)" }}>
-                                Phản hồi từ chủ kho
-                            </p>
-
-                            {/* Pending / Negotiating */}
-                            {status === "PENDING" && !request.owner_note && !request.offered_price && (
-                                <div className="flex flex-col items-center justify-center py-8 gap-2">
-                                    <Clock className="h-6 w-6" style={{ color: "var(--color-text-muted)" }} />
-                                    <p className="text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
-                                        Đang chờ chủ kho xử lý yêu cầu...
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Rejected */}
-                            {status === "REJECTED" && (
                                 <div className="space-y-2">
-                                    <div
-                                        className="flex items-center gap-2 px-3 py-2"
-                                        style={{ background: "rgba(239,68,68,0.07)", borderLeft: "3px solid #ef4444" }}
-                                    >
-                                        <XCircle className="h-4 w-4 shrink-0" style={{ color: "#ef4444" }} />
-                                        <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>Đã từ chối yêu cầu</p>
-                                    </div>
-                                    {request.rejection_reason && (
-                                        <div
-                                            className="px-3 py-2 text-xs border-l-2"
-                                            style={{ borderColor: "#ef4444", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
-                                        >
-                                            {request.rejection_reason}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Negotiating (owner sent a counter-offer) */}
-                            {(status === "PENDING" || status === "NEGOTIATING") && (request.owner_note || request.offered_price) && (
-                                <div className="space-y-2">
-                                    <div
-                                        className="flex items-center gap-2 px-3 py-2"
-                                        style={{ background: "rgba(34,197,94,0.07)", borderLeft: "3px solid #22c55e" }}
-                                    >
-                                        <MessageSquare className="h-4 w-4 shrink-0" style={{ color: "#22c55e" }} />
-                                        <p className="text-xs font-semibold" style={{ color: "#22c55e" }}>Chủ kho muốn thương lượng</p>
-                                    </div>
-                                    {request.owner_note && (
-                                        <div
-                                            className="px-3 py-2 text-xs border-l-2"
-                                            style={{ borderColor: "#22c55e", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
-                                        >
-                                            {request.owner_note}
-                                        </div>
-                                    )}
-                                    {request.offered_price && (
-                                        <div
-                                            className="flex items-center justify-between px-3 py-2 border border-[var(--color-border)]"
-                                            style={{ background: "var(--color-bg-secondary)" }}
-                                        >
-                                            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Giá đề xuất</span>
-                                            <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
-                                                {fmtCurrency(request.offered_price)}
-                                                <span className="text-xs font-normal ml-1" style={{ color: "var(--color-text-muted)" }}>/m³/tháng</span>
-                                            </span>
-                                        </div>
-                                    )}
-                                    {/* Accept / Reject offer buttons */}
-                                    {request.offered_price && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => onAcceptOffer?.(request.id_rentRequest)}
-                                                className="flex-1 text-xs py-2 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
-                                                style={{ background: "#16a34a" }}
+                                    {request.details.map((detail: any, idx: number) => {
+                                        const tierUnit = PRICE_TIER_OPTIONS.find(o => o.label === detail.priceTierLabel)?.unit ?? 'month';
+                                        const tierUnitVi = tierUnitLabelVi(tierUnit);
+                                        const sectionCost = calcSectionCost(
+                                            detail.priceTierValue || 0,
+                                            tierUnit,
+                                            request.duration ?? 0,
+                                            request.duration_unit ?? 'month',
+                                            detail.rentedArea || 0,
+                                        );
+                                        const sectionDetails = warehouse?.sections
+                                            ?.find((s) => String(s.sector) === String(detail.sector));
+                                        return (
+                                            <div
+                                                key={`${detail.sector}-${idx}`}
+                                                className="border border-[var(--color-border)] rounded-sm p-2.5"
                                             >
-                                                <CheckCircle className="h-3 w-3" /> Chấp nhận giá
-                                            </button>
-                                            <button
-                                                onClick={() => setOfferRejectReasonOpen(true)}
-                                                className="flex-1 text-xs py-2 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
-                                                style={{ background: "#dc2626" }}
-                                            >
-                                                <XCircle className="h-3 w-3" /> Từ chối giá
-                                            </button>
-                                        </div>
-                                    )}
-                                    {offerRejectReasonOpen && (
-                                        <div className="border border-[var(--color-border)] rounded p-3 space-y-3" style={{ background: "var(--color-surface)" }}>
-                                            <div>
-                                                <p className="text-[11px] mb-1 font-semibold" style={{ color: "var(--color-error)" }}>
-                                                    Bạn phải nhập mức giá mới để gửi lại cho chủ kho
-                                                </p>
-                                                <div className="relative">
-                                                    <input
-                                                        type="number"
-                                                        className="w-full text-xs p-2 rounded pr-14 focus:outline-none focus:ring-1"
-                                                        style={{ background: "var(--color-bg)", border: `1px solid ${priceError ? "#dc2626" : "var(--color-border)"}`, color: "var(--color-text)" }}
-                                                        placeholder="Ví dụ: 300000"
-                                                        value={offerNewPrice}
-                                                        onChange={e => { setOfferNewPrice(e.target.value); setPriceError(""); }}
-                                                    />
-                                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--color-text-muted)" }}>đ/m³/tháng</span>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <span className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                                                        Khu vực {detail.sector}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] border border-[var(--color-border)]" style={{ color: "var(--color-text-muted)" }}>
+                                                        {detail.priceTierLabel}
+                                                    </span>
                                                 </div>
-                                                {priceError && (
-                                                    <p className="text-[10px] mt-1" style={{ color: "#dc2626" }}>{priceError}</p>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <p className="text-[11px] mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                                                    Lý do/phản hồi (tùy chọn):
-                                                </p>
-                                                <textarea
-                                                    className="w-full text-xs p-2 rounded resize-none focus:outline-none focus:ring-1"
-                                                    style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
-                                                    rows={2}
-                                                    placeholder="Nhập phản hồi cho chủ kho..."
-                                                    value={offerRejectReason}
-                                                    onChange={e => setOfferRejectReason(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        const price = parseFloat(offerNewPrice);
-                                                        if (!offerNewPrice || isNaN(price) || price <= 0) {
-                                                            setPriceError("Vui lòng nhập mức giá hợp lệ!");
-                                                            return;
-                                                        }
-                                                        onCounterOffer?.(request.id_rentRequest, offerRejectReason, price);
-                                                        setOfferRejectReasonOpen(false);
-                                                        setOfferRejectReason("");
-                                                        setOfferNewPrice("");
-                                                        setPriceError("");
-                                                    }}
-                                                    className="flex-1 text-xs py-2 text-white rounded"
-                                                    style={{ background: "#dc2626" }}
-                                                >
-                                                    Gửi từ chối Giá
-                                                </button>
-                                                <button
-                                                    onClick={() => { setOfferRejectReasonOpen(false); setOfferRejectReason(""); setOfferNewPrice(""); setPriceError(""); }}
-                                                    className="flex-1 text-xs py-2 rounded"
-                                                    style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
-                                                >
-                                                    Hủy
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {/* Contacts */}
-                                    <div className="grid grid-cols-2 gap-1.5">
-                                        <div className="px-2.5 py-2 border border-[var(--color-border)]">
-                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Liên hệ</p>
-                                            <p className="text-xs font-semibold truncate" style={{ color: "var(--color-text)" }}>
-                                                {ownerName}
-                                            </p>
-                                        </div>
-                                        {ownerUser?.phone && (
-                                            <a href={`tel:${ownerUser.phone}`} className="px-2.5 py-2 border border-[var(--color-border)] hover:border-[#22c55e] transition-colors">
-                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Điện thoại</p>
-                                                <p className="text-xs font-semibold" style={{ color: "var(--color-primary)" }}>{ownerUser.phone}</p>
-                                            </a>
-                                        )}
-                                        {ownerUser?.email && (
-                                            <a href={`mailto:${ownerUser.email}`} className="col-span-2 px-2.5 py-2 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">
-                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Email</p>
-                                                <p className="text-xs font-semibold truncate" style={{ color: "var(--color-primary)" }}>{ownerUser.email}</p>
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Contract banner */}
-                            {existingContract && (() => {
-                                const isPendingContract = existingContract.status === "pending_renter" || existingContract.status === "PENDING";
-                                const ccfg = CONTRACT_CFG[existingContract.status] ?? CONTRACT_CFG["draft"];
-                                return (
-                                    <div className="space-y-2">
-                                        <div
-                                            className="flex items-start gap-2 px-3 py-2.5"
-                                            style={{ background: ccfg.bg, borderLeft: `3px solid ${ccfg.color}` }}
-                                        >
-                                            <span style={{ color: ccfg.color, flexShrink: 0, marginTop: 1 }}>{ccfg.icon}</span>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-semibold" style={{ color: ccfg.color }}>{ccfg.label}</p>
-                                                <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
-                                                    {ccfg.sublabel}
-                                                    {existingContract.status === "active" || existingContract.status === "ACTIVE" ? (() => {
-                                                        const start = existingContract.start_at;
-                                                        const end = existingContract.end_at;
-                                                        return start && end ? ` · ${fmtDate(start)} — ${fmtDate(end)}` : null;
-                                                    })() : null}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => navigate(`/shared/contracts/${existingContract.id_contract}`)}
-                                            className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
-                                            style={{ background: isPendingContract ? "#7c3aed" : ccfg.color }}
-                                        >
-                                            <FileText className="h-3 w-3" /> {ccfg.actionLabel}
-                                        </button>
-                                        {isPendingContract && (
-                                            <>
-                                                <p className="text-[11px] flex items-center gap-1.5" style={{ color: "#7c3aed" }}>
-                                                    <AlertCircle className="h-3 w-3 shrink-0" />
-                                                    Vui lòng xem và ký hợp đồng để hoàn tất thuê kho.
-                                                </p>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => onSign?.(existingContract.id_contract)}
-                                                        className="flex-1 text-xs py-1.5 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
-                                                        style={{ background: "#16a34a" }}
-                                                    >
-                                                        <CheckCircle className="h-3 w-3" /> Ký xác nhận
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setRejectReasonOpen(true)}
-                                                        className="flex-1 text-xs py-1.5 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
-                                                        style={{ background: "#dc2626" }}
-                                                    >
-                                                        <XCircle className="h-3 w-3" /> Từ chối
-                                                    </button>
+                                                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                                                    <div>
+                                                        <span style={{ color: "var(--color-text-muted)" }}>Diện tích: </span>
+                                                        <span className="font-medium" style={{ color: "var(--color-text)" }}>
+                                                            {detail.rentedArea} {detail.areaUnit}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: "var(--color-text-muted)" }}>Đơn giá: </span>
+                                                        <span className="font-medium" style={{ color: "var(--color-text)" }}>
+                                                            {fmtCurrency(detail.priceTierValue || 0)}/{tierUnitVi}/{detail.areaUnit}
+                                                        </span>
+                                                    </div>
+                                                    <div className="col-span-2 pt-1 border-t border-[var(--color-border)]">
+                                                        <span style={{ color: "var(--color-text-muted)" }}>
+                                                            Thành tiền ({request.duration} {tierUnitLabelVi(request.duration_unit ?? 'month')}):
+                                                        </span>
+                                                        <span className="ml-1 font-bold" style={{ color: "var(--color-primary)" }}>
+                                                            {fmtCurrency(sectionCost)}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                {rejectReasonOpen && (
-                                                    <div className="border border-[var(--color-border)] rounded p-2 space-y-2" style={{ background: "var(--color-surface)" }}>
-                                                        <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
-                                                            Lý do từ chối (tùy chọn):
-                                                        </p>
-                                                        <textarea
-                                                            className="w-full text-xs p-2 rounded resize-none focus:outline-none focus:ring-1"
-                                                            style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
-                                                            rows={2}
-                                                            placeholder="Nhập lý do từ chối..."
-                                                            value={rejectReason}
-                                                            onChange={e => setRejectReason(e.target.value)}
-                                                        />
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => { onReject?.(existingContract.id_contract, rejectReason); setRejectReasonOpen(false); setRejectReason(""); }}
-                                                                className="flex-1 text-xs py-1.5 text-white rounded"
-                                                                style={{ background: "#dc2626" }}
-                                                            >
-                                                                Gửi từ chối
-                                                            </button>
-                                                            <button
-                                                                onClick={() => { setRejectReasonOpen(false); setRejectReason(""); }}
-                                                                className="flex-1 text-xs py-1.5 rounded"
-                                                                style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
-                                                            >
-                                                                Hủy
-                                                            </button>
+                                                {sectionOpen && (
+                                                    <div className="mt-2 pt-2 border-t border-[var(--color-border)] grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                                                        <div>
+                                                            <span style={{ color: "var(--color-text-muted)" }}>Nhiệt độ: </span>
+                                                            <span className="font-medium" style={{ color: "var(--color-text)" }}>
+                                                                {detail.tempMin ?? detail.temp_min ?? sectionDetails?.temp_min ?? "-"}°C ~ {detail.tempMax ?? detail.temp_max ?? sectionDetails?.temp_max ?? "-"}°C
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ color: "var(--color-text-muted)" }}>Độ ẩm: </span>
+                                                            <span className="font-medium" style={{ color: "var(--color-text)" }}>
+                                                                {detail.humidity ?? sectionDetails?.humidity ?? "-"}%
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )}
-                                            </>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Request grand total — mirrors the owner-side calculation */}
+                                {request.details.length > 1 && (() => {
+                                    const total = sumRequestCost(
+                                        request.details.map((d: any) => ({
+                                            tierValue: d.priceTierValue || 0,
+                                            tierUnit: PRICE_TIER_OPTIONS.find(o => o.label === d.priceTierLabel)?.unit ?? 'month',
+                                            rentedArea: d.rentedArea || 0,
+                                        })),
+                                        request.duration ?? 0,
+                                        request.duration_unit ?? 'month',
+                                    );
+                                    return (
+                                        <div
+                                            className="flex items-center justify-between px-2.5 py-2 rounded-sm border"
+                                            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                                        >
+                                            <span className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                                                Tổng ({request.duration} {tierUnitLabelVi(request.duration_unit ?? 'month')})
+                                            </span>
+                                            <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
+                                                {fmtCurrency(total)}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )}
+
+                        {/* Section toggle (legacy single-section view, kept for fallback when warehouse data is missing) */}
+                        {section && !request.details?.length && (
+                            <div>
+                                <button
+                                    onClick={() => setSectionOpen((o) => !o)}
+                                    className="flex items-center gap-1.5 text-xs transition-colors"
+                                    style={{ color: "var(--color-primary)" }}
+                                >
+                                    <LayoutGrid className="h-3 w-3 shrink-0" />
+                                    <span className="font-semibold">{section.name}</span>
+                                    <ChevronDown
+                                        className="h-3 w-3 transition-transform"
+                                        style={{ transform: sectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                                    />
+                                </button>
+                                {sectionOpen && (
+                                    <div
+                                        className="mt-2 border border-[var(--color-border)] p-3 grid grid-cols-2 gap-x-4 gap-y-2"
+                                        style={{ background: "var(--color-bg-secondary)" }}
+                                    >
+                                        <div>
+                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Nhiệt độ</p>
+                                            <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                                                {typeof section.temp_min === 'number' && typeof section.temp_max === 'number'
+                                                    ? `${section.temp_min}°C ~ ${section.temp_max}°C`
+                                                    : `${section.temp_min ?? '-'}°C ~ ${section.temp_max ?? '-'}`}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Độ ẩm</p>
+                                            <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                                                {typeof section.humidity === 'number' ? `${section.humidity}%` : (section.humidity ?? '-')}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Sức chứa</p>
+                                            <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                                                {section.total_capacity?.toLocaleString()} m³
+                                            </p>
+                                        </div>
+                                        {section.description && (
+                                            <div className="col-span-2">
+                                                <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Mô tả</p>
+                                                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>{section.description}</p>
+                                            </div>
                                         )}
                                     </div>
-                                );
-                            })()}
+                                )}
+                            </div>
+                        )}
+                    </div>
 
-                            {/* Contracted but no contract object yet */}
-                            {status === "APPROVED" && !existingContract && (
-                                <div className="space-y-2">
+                    {/* ┌─────────────────────────────┐
+                            │     PHẢN HỒI TỪ CHỦ KHO     │
+                            └─────────────────────────────┘ */}
+                    <div className="p-4 space-y-3" style={{ background: "var(--color-surface)" }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest pb-2 border-b border-[var(--color-border)]" style={{ color: "var(--color-text-muted)" }}>
+                            Phản hồi từ chủ kho
+                        </p>
+
+                        {/* Pending / Negotiating */}
+                        {status === "PENDING" && !request.owner_note && !request.offered_price && (
+                            <div className="flex flex-col items-center justify-center py-8 gap-2">
+                                <Clock className="h-6 w-6" style={{ color: "var(--color-text-muted)" }} />
+                                <p className="text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
+                                    Đang chờ chủ kho xử lý yêu cầu...
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Rejected */}
+                        {status === "REJECTED" && (
+                            <div className="space-y-2">
+                                <div
+                                    className="flex items-center gap-2 px-3 py-2"
+                                    style={{ background: "rgba(239,68,68,0.07)", borderLeft: "3px solid #ef4444" }}
+                                >
+                                    <XCircle className="h-4 w-4 shrink-0" style={{ color: "#ef4444" }} />
+                                    <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>Đã từ chối yêu cầu</p>
+                                </div>
+                                {request.rejection_reason && (
                                     <div
-                                        className="flex items-center gap-2 px-3 py-2"
-                                        style={{ background: "rgba(124,58,237,0.07)", borderLeft: "3px solid #7c3aed" }}
+                                        className="px-3 py-2 text-xs border-l-2"
+                                        style={{ borderColor: "#ef4444", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
                                     >
-                                        <FileText className="h-4 w-4 shrink-0" style={{ color: "#7c3aed" }} />
-                                        <p className="text-xs" style={{ color: "#7c3aed" }}>Yêu cầu đã được chấp nhận. Hợp đồng đang được soạn thảo.</p>
+                                        {request.rejection_reason}
                                     </div>
+                                )}
+                            </div>
+                        )}
 
-                                    {/* Owner contact card */}
-                                    {ownerPhone && (
-                                        <div
-                                            className="flex items-start gap-3 px-3 py-2.5 border border-[var(--color-border)]"
-                                            style={{ background: "rgba(34,197,94,0.04)" }}
+                        {/* Negotiating (owner sent a counter-offer) */}
+                        {(status === "PENDING" || status === "NEGOTIATING") && (request.owner_note || request.offered_price) && (
+                            <div className="space-y-2">
+                                <div
+                                    className="flex items-center gap-2 px-3 py-2"
+                                    style={{ background: "rgba(34,197,94,0.07)", borderLeft: "3px solid #22c55e" }}
+                                >
+                                    <MessageSquare className="h-4 w-4 shrink-0" style={{ color: "#22c55e" }} />
+                                    <p className="text-xs font-semibold" style={{ color: "#22c55e" }}>Chủ kho muốn thương lượng</p>
+                                </div>
+                                {request.owner_note && (
+                                    <div
+                                        className="px-3 py-2 text-xs border-l-2"
+                                        style={{ borderColor: "#22c55e", color: "var(--color-text-secondary)", background: "var(--color-bg-secondary)" }}
+                                    >
+                                        {request.owner_note}
+                                    </div>
+                                )}
+                                {request.offered_price && (
+                                    <div
+                                        className="flex items-center justify-between px-3 py-2 border border-[var(--color-border)]"
+                                        style={{ background: "var(--color-bg-secondary)" }}
+                                    >
+                                        <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Giá đề xuất</span>
+                                        <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
+                                            {fmtCurrency(request.offered_price)}
+                                            <span className="text-xs font-normal ml-1" style={{ color: "var(--color-text-muted)" }}>/m³/tháng</span>
+                                        </span>
+                                    </div>
+                                )}
+                                {/* Accept / Reject offer buttons */}
+                                {request.offered_price && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => onAcceptOffer?.(request.id_rentRequest)}
+                                            className="flex-1 text-xs py-2 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                            style={{ background: "#16a34a" }}
                                         >
-                                            <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
-                                                    Liên hệ chủ kho để tiến hành thuê kho
-                                                </p>
-                                                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                                                    SĐT chủ kho: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{ownerPhone}</span>
-                                                </p>
+                                            <CheckCircle className="h-3 w-3" /> Chấp nhận giá
+                                        </button>
+                                        <button
+                                            onClick={() => setOfferRejectReasonOpen(true)}
+                                            className="flex-1 text-xs py-2 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                            style={{ background: "#dc2626" }}
+                                        >
+                                            <XCircle className="h-3 w-3" /> Từ chối giá
+                                        </button>
+                                    </div>
+                                )}
+                                {offerRejectReasonOpen && (
+                                    <div className="border border-[var(--color-border)] rounded p-3 space-y-3" style={{ background: "var(--color-surface)" }}>
+                                        <div>
+                                            <p className="text-[11px] mb-1 font-semibold" style={{ color: "var(--color-error)" }}>
+                                                Bạn phải nhập mức giá mới để gửi lại cho chủ kho
+                                            </p>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    className="w-full text-xs p-2 rounded pr-14 focus:outline-none focus:ring-1"
+                                                    style={{ background: "var(--color-bg)", border: `1px solid ${priceError ? "#dc2626" : "var(--color-border)"}`, color: "var(--color-text)" }}
+                                                    placeholder="Ví dụ: 300000"
+                                                    value={offerNewPrice}
+                                                    onChange={e => { setOfferNewPrice(e.target.value); setPriceError(""); }}
+                                                />
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--color-text-muted)" }}>đ/m³/tháng</span>
                                             </div>
-                                            <a
-                                                href={`tel:${ownerPhone}`}
-                                                className="px-2.5 py-1.5 text-xs font-medium text-white rounded shrink-0 hover:opacity-80 transition-opacity"
-                                                style={{ background: "#22c55e" }}
+                                            {priceError && (
+                                                <p className="text-[10px] mt-1" style={{ color: "#dc2626" }}>{priceError}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] mb-1" style={{ color: "var(--color-text-secondary)" }}>
+                                                Lý do/phản hồi (tùy chọn):
+                                            </p>
+                                            <textarea
+                                                className="w-full text-xs p-2 rounded resize-none focus:outline-none focus:ring-1"
+                                                style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                rows={2}
+                                                placeholder="Nhập phản hồi cho chủ kho..."
+                                                value={offerRejectReason}
+                                                onChange={e => setOfferRejectReason(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    const price = parseFloat(offerNewPrice);
+                                                    if (!offerNewPrice || isNaN(price) || price <= 0) {
+                                                        setPriceError("Vui lòng nhập mức giá hợp lệ!");
+                                                        return;
+                                                    }
+                                                    onCounterOffer?.(request.id_rentRequest, offerRejectReason, price);
+                                                    setOfferRejectReasonOpen(false);
+                                                    setOfferRejectReason("");
+                                                    setOfferNewPrice("");
+                                                    setPriceError("");
+                                                }}
+                                                className="flex-1 text-xs py-2 text-white rounded"
+                                                style={{ background: "#dc2626" }}
                                             >
-                                                Gọi ngay
-                                            </a>
+                                                Gửi từ chối Giá
+                                            </button>
+                                            <button
+                                                onClick={() => { setOfferRejectReasonOpen(false); setOfferRejectReason(""); setOfferNewPrice(""); setPriceError(""); }}
+                                                className="flex-1 text-xs py-2 rounded"
+                                                style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                            >
+                                                Hủy
+                                            </button>
                                         </div>
+                                    </div>
+                                )}
+                                {/* Contacts */}
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <div className="px-2.5 py-2 border border-[var(--color-border)]">
+                                        <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Liên hệ</p>
+                                        <p className="text-xs font-semibold truncate" style={{ color: "var(--color-text)" }}>
+                                            {ownerName}
+                                        </p>
+                                    </div>
+                                    {ownerUser?.phone && (
+                                        <a href={`tel:${ownerUser.phone}`} className="px-2.5 py-2 border border-[var(--color-border)] hover:border-[#22c55e] transition-colors">
+                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Điện thoại</p>
+                                            <p className="text-xs font-semibold" style={{ color: "var(--color-primary)" }}>{ownerUser.phone}</p>
+                                        </a>
                                     )}
-
-                                    {/* Renter's own phone (same style as owner side — shown when owner contact is present) */}
-                                    {ownerPhone && (
-                                        <div
-                                            className="flex items-start gap-3 px-3 py-2.5 border border-[var(--color-border)]"
-                                            style={{ background: "rgba(34,197,94,0.04)" }}
-                                        >
-                                            <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
-                                                    Số điện thoại của bạn (đã cung cấp cho chủ kho)
-                                                </p>
-                                                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                                                    SĐT người thuê: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{currentUser?.phone || "---"}</span>
-                                                </p>
-                                            </div>
-                                        </div>
+                                    {ownerUser?.email && (
+                                        <a href={`mailto:${ownerUser.email}`} className="col-span-2 px-2.5 py-2 border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">
+                                            <p className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Email</p>
+                                            <p className="text-xs font-semibold truncate" style={{ color: "var(--color-primary)" }}>{ownerUser.email}</p>
+                                        </a>
                                     )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
+
+                        {/* Contract banner */}
+                        {existingContract && (() => {
+                            const isPendingContract = existingContract.status === "pending_renter" || existingContract.status === "PENDING";
+                            const ccfg = CONTRACT_CFG[existingContract.status] ?? CONTRACT_CFG["draft"];
+                            return (
+                                <div className="space-y-2">
+                                    <div
+                                        className="flex items-start gap-2 px-3 py-2.5"
+                                        style={{ background: ccfg.bg, borderLeft: `3px solid ${ccfg.color}` }}
+                                    >
+                                        <span style={{ color: ccfg.color, flexShrink: 0, marginTop: 1 }}>{ccfg.icon}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold" style={{ color: ccfg.color }}>{ccfg.label}</p>
+                                            <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                                                {ccfg.sublabel}
+                                                {existingContract.status === "active" || existingContract.status === "ACTIVE" ? (() => {
+                                                    const start = existingContract.start_at;
+                                                    const end = existingContract.end_at;
+                                                    return start && end ? ` · ${fmtDate(start)} — ${fmtDate(end)}` : null;
+                                                })() : null}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate(`/shared/contracts/${existingContract.id_contract}`)}
+                                        className="w-full text-xs py-2 text-white flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
+                                        style={{ background: isPendingContract ? "#7c3aed" : ccfg.color }}
+                                    >
+                                        <FileText className="h-3 w-3" /> {ccfg.actionLabel}
+                                    </button>
+                                    {isPendingContract && (
+                                        <>
+                                            <p className="text-[11px] flex items-center gap-1.5" style={{ color: "#7c3aed" }}>
+                                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                                Vui lòng xem và ký hợp đồng để hoàn tất thuê kho.
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => onSign?.(existingContract.id_contract)}
+                                                    className="flex-1 text-xs py-1.5 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                                    style={{ background: "#16a34a" }}
+                                                >
+                                                    <CheckCircle className="h-3 w-3" /> Ký xác nhận
+                                                </button>
+                                                <button
+                                                    onClick={() => setRejectReasonOpen(true)}
+                                                    className="flex-1 text-xs py-1.5 text-white flex items-center justify-center gap-1.5 rounded hover:opacity-80 transition-opacity"
+                                                    style={{ background: "#dc2626" }}
+                                                >
+                                                    <XCircle className="h-3 w-3" /> Từ chối
+                                                </button>
+                                            </div>
+                                            {rejectReasonOpen && (
+                                                <div className="border border-[var(--color-border)] rounded p-2 space-y-2" style={{ background: "var(--color-surface)" }}>
+                                                    <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+                                                        Lý do từ chối (tùy chọn):
+                                                    </p>
+                                                    <textarea
+                                                        className="w-full text-xs p-2 rounded resize-none focus:outline-none focus:ring-1"
+                                                        style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                        rows={2}
+                                                        placeholder="Nhập lý do từ chối..."
+                                                        value={rejectReason}
+                                                        onChange={e => setRejectReason(e.target.value)}
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => { onReject?.(existingContract.id_contract, rejectReason); setRejectReasonOpen(false); setRejectReason(""); }}
+                                                            className="flex-1 text-xs py-1.5 text-white rounded"
+                                                            style={{ background: "#dc2626" }}
+                                                        >
+                                                            Gửi từ chối
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setRejectReasonOpen(false); setRejectReason(""); }}
+                                                            className="flex-1 text-xs py-1.5 rounded"
+                                                            style={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                                                        >
+                                                            Hủy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Approved: status banner (only when no contract yet) */}
+                        {status === "APPROVED" && !existingContract && (
+                            <div
+                                className="flex items-center gap-2 px-3 py-2"
+                                style={{ background: "rgba(124,58,237,0.07)", borderLeft: "3px solid #7c3aed" }}
+                            >
+                                <FileText className="h-4 w-4 shrink-0" style={{ color: "#7c3aed" }} />
+                                <p className="text-xs" style={{ color: "#7c3aed" }}>Yêu cầu đã được chấp nhận. Hợp đồng đang được soạn thảo.</p>
+                            </div>
+                        )}
+
+                        {/* Approved: both contact phones (shown whenever status is APPROVED, regardless of contract state) */}
+                        {status === "APPROVED" && (
+                            <div className="space-y-2">
+                                {/* Owner contact card */}
+                                {ownerPhone && (
+                                    <div
+                                        className="flex items-start gap-3 px-3 py-2.5 border border-[var(--color-border)]"
+                                        style={{ background: "rgba(34,197,94,0.04)" }}
+                                    >
+                                        <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+                                                Liên hệ chủ kho để tiến hành thuê kho
+                                            </p>
+                                            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                                                SĐT chủ kho: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{ownerPhone}</span>
+                                            </p>
+                                        </div>
+                                        <a
+                                            href={`tel:${ownerPhone}`}
+                                            className="px-2.5 py-1.5 text-xs font-medium text-white rounded shrink-0 hover:opacity-80 transition-opacity"
+                                            style={{ background: "#22c55e" }}
+                                        >
+                                            Gọi ngay
+                                        </a>
+                                    </div>
+                                )}
+
+                                {/* Renter's own phone (same style as owner side) */}
+                                {renterPhone && (
+                                    <div
+                                        className="flex items-start gap-3 px-3 py-2.5 border border-[var(--color-border)]"
+                                        style={{ background: "rgba(34,197,94,0.04)" }}
+                                    >
+                                        <Phone className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+                                                Số điện thoại của bạn (đã cung cấp cho chủ kho)
+                                            </p>
+                                            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                                                SĐT người thuê: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{renterPhone}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* ── Action row ── */}
-                    <div
-                        className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-border)]"
-                        style={{ background: "var(--color-bg-secondary)" }}
-                    >
-                        {(status === "PENDING" || status === "NEGOTIATING") && (
-                            <button
-                                onClick={() => onWithdraw(request.id_rentRequest)}
-                                className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-error)]"
-                                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
-                            >
-                                Rút yêu cầu
-                            </button>
-                        )}
-                        {status === "REJECTED" && warehouse && (
-                            <button
-                                onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
-                                className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-primary)]"
-                                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
-                            >
-                                Gửi lại yêu cầu
-                            </button>
-                        )}
-                        {warehouse && (
-                            <button
-                                onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
-                                className="text-xs px-3 py-1.5 border transition-colors flex items-center gap-1 hover:border-[var(--color-primary)]"
-                                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
-                            >
-                                <ExternalLink className="h-3 w-3" /> Xem kho
-                            </button>
-                        )}
-                    </div>
                 </div>
             )}
+
+            {/* ── Action row (always visible at card bottom) ── */}
+            <div
+                className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-border)]"
+                style={{ background: "var(--color-bg-secondary)" }}
+            >
+                {(status === "PENDING" || status === "NEGOTIATING") && (
+                    <button
+                        onClick={() => onWithdraw(request.id_rentRequest)}
+                        className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-error)]"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
+                    >
+                        Rút yêu cầu
+                    </button>
+                )}
+                {status === "REJECTED" && warehouse && (
+                    <button
+                        onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
+                        className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-primary)]"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
+                    >
+                        Gửi lại yêu cầu
+                    </button>
+                )}
+                {warehouse && (
+                    <button
+                        onClick={() => navigate(`/renter/warehouse/${warehouse.id_warehouse}`)}
+                        className="text-xs px-3 py-1.5 border transition-colors flex items-center gap-1 hover:border-[var(--color-primary)]"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface)" }}
+                    >
+                        <ExternalLink className="h-3 w-3" /> Xem kho
+                    </button>
+                )}
+            </div>
         </div>
     );
 }
