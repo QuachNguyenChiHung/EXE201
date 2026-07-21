@@ -723,9 +723,7 @@ export function RentalRequestModal({
                                     <span className="font-medium text-[var(--color-text)]">
                                         {form.endDate.split('-').reverse().join('/')}
                                     </span>
-                                    {' '}({form.durationValue}{' '}
-                                    {unitLabel(form.durationUnit)}
-                                    {' '}= {durationDays.toLocaleString('vi-VN')} ngày)
+
                                 </p>
                             )}
                         </div>
