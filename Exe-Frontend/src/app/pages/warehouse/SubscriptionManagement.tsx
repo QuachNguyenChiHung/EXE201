@@ -82,12 +82,12 @@ export default function SubscriptionManagement() {
     setUpgrading(true);
     try {
       if (tier.id === 0) {
-        // Free tier - probably just remove the sponsor tier. We'll send sponsorTierId = 0 and handle it on backend if needed, or maybe call a different endpoint.
-        // Wait, the prompt says "it is default so it is basically no sponsor tier".
-        // Let's call the same API with sponsorTierId 0, or just ignore. 
-        const res = await ownerService.buySponsorTier(warehouse.id_warehouse, 0);
-        toast.success(`Đã huỷ gói đăng ký cho kho "${warehouse.name}"`);
+        await ownerService.cancelSponsorTier(warehouse.id_warehouse);
+        toast.success(`Đã hủy gói đăng ký cho kho "${warehouse.name}"`);
         setShowConfirm(null);
+        setSelectedWarehouse(null);
+        const response = await ownerService.getMyWarehouses(0, 100);
+        setMyWarehouses(response.content || []);
       } else {
         const res = await ownerService.buySponsorTier(warehouse.id_warehouse, tier.id);
         if (res.paymentUrl) {
@@ -95,6 +95,9 @@ export default function SubscriptionManagement() {
         } else {
           toast.success(`Đã nâng cấp "${warehouse.name}" lên ${tier.label}!`);
           setShowConfirm(null);
+          setSelectedWarehouse(null);
+          const response = await ownerService.getMyWarehouses(0, 100);
+          setMyWarehouses(response.content || []);
         }
       }
     } catch (err: any) {

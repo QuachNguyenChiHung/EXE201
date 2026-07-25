@@ -22,6 +22,9 @@ function normalize(dto: any): UserProfileDTO {
           companyTaxCode: dto.company.companyTaxCode,
         }
       : null,
+    // ai_tier from backend
+    ...(dto.aiTier != null && { aiTier: dto.aiTier }),
+    ...(dto.ai_tier != null && { aiTier: dto.ai_tier }),
   };
 }
 

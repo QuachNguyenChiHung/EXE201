@@ -5,6 +5,9 @@ import { Sparkles, CheckCircle } from 'lucide-react';
 interface Props {
   aiTiers: AiSubscriptionTier[];
   currentTierId?: number;
+  currentTierIndex?: number;
+  isCurrentFreeTier?: boolean;
+  activeTierId?: number;
   onSelectTier: (tier: AiSubscriptionTier) => void;
   loading?: boolean;
 }
@@ -25,19 +28,45 @@ function formatTokens(n: number) {
   return n.toString();
 }
 
-export function AISubscriptionPricingGrid({ aiTiers, currentTierId, onSelectTier, loading }: Props) {
+export function AISubscriptionPricingGrid({ aiTiers, currentTierId, currentTierIndex, isCurrentFreeTier, activeTierId, onSelectTier, loading }: Props) {
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4  border border-[var(--color-border)] mb-8`}
       style={{ gridTemplateColumns: aiTiers.length >= 3 ? 'repeat(3, 1fr)' : undefined }}>
       {aiTiers.map((tier, idx) => {
         const visuals = TIER_COLORS[idx % TIER_COLORS.length];
-        const isActive = tier.id_ai_subscription === currentTierId;
+        const currentIdx = currentTierIndex ?? -1;
+
+        const isFreeTier = tier.price === 0;
+
+        const isActive =
+          tier.id_ai_subscription === currentTierId ||
+          (isCurrentFreeTier && isFreeTier) ||
+          (activeTierId === undefined && isFreeTier);
+
+        const isPurchasable =
+          isCurrentFreeTier
+            ? true
+            : currentIdx === -1
+            ? !isFreeTier
+            : idx > currentIdx;
+
+        const isDowngradable =
+          !isActive && !isCurrentFreeTier && currentIdx !== -1 && idx < currentIdx;
+
+        const isActionable = (isPurchasable || isDowngradable) && !(activeTierId === undefined && isFreeTier);
+
+        const isCardDisabled = !isActive && !isPurchasable && !isDowngradable;
 
         return (
           <div
             key={tier.id_ai_subscription}
             className="relative bg-[var(--color-surface)] flex flex-col"
-            style={isActive ? { boxShadow: `inset 0 3px 0 ${visuals.color}` } : {}}
+            style={{
+              boxShadow: isActive ? `inset 0 3px 0 ${visuals.color}` : undefined,
+              opacity: isCardDisabled ? 0.55 : 1,
+              filter: isCardDisabled ? 'grayscale(30%)' : undefined,
+              transition: 'opacity 0.2s, filter 0.2s',
+            }}
           >
             {isActive && (
               <div
@@ -131,17 +160,37 @@ export function AISubscriptionPricingGrid({ aiTiers, currentTierId, onSelectTier
 
               {/* CTA */}
               <button
-                onClick={() => !isActive && onSelectTier(tier)}
-                disabled={isActive || loading}
+                onClick={() => isActionable && onSelectTier(tier)}
+                disabled={!isActionable || loading}
                 className="mt-6 w-full py-2 text-sm font-semibold transition-colors"
                 style={{
-                  background: isActive ? visuals.bgColor : visuals.color,
-                  color: isActive ? visuals.color : '#fff',
-                  opacity: isActive || loading ? 0.7 : 1,
-                  cursor: isActive ? 'default' : 'pointer',
+                  background: isActive
+                    ? visuals.color
+                    : activeTierId === undefined && isFreeTier
+                    ? visuals.color
+                    : isFreeTier
+                    ? '#ef4444'
+                    : isDowngradable
+                    ? visuals.color
+                    : isPurchasable
+                    ? visuals.color
+                    : '#e5e7eb',
+                  color: isActive || activeTierId === undefined && isFreeTier || isDowngradable || isPurchasable ? '#fff' : isFreeTier ? '#fff' : '#9ca3af',
+                  opacity: loading ? 0.6 : 1,
+                  cursor: !isActionable ? 'not-allowed' : 'pointer',
+                  border: 'none',
+                  borderRadius: '0.375rem',
                 }}
               >
-                {isActive ? 'Đang sử dụng' : tier.price === 0 ? 'Dùng miễn phí' : 'Mua ngay'}
+                {isActive
+                  ? 'Đang sử dụng'
+                  : activeTierId === undefined && isFreeTier
+                  ? 'Đang sử dụng'
+                  : isFreeTier
+                  ? 'Hủy gói'
+                  : isPurchasable
+                  ? 'Mua ngay'
+                  : 'Hạ gói'}
               </button>
             </div>
           </div>

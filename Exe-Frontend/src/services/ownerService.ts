@@ -306,6 +306,11 @@ export const ownerService = {
     return response.data;
   },
 
+  cancelSponsorTier: async (warehouseId: number | string): Promise<void> => {
+    const response = await api.delete(`/owners/warehouses/${warehouseId}/sponsor`);
+    return response.data;
+  },
+
   getWarehouseRatings: async (warehouseId: number): Promise<WarehouseRatingResponse> => {
     const response = await api.get(`/owners/warehouses/${warehouseId}/ratings`);
     return response.data;

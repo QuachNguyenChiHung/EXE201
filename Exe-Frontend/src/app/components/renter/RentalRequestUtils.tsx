@@ -3,6 +3,7 @@ import {
     Send, Eye, XCircle, MessageSquare, FileText, AlertCircle, CheckCircle, Clock
 } from "lucide-react";
 import { RentRequestStatus } from "../../../types";
+import { parseServerDatetime } from "../../../utils/datetime";
 
 export type RequestStatus = RentRequestStatus;
 export type FilterTab = "all" | RequestStatus;
@@ -62,7 +63,7 @@ export const fmtCurrency = (n: number) =>
 
 export function relativeTime(iso: string | undefined): string {
     if (!iso) return "—";
-    const diff = Date.now() - new Date(iso).getTime();
+    const diff = Date.now() - parseServerDatetime(iso).getTime();
     const mins = Math.floor(diff / 60_000);
     const hours = Math.floor(diff / 3_600_000);
     const days = Math.floor(diff / 86_400_000);

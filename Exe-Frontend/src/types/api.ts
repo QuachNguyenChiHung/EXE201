@@ -41,3 +41,15 @@ export interface AIStatusResult {
   latencyMs: number | null;
   error: string | null;
 }
+
+export interface TransactionResponseDTO {
+  id: number;
+  amount: number;
+  type: string;
+  status: string;
+  createdAt: string;
+  vnpTxnRef: string | null;
+  vnpTransactionNo: string | null;
+  vnpPayDate: string | null;
+  description: string | null;
+}

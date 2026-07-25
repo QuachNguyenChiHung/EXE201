@@ -20,7 +20,9 @@ import {
   FileText,
   Crown,
   UserCircle,
+  CreditCard,
 } from "lucide-react";
+import { formatRelativeTimeVn } from "../../utils/datetime";
 import logoUrl from "../../assets/logo.png";
 import {
   DropdownMenu,
@@ -96,26 +98,6 @@ function NavRawBtn({
       {active && <div style={ACTIVE_BAR} />}
     </div>
   );
-}
-
-// ─── Relative time helper ───────────────────────────────────────────────────────
-function formatRelativeTime(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return "Vừa xong";
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin} phút trước`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr} giờ trước`;
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 30) return `${diffDay} ngày trước`;
-    return date.toLocaleDateString("vi-VN");
-  } catch {
-    return dateStr;
-  }
 }
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
@@ -393,7 +375,7 @@ export function Navbar() {
                             >
                               <p className="text-sm text-gray-800 leading-snug">{n.message}</p>
                               <p className="text-xs text-gray-400 mt-0.5">
-                                {formatRelativeTime(n.createdAt)}
+                                {formatRelativeTimeVn(n.createdAt)}
                               </p>
                             </div>
                           ))}
@@ -403,6 +385,23 @@ export function Navbar() {
                   </DropdownMenu>
                 </div>
               )}
+
+              {/* ── Transaction History button ── */}
+              <NavRawBtn
+                onClick={() => navigate('/payment-history')}
+                active={isActive('/payment-history')}
+                title="Lịch sử giao dịch"
+                className="hidden sm:flex items-center justify-center w-9 hover:bg-[var(--color-bg-secondary)] transition-colors"
+              >
+                <CreditCard
+                  className="h-4 w-4"
+                  style={{
+                    color: isActive('/payment-history')
+                      ? 'var(--color-primary)'
+                      : 'var(--color-text-muted)',
+                  }}
+                />
+              </NavRawBtn>
 
               {/* ── User dropdown ── */}
               <div className="flex items-center ml-1">
@@ -538,6 +537,14 @@ export function Navbar() {
                         </DropdownMenuItem>
                       </>
                     )}
+
+                    <DropdownMenuItem
+                      onClick={() => navigate('/payment-history')}
+                      className="rounded-none"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Lịch sử giao dịch
+                    </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
                     <DropdownMenuItem

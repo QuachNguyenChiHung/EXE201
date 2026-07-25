@@ -258,6 +258,10 @@ export const renterService = {
         }
     },
 
+    cancelAiSubscription: async (): Promise<void> => {
+        await api.delete('/renters/ai-subscription');
+    },
+
     // ── Reviews ────────────────────────────────────────────────────────────────
 
     getWarehouseRatings: async (warehouseId: number): Promise<WarehouseRatingResponse> => {

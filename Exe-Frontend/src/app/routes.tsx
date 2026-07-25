@@ -113,6 +113,7 @@ export const router = createBrowserRouter([
       { path: '/shared/contracts/:id', lazy: lazyPage(() => import('./pages/shared/SharedContractDetail')) },
       { path: '/payment-success', lazy: lazyPage(() => import('./pages/PaymentSuccess')) },
       { path: '/payment-fail', lazy: lazyPage(() => import('./pages/PaymentFail')) },
+      { path: '/payment-history', lazy: lazyPage(() => import('./pages/PaymentHistory')) },
       { path: '/profile', lazy: lazyPage(() => import('./pages/ProfilePage')) },
     ],
   },

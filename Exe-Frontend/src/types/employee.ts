@@ -27,6 +27,7 @@ export interface UserProfileDTO {
   dateOfBirth?: string;
   gender?: string;
   company: CompanyResponseDTO | null;
+  aiTier?: number;
 }
 
 export interface CertificationSubmitDTO {

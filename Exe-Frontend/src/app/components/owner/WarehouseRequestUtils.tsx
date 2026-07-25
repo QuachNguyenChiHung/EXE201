@@ -1,6 +1,7 @@
 import { CompositeRentRequest } from '../../../types/renter';
 import React from 'react';
 import { Send, Eye, MessageSquare, XCircle, FileText, Clock, CheckCircle } from 'lucide-react';
+import { parseServerDatetime } from '../../../utils/datetime';
 
 export type RequestStatus = CompositeRentRequest['status'];
 export type IncomingRequest = CompositeRentRequest;
@@ -53,7 +54,7 @@ export const fmtCurrency = (n: number) =>
 
 export function relativeTime(iso: string | undefined): string {
   if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
+  const diff = Date.now() - parseServerDatetime(iso).getTime();
   const mins = Math.floor(diff / 60_000);
   const hours = Math.floor(diff / 3_600_000);
   const days = Math.floor(diff / 86_400_000);

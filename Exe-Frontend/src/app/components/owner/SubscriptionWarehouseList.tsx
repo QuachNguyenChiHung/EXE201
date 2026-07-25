@@ -1,6 +1,6 @@
 import React from 'react';
 import { SponsorTierDTO, CompositeWarehouse } from '../../../types';
-import { Warehouse, Search, Zap, ArrowRight, CheckCircle } from 'lucide-react';
+import { Warehouse, Search, Zap, ArrowRight, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { getSponsorTierVisuals } from './SubscriptionUtils';
 
@@ -70,25 +70,26 @@ export function SubscriptionWarehouseList({
               </strong>
             </div>
 
-            {/* Upgrade CTA */}
-            {currentTierObj?.priorityLevel !== maxPriority && (
-              <Button
-                size="sm"
-                className="rounded-none mt-auto bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] text-xs"
+            {wh.isSponsor && currentTierObj?.priorityLevel !== 0 ? (
+              <button
+                className="mt-auto flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-red-300 text-red-600 bg-white hover:bg-red-50 transition-colors"
                 onClick={e => {
                   e.stopPropagation();
                   onSelectWarehouse(wh);
                 }}
               >
-                <Zap className="h-3.5 w-3.5 mr-1" />
-                Thay đổi gói
-                <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            )}
-            {currentTierObj?.priorityLevel === maxPriority && (
+                <XCircle className="h-3.5 w-3.5" />
+                Hủy Gói
+              </button>
+            ) : currentTierObj?.priorityLevel !== 0 ? (
               <div className="mt-auto flex items-center gap-1 text-xs font-semibold" style={{ color: visuals.color }}>
                 <CheckCircle className="h-3.5 w-3.5" />
-                Gói cao nhất
+                {(currentTierObj?.priorityLevel || 0) === maxPriority ? 'Gói cao nhất' : 'Đã đăng ký'}
+              </div>
+            ) : (
+              <div className="mt-auto flex items-center gap-1 text-xs font-semibold" style={{ color: visuals.color }}>
+                <CheckCircle className="h-3.5 w-3.5" />
+                Mặc định
               </div>
             )}
           </div>

@@ -4,6 +4,9 @@ import { Loader2 } from 'lucide-react';
 
 interface Props {
   tier: AiSubscriptionTier | null;
+  aiTiers: AiSubscriptionTier[];
+  currentTierId?: number;
+  isDowngrade?: boolean;
   loading: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -19,11 +22,11 @@ const TIER_COLORS = [
   { color: '#8b5cf6', bgColor: '#f5f3ff' },
 ];
 
-export function AISubscriptionConfirmModal({ tier, loading, onClose, onConfirm }: Props) {
+export function AISubscriptionConfirmModal({ tier, aiTiers, currentTierId, isDowngrade, loading, onClose, onConfirm }: Props) {
   if (!tier) return null;
 
-  const tierIdx = 0;
-  const visuals = TIER_COLORS[tierIdx % TIER_COLORS.length];
+  const tierIdx = aiTiers.findIndex(t => t.id_ai_subscription === tier.id_ai_subscription);
+  const visuals = TIER_COLORS[Math.max(0, tierIdx) % TIER_COLORS.length];
 
   return (
     <div
@@ -34,7 +37,13 @@ export function AISubscriptionConfirmModal({ tier, loading, onClose, onConfirm }
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] w-full max-w-sm">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-[var(--color-border)]">
-          <h3 className="font-bold text-base">Xác nhận đăng ký gói AI</h3>
+          <h3 className="font-bold text-base">
+            {isDowngrade
+              ? 'Xác nhận hạ gói AI'
+              : currentTierId === undefined
+              ? 'Xác nhận đăng ký gói AI'
+              : 'Xác nhận nâng cấp gói AI'}
+          </h3>
         </div>
 
         {/* Tier info */}
@@ -75,11 +84,15 @@ export function AISubscriptionConfirmModal({ tier, loading, onClose, onConfirm }
             </div>
           </div>
 
-          {tier.price > 0 && (
+          {isDowngrade ? (
+            <p className="text-xs text-[var(--color-text-muted)] mt-3">
+              Bạn sẽ chuyển về gói miễn phí. Dịch vụ AI của bạn sẽ bị giới hạn theo gói cơ bản.
+            </p>
+          ) : tier.price > 0 ? (
             <p className="text-xs text-[var(--color-text-muted)] mt-3">
               Bạn sẽ được chuyển hướng đến cổng thanh toán VNPay để hoàn tất giao dịch.
             </p>
-          )}
+          ) : null}
         </div>
 
         {/* Actions */}
@@ -97,7 +110,7 @@ export function AISubscriptionConfirmModal({ tier, loading, onClose, onConfirm }
             className="flex-1 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60"
             style={{ background: 'var(--color-primary)' }}
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : tier.price === 0 ? 'Xác nhận' : 'Thanh toán'}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : isDowngrade || tier.price === 0 ? 'Xác nhận' : 'Thanh toán'}
           </button>
         </div>
       </div>

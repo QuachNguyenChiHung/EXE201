@@ -78,12 +78,25 @@ export function SubscriptionTierPicker({
               </div>
 
               {isCurrent ? (
-                <div
-                  className="mt-auto text-xs font-semibold px-3 py-1.5"
-                  style={{ background: visuals.bgColor, color: visuals.color }}
-                >
-                  Gói hiện tại
-                </div>
+                selectedWarehouse.isSponsor ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-auto rounded-none text-xs w-full border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={() => onSelectTier(selectedWarehouse, sponsorTiers.find(t => t.id === 0) || sponsorTiers[0])}
+                  >
+                    Hủy Gói
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-auto rounded-none text-xs w-full border-[var(--color-border)] text-[var(--color-text-muted)] cursor-default"
+                    disabled
+                  >
+                    Gói hiện tại
+                  </Button>
+                )
               ) : isUpgrade ? (
                 <Button
                   size="sm"
@@ -91,7 +104,7 @@ export function SubscriptionTierPicker({
                   style={{ background: visuals.color, color: '#fff' }}
                   onClick={() => onSelectTier(selectedWarehouse, tier)}
                 >
-                  Nâng cấp
+                  Nâng cấp gói
                 </Button>
               ) : isDowngrade ? (
                 <Button
