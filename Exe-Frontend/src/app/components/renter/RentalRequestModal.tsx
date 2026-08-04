@@ -378,7 +378,7 @@ export function RentalRequestModal({
 
             if (cancelled) return;
 
-            // Redirect to VNPay payment first
+            // Redirect to payment gateway first
             const payment = await renterService.payForRentalRequest(created.id);
             if (payment.paymentUrl) {
                 window.location.href = payment.paymentUrl;
@@ -410,7 +410,7 @@ export function RentalRequestModal({
                         </div>
                         <h3 className="text-xl font-bold mb-2">Yêu cầu thuê kho đã được tạo!</h3>
                         <p className="text-sm text-[var(--color-text-secondary)] mb-6">
-                            Vui lòng hoàn tất thanh toán VNPay. Sau khi thanh toán thành công, yêu cầu sẽ được gửi đến chủ kho.
+                            Vui lòng hoàn tất thanh toán. Sau khi thanh toán thành công, yêu cầu sẽ được gửi đến chủ kho.
                         </p>
                         <button
                             onClick={() => onOpenChange(false)}
@@ -815,11 +815,11 @@ export function RentalRequestModal({
                             disabled={submitting}
                             className="flex-1 py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-50"
                         >
-                            {submitting ? 'Đang chuyển...' : 'Thanh Toán VNPay'}
+                            {submitting ? 'Đang chuyển...' : 'Thanh Toán'}
                         </button>
                     </div>
                     <p className="text-[10px] text-center text-[var(--color-text-muted)]">
-                        Bạn sẽ được chuyển đến VNPay để thanh toán phí đặt cọc trước khi gửi yêu cầu thuê kho.
+                        Bạn sẽ được chuyển đến cổng thanh toán để thanh toán phí đặt cọc trước khi gửi yêu cầu thuê kho.
                     </p>
                 </form>
             </DialogContent>

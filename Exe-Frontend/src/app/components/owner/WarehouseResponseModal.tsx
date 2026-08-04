@@ -153,7 +153,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-left" style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
                 <RefreshCw className="h-4 w-4 shrink-0" style={{ color: '#8b5cf6' }} />
                 <p className="text-xs" style={{ color: '#8b5cf6' }}>
-                  Hệ thống sẽ tự động hoàn tiền cho người thuê qua VNPay.
+                  Khoản thanh toán sẽ được hoàn lại cho người thuê trong thời gian sớm nhất.
                 </p>
               </div>
             </div>
@@ -227,7 +227,7 @@ export function WarehouseResponseModal({ request, warehouse, onClose, onAccept, 
                   : <XCircle className="h-5 w-5 shrink-0" style={{ color: '#ef4444' }} />}
               <div className="text-left">
                 <p className="text-sm font-bold" style={{ color: '#ef4444' }}>Từ chối yêu cầu</p>
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Hệ thống sẽ tự động hoàn tiền cho người thuê</p>
+                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Khoản thanh toán sẽ được hoàn lại cho người thuê</p>
               </div>
             </button>
 
