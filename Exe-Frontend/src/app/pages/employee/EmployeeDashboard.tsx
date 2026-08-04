@@ -7,7 +7,7 @@ import { MockWarehouseData as MockWarehouses } from '../../../data/mockWarehouse
 import { MockCompositeRentRequests as MockRentRequests } from '../../../data/mockRequests';
 import { contractsAPI } from '../../../services/apiClient';
 import { employeeService } from '../../../services/employeeService';
-import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Shield, Sparkles, Star } from 'lucide-react';
+import { Users, Warehouse, Clock, CheckCircle, AlertCircle, ClipboardList, FileText, Shield, Sparkles, Star, BarChart3 } from 'lucide-react';
 import { AIStatusPanel } from '../../components/AIStatusPanel';
 import type { CompositeContract } from '../../../types';
 
@@ -117,6 +117,14 @@ export default function EmployeeDashboard() {
       desc: 'Quản lý tất cả các hợp đồng thuê trên hệ thống',
       badge: null,
       path: '/employee/contracts',
+    },
+    {
+      icon: <BarChart3 className="h-8 w-8" />,
+      color: '#0891b2', // Cyan
+      title: 'Phân tích Giao dịch',
+      desc: 'Thống kê doanh thu và toàn bộ giao dịch trên hệ thống',
+      badge: null,
+      path: '/employee/transactions',
     },
     {
       icon: <Sparkles className="h-8 w-8" />,

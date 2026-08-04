@@ -101,6 +101,7 @@ export const router = createBrowserRouter([
       { path: '/employee/contracts', lazy: lazyPage(() => import('./pages/employee/ManageContracts')) },
       { path: '/employee/ai-tiers', lazy: lazyPage(() => import('./pages/employee/ManageAiTiers')) },
       { path: '/employee/sponsor-tiers', lazy: lazyPage(() => import('./pages/employee/ManageSponsorTiers')) },
+      { path: '/employee/transactions', lazy: lazyPage(() => import('./pages/employee/TransactionAnalytics')) },
     ],
   },
 
@@ -114,6 +115,7 @@ export const router = createBrowserRouter([
       { path: '/payment-success', lazy: lazyPage(() => import('./pages/PaymentSuccess')) },
       { path: '/payment-fail', lazy: lazyPage(() => import('./pages/PaymentFail')) },
       { path: '/payment-history', lazy: lazyPage(() => import('./pages/PaymentHistory')) },
+      { path: '/notifications', lazy: lazyPage(() => import('./pages/NotificationsPage')) },
       { path: '/profile', lazy: lazyPage(() => import('./pages/ProfilePage')) },
     ],
   },
