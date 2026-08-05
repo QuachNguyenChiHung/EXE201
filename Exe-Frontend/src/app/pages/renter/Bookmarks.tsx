@@ -6,15 +6,13 @@ import { WarehouseCard } from '../../components/WarehouseCard';
 import { Button } from '../../components/ui/button';
 import { useApp } from '../../../context/AppContext';
 import { CompositeWarehouse } from '../../../types';
-import { Heart, Loader2, Sparkles, MessageSquare, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Heart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookmarks, clearBookmarksState } from '../../../hooks/useBookmarks';
 import { renterService } from '../../../services/renterService';
 
 import { BookmarksHeader } from '../../components/renter/BookmarksHeader';
 import { CompareTable } from '../../components/renter/CompareTable';
-import { AIPromptModal } from '../../components/renter/AIPromptModal';
-import { AIChatCompareSidebar } from '../../components/renter/AIChatCompareSidebar';
 
 type ViewMode = 'list' | 'compare';
 
@@ -24,10 +22,6 @@ export default function Bookmarks() {
     const { bookmarkedIds } = useBookmarks();
 
     const [view, setView] = useState<ViewMode>('list');
-    const [showAI, setShowAI] = useState(false);
-    const [showPrompt, setShowPrompt] = useState(false);
-    const [aiInitialReq, setAiInitialReq] = useState<string | undefined>();
-    const [bestId, setBestId] = useState<number | null>(null);
 
     const [bookmarkedWarehouses, setBookmarkedWarehouses] = useState<CompositeWarehouse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,12 +44,6 @@ export default function Bookmarks() {
         }
     };
 
-    const handleAnalyze = (req: string) => {
-        setAiInitialReq(req);
-        setShowPrompt(false);
-        setShowAI(true);
-    };
-
     const handleToggleCompare = (id: number) => {
         // Find warehouse by id from compareWarehouses
         const w = compareWarehouses.find(cw => cw.id_warehouse === id);
@@ -69,12 +57,7 @@ export default function Bookmarks() {
             <main className="flex-1 max-w-[1400px] w-full mx-auto px-6 py-8">
                 <BookmarksHeader
                     viewMode={view}
-                    setViewMode={(v) => {
-                        setView(v);
-                        if (v === 'compare' && compareWarehouses.length >= 2 && !showAI) {
-                            setShowPrompt(true);
-                        }
-                    }}
+                    setViewMode={setView}
                     bookmarkCount={bookmarkedWarehouses.length}
                     compareCount={compareWarehouses.length}
                     onClearAll={handleClearAll}
@@ -82,45 +65,16 @@ export default function Bookmarks() {
 
                 {/* ── Compare Toolbar ── */}
                 {view === 'compare' && compareWarehouses.length >= 2 && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-[var(--color-text)] bg-[var(--color-surface)] border border-[var(--color-border)] px-3 py-1.5">
-                                Đang so sánh: <span className="text-[var(--color-primary)]">{compareWarehouses.length}</span> kho
-                            </span>
-                            <button
-                                onClick={clearCompare}
-                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] underline"
-                            >
-                                Bỏ chọn tất cả
-                            </button>
-                        </div>
-                        {showAI ? (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setShowPrompt(true)}
-                                    className="flex items-center gap-1.5 text-sm px-3 py-1.5 border border-[var(--color-primary)] transition-colors"
-                                    style={{ color: 'var(--color-primary)' }}
-                                >
-                                    <Sparkles className="h-3.5 w-3.5" />
-                                    Phân tích lại
-                                </button>
-                                <button
-                                    onClick={() => setShowAI(false)}
-                                    className="flex items-center gap-1.5 text-sm px-3 py-1.5 border transition-colors border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
-                                >
-                                    <MessageSquare className="h-3.5 w-3.5" />
-                                    Ẩn AI <ChevronRight className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={() => setShowAI(true)}
-                                className="flex items-center gap-1.5 text-sm px-3 py-1.5 border transition-colors border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
-                            >
-                                <MessageSquare className="h-3.5 w-3.5" />
-                                Hiện AI <ChevronLeft className="h-3.5 w-3.5" />
-                            </button>
-                        )}
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-sm font-semibold text-[var(--color-text)] bg-[var(--color-surface)] border border-[var(--color-border)] px-3 py-1.5">
+                            Đang so sánh: <span className="text-[var(--color-primary)]">{compareWarehouses.length}</span> kho
+                        </span>
+                        <button
+                            onClick={clearCompare}
+                            className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] underline"
+                        >
+                            Bỏ chọn tất cả
+                        </button>
                     </div>
                 )}
 
@@ -179,33 +133,13 @@ export default function Bookmarks() {
                             <div className="flex gap-0 border border-[var(--color-border)] min-h-[600px] bg-[var(--color-surface)] shadow-sm">
                                 <CompareTable
                                     warehouses={compareWarehouses}
-                                    bestId={bestId}
                                     onRemove={handleToggleCompare}
                                 />
-                                {showAI && (
-                                    <AIChatCompareSidebar
-                                        warehouses={compareWarehouses}
-                                        initialReq={aiInitialReq}
-                                        bestId={bestId}
-                                        onBestChange={setBestId}
-                                        onClose={() => setShowAI(false)}
-                                    />
-                                )}
                             </div>
                         )}
                     </>
                 )}
             </main>
-
-            {/* Prompt Modal */}
-            {showPrompt && (
-                <AIPromptModal
-                    count={compareWarehouses.length}
-                    onSkip={() => setShowPrompt(false)}
-                    onAnalyze={handleAnalyze}
-                    onClose={() => setShowPrompt(false)}
-                />
-            )}
 
             <Footer />
         </div>

@@ -381,6 +381,14 @@ export function Navbar() {
                           ))}
                         </div>
                       )}
+                      <div className="border-t border-[var(--color-border)]">
+                        <button
+                          onClick={() => navigate('/notifications')}
+                          className="w-full text-center py-2 text-xs text-[var(--color-primary)] hover:underline"
+                        >
+                          Xem tất cả
+                        </button>
+                      </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

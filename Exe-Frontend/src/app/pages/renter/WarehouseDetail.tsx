@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from '../../components/Footer';
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Star, List, ChevronUp, ChevronDown } from "lucide-react";
 import { useBookmarks } from "../../../hooks/useBookmarks";
 import { renterService } from "../../../services/renterService";
+import { useWebSocketMessage } from "../../../hooks/useWebSocket";
 
 import { WarehouseDetailGallery } from "../../components/renter/WarehouseDetailGallery";
 import { WarehouseDetailInfo } from "../../components/renter/WarehouseDetailInfo";
@@ -14,6 +15,14 @@ import { WarehouseDetailSidebar } from "../../components/renter/WarehouseDetailS
 import { RentalRequestModal } from "../../components/renter/RentalRequestModal";
 import { AIChatPanel } from "../../components/renter/AIChatPanel";
 import { WarehouseReviewsSection } from "../../components/renter/WarehouseReviewsSection";
+
+const STATUS_CFG: Record<string, { label: string; badgeClass: string }> = {
+    PENDING: { label: 'Chờ duyệt', badgeClass: 'bg-[rgba(245,158,11,0.1)] text-[var(--color-warning)]' },
+    REJECTED: { label: 'Đã từ chối', badgeClass: 'bg-[rgba(239,68,68,0.1)] text-[var(--color-error)]' },
+    ACTIVE: { label: 'Đang hoạt động', badgeClass: 'bg-[rgba(34,197,94,0.1)] text-[var(--color-success)]' },
+    RENTED: { label: 'Đã cho thuê hết', badgeClass: 'bg-[rgba(59,130,246,0.1)] text-[#3b82f6]' },
+    INACTIVE: { label: 'Ngừng hoạt động', badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]' },
+};
 
 export default function WarehouseDetail() {
     const { id } = useParams<{ id: string }>();
@@ -39,19 +48,26 @@ export default function WarehouseDetail() {
     const [reviewContractRef, setReviewContractRef] = useState<string | undefined>();
     const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
 
-    useEffect(() => {
+    const fetchWarehouse = useCallback((opts?: { silent?: boolean }) => {
         if (!id) return;
-        setLoading(true);
-        renterService.getWarehouseDetail(id)
+        if (!opts?.silent) setLoading(true);
+        return renterService.getWarehouseDetail(id)
             .then(data => {
                 if (data) {
                     setWarehouse(data);
+                } else if (!opts?.silent) {
+                    toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search");
                 }
-                else { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); }
             })
-            .catch(() => { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); })
-            .finally(() => setLoading(false));
+            .catch(() => {
+                if (!opts?.silent) { toast.error("Không tìm thấy kho lạnh"); navigate("/renter/search"); }
+            })
+            .finally(() => { if (!opts?.silent) setLoading(false); });
     }, [id, navigate]);
+
+    useEffect(() => {
+        fetchWarehouse();
+    }, [fetchWarehouse]);
 
     // Check if the logged-in renter has any contract for this warehouse
     useEffect(() => {
@@ -72,6 +88,19 @@ export default function WarehouseDetail() {
             .finally(() => setContractsLoading(false));
     }, [warehouse?.id_warehouse]);
 
+    useWebSocketMessage('WAREHOUSE_STATUS_CHANGED', useCallback((msg: any) => {
+        if (!id || String(msg.warehouseId) !== String(id)) return;
+        setWarehouse(prev => (prev ? { ...prev, status: msg.status } : prev));
+    }, [id]));
+
+    // Any other detail change (name, description, sections, price tiers,
+    // images, certificates, ...) — refetch the full record silently rather
+    // than trying to merge a partial payload over the socket.
+    useWebSocketMessage('WAREHOUSE_UPDATED', useCallback((msg: any) => {
+        if (!id || String(msg.warehouseId) !== String(id)) return;
+        fetchWarehouse({ silent: true });
+    }, [id, fetchWarehouse]));
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center">
@@ -85,6 +114,10 @@ export default function WarehouseDetail() {
 
     const isBookmarked = bookmarkedIds.includes(warehouse.id_warehouse);
     const handleToggleBookmark = () => toggleBookmark(warehouse.id_warehouse);
+
+    const statusKey = String(warehouse.status || '').toUpperCase();
+    const statusCfg = STATUS_CFG[statusKey] ?? { label: warehouse.status ?? 'Unknown', badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]' };
+    const isRentable = statusKey === 'ACTIVE';
 
     return (
         <div className="min-h-screen bg-[var(--color-bg)] relative">
@@ -103,15 +136,9 @@ export default function WarehouseDetail() {
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4 border-b border-[var(--color-border)] pb-6">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                            {warehouse.status === 'active' ? (
-                                <span className="px-2.5 py-1 text-xs font-semibold rounded-sm uppercase tracking-wide bg-[rgba(34,197,94,0.1)] text-[var(--color-success)]">
-                                    Đang hoạt động
-                                </span>
-                            ) : (
-                                <span className="px-2.5 py-1 text-xs font-semibold rounded-sm uppercase tracking-wide bg-[rgba(245,158,11,0.1)] text-[var(--color-warning)]">
-                                    Bảo trì
-                                </span>
-                            )}
+                            <span className={`px-2.5 py-1 text-xs font-semibold rounded-sm uppercase tracking-wide ${statusCfg.badgeClass}`}>
+                                {statusCfg.label}
+                            </span>
                             {warehouse.ownerName && (
                                 <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
                                     {warehouse.ownerName}
@@ -207,7 +234,8 @@ export default function WarehouseDetail() {
                             sectionCapacities={sectionCapacities}
                             onSectionCapacitiesChange={setSectionCapacities}
                             onSelectedTiersChange={setSelectedTiers}
-                            onOpenRentalModal={() => setRentalModalOpen(true)}
+                            onOpenRentalModal={() => isRentable && setRentalModalOpen(true)}
+                            isRentable={isRentable}
                         />
                     </div>
                 </div>

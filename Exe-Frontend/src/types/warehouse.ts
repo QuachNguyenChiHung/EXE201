@@ -1,3 +1,5 @@
+export type WarehouseStatus = 'PENDING' | 'REJECTED' | 'ACTIVE' | 'RENTED' | 'INACTIVE';
+
 export interface Warehouse {
   id_warehouse: number;
   id_owner?: number; // FK User

@@ -39,12 +39,14 @@ export const authService = {
       id_user: 0,
     };
     localStorage.setItem('user', JSON.stringify(user));
+    window.dispatchEvent(new Event('storage'));
     return user;
   },
 
   logout: async () => {
     setToken(null);
     localStorage.removeItem('user');
+    window.dispatchEvent(new Event('storage'));
     try {
       await api.post('/auth/logout');
     } catch {

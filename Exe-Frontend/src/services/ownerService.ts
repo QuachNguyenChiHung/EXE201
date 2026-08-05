@@ -203,10 +203,6 @@ export const ownerService = {
       }))
     };
   },
-  getWarehouseRatings: async (id: number): Promise<any> => {
-    const response = await api.get(`/owners/warehouses/${id}/ratings`);
-    return response.data;
-  },
   getWarehouseViewStats: async (id: number, days: number = 7): Promise<any> => {
     const response = await api.get(`/warehouses/${id}/view-stats`, { params: { days } });
     return response.data;

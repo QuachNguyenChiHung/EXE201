@@ -116,7 +116,7 @@ export default function WarehouseRequests() {
   // contact card inside each request card can show the owner's own number.
   useEffect(() => {
     if (!user || user.role !== 'OWNER') return;
-    if (user.token && !user.phone) {
+    if (!user.phone) {
       userService.getMyProfile().catch(() => { /* non-fatal */ });
     }
   }, [user]);
@@ -201,7 +201,7 @@ export default function WarehouseRequests() {
   const handleReject = async (id: string, rejectionReason: string) => {
     try {
       await ownerService.rejectRequest(id, rejectionReason);
-      toast.success('Đã từ chối yêu cầu. Hệ thống sẽ tự động hoàn tiền cho người thuê qua VNPay.');
+      toast.success('Đã từ chối yêu cầu. Khoản thanh toán sẽ được hoàn lại cho người thuê trong thời gian sớm nhất.');
       refetchSingleRequest(id);
     } catch (err) {
       toast.error('Không thể từ chối yêu cầu');

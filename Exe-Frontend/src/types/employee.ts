@@ -182,3 +182,55 @@ export interface SponsorTierDTO {
   activeWarehousesCount?: number;
   isActive?: boolean;
 }
+
+// ── Transaction analytics (EMPLOYEE) ─────────────────────────────────────────
+export interface EmployeeTransactionDTO {
+  id: number;
+  buyerId: number;
+  buyerName: string;
+  buyerEmail: string;
+  buyerRole: 'RENTER' | 'OWNER' | 'EMPLOYEE';
+  type: 'RENTAL_FEE' | 'SPONSOR_SUBSCRIPTION' | 'AI_SUBSCRIPTION';
+  status: 'PENDING' | 'COMPLETED' | 'CANCELED' | 'REFUNDED';
+  amount: number;
+  createdAt: string;
+  invoiceDate: string;
+  description: string;
+}
+
+export interface TransactionTypeShareDTO {
+  type: string;
+  totalAmount: number;
+  count: number;
+  percentage: number;
+}
+
+export interface HighestTransactionDTO {
+  id: number;
+  amount: number;
+  type: string;
+  status: string;
+  buyerId: number;
+  buyerName: string;
+  buyerRole: string;
+  createdAt: string;
+}
+
+export interface TransactionAnalyticsSummaryDTO {
+  revenueByType: TransactionTypeShareDTO[];
+  topServiceType: string;
+  topServiceRevenue: number;
+  mostCommonType: string;
+  mostCommonTypeCount: number;
+  highestTransaction: HighestTransactionDTO | null;
+  topSpendingRole: string;
+  topSpendingRoleAmount: number;
+}
+
+export interface RevenuePointDTO {
+  bucketLabel: string;
+  bucketStart: string;
+  renterAmount: number;
+  ownerAmount: number;
+  totalAmount: number;
+}

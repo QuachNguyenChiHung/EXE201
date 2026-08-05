@@ -86,6 +86,8 @@ export interface WarehouseDetailSidebarProps {
     onSelectedTiersChange: (tiers: Record<string, number>) => void;
     // Trigger to open the rental modal
     onOpenRentalModal: () => void;
+    // Whether the warehouse is currently open for new rental requests (status === ACTIVE)
+    isRentable: boolean;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -99,6 +101,7 @@ export function WarehouseDetailSidebar({
     onSectionCapacitiesChange,
     onSelectedTiersChange,
     onOpenRentalModal,
+    isRentable,
 }: WarehouseDetailSidebarProps) {
 
     // ── Computed: selected section objects ─────────────────────────────────────
@@ -278,10 +281,17 @@ export function WarehouseDetailSidebar({
 
                 {/* ── CTA button ───────────────────────────────────────────────── */}
                 <div className="pt-2 border-t bg-white border-[var(--color-border)]">
+                    {!isRentable && (
+                        <p className="text-xs text-[var(--color-text-muted)] mb-2">
+                            {String(warehouse.status || '').toUpperCase() === 'RENTED'
+                                ? 'Kho đã cho thuê hết công suất, hiện không nhận thêm yêu cầu.'
+                                : 'Kho hiện không mở cho yêu cầu thuê mới.'}
+                        </p>
+                    )}
                     <button
                         type="button"
                         onClick={onOpenRentalModal}
-                        disabled={selectedSectionIds.length === 0}
+                        disabled={!isRentable || selectedSectionIds.length === 0}
                         className="w-full py-3 bg-[var(--color-primary)] text-white font-semibold rounded-md hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         <Send className="h-4 w-4" />

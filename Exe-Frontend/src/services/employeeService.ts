@@ -1,5 +1,5 @@
 import { api } from './asus_api';
-import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO, ContractResponseDTO, RentRequestResponseDTO } from '../types/employee';
+import { UserDTO, WarehouseEmployeeDTO, WarehouseResponseDTO, RenterDetailResponseDTO, OwnerDetailResponseDTO, ContractResponseDTO, RentRequestResponseDTO, EmployeeTransactionDTO, TransactionAnalyticsSummaryDTO, RevenuePointDTO } from '../types/employee';
 
 export const employeeService = {
     getAllWarehouses: async (page: number = 0, size: number = 10, status?: string): Promise<{ content: WarehouseEmployeeDTO[], totalPages: number, totalElements: number }> => {
@@ -167,6 +167,26 @@ export const employeeService = {
     },
     deleteSponsorTier: async (id: number) => {
         const response = await api.delete(`/employees/sponsor-tiers/${id}`);
+        return response.data;
+    },
+    // TRANSACTION ANALYTICS
+    getAllTransactions: async (params: {
+        type?: string; status?: string; buyerRole?: string;
+        startDate?: string; endDate?: string; page?: number; size?: number;
+    }): Promise<{ content: EmployeeTransactionDTO[]; totalPages: number; totalElements: number }> => {
+        const response = await api.get('/employees/transactions', { params: { page: 0, size: 10, ...params } });
+        return {
+            content: response.data.content || [],
+            totalPages: response.data.totalPages || 0,
+            totalElements: response.data.totalElements || 0,
+        };
+    },
+    getTransactionAnalyticsSummary: async (): Promise<TransactionAnalyticsSummaryDTO> => {
+        const response = await api.get('/employees/transactions/analytics-summary');
+        return response.data;
+    },
+    getTransactionRevenueTimeseries: async (granularity: 'day' | 'month' | 'year', startDate: string, endDate: string): Promise<RevenuePointDTO[]> => {
+        const response = await api.get('/employees/transactions/revenue-timeseries', { params: { granularity, startDate, endDate } });
         return response.data;
     }
 };

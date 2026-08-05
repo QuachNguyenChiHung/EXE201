@@ -90,7 +90,7 @@ export function AISubscriptionConfirmModal({ tier, aiTiers, currentTierId, isDow
             </p>
           ) : tier.price > 0 ? (
             <p className="text-xs text-[var(--color-text-muted)] mt-3">
-              Bạn sẽ được chuyển hướng đến cổng thanh toán VNPay để hoàn tất giao dịch.
+              Bạn sẽ được chuyển hướng đến cổng thanh toán để hoàn tất giao dịch.
             </p>
           ) : null}
         </div>

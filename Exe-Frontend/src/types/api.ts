@@ -48,8 +48,8 @@ export interface TransactionResponseDTO {
   type: string;
   status: string;
   createdAt: string;
-  vnpTxnRef: string | null;
-  vnpTransactionNo: string | null;
-  vnpPayDate: string | null;
+  providerTxnRef: string | null;
+  providerTransactionNo: string | null;
+  providerPayDate: string | null;
   description: string | null;
 }

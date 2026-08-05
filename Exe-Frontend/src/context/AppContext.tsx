@@ -15,6 +15,8 @@ import {
 } from '../services/apiClient';
 import { renterService } from '../services/renterService';
 import { notificationService } from '../services/notificationService';
+import { getToken, getUser } from '../utils/auth';
+import * as websocketService from '../services/websocketService';
 
 interface AppState {
   // Auth
@@ -128,26 +130,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshWarehouses();
   }, [warehouseRevision]);
 
-  // Load user from localStorage on mount
+  // Sync auth state from localStorage — on mount AND whenever a `storage`
+  // event fires (cross-tab changes, or same-tab updates dispatched by
+  // authService/userService after login/logout/profile updates).
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
+    const syncAuth = () => {
+      const token = getToken();
+      const user = getUser();
+      if (token && user) {
         setState(prev => ({ ...prev, user, isAuthenticated: true }));
-      } catch (e) {
-        localStorage.removeItem('user');
+      } else {
+        setState(prev => ({ ...prev, user: null as any, isAuthenticated: false }));
       }
-    }
+    };
+    syncAuth();
+    window.addEventListener('storage', syncAuth);
+    return () => window.removeEventListener('storage', syncAuth);
   }, []);
-
-  // Poll notifications every 15 seconds while authenticated
-  useEffect(() => {
-    if (!state.isAuthenticated) return;
-    refreshNotifications();
-    const interval = setInterval(refreshNotifications, 15_000);
-    return () => clearInterval(interval);
-  }, [state.isAuthenticated]);
 
   // Refresh notifications on window focus / reconnect
   useEffect(() => {
@@ -156,6 +155,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     document.addEventListener('visibilitychange', handleFocus);
     return () => document.removeEventListener('visibilitychange', handleFocus);
+  }, [state.isAuthenticated]);
+
+  // Maintain a live websocket connection for real-time notifications while
+  // authenticated — replaces the old 15s polling interval.
+  useEffect(() => {
+    if (!state.isAuthenticated) {
+      websocketService.disconnect();
+      return;
+    }
+    websocketService.connect();
+    const unsub = websocketService.subscribe('NOTIFICATION', () => {
+      refreshNotifications();
+    });
+    return () => {
+      unsub();
+      websocketService.disconnect();
+    };
   }, [state.isAuthenticated]);
 
 
@@ -227,8 +243,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshNotifications = async () => {
     if (!state.isAuthenticated) return;
     try {
-      const notifications = await notificationService.getNotifications();
-      setState(prev => ({ ...prev, notifications }));
+      const { content } = await notificationService.getNotifications(0, 20);
+      setState(prev => ({ ...prev, notifications: content }));
     } catch {
       // Silently ignore — notifications are non-critical
     }

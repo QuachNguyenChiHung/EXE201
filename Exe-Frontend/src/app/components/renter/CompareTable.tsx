@@ -114,11 +114,10 @@ const ROWS: CompareRow[] = [
 
 interface CompareTableProps {
     warehouses: CompositeWarehouse[];
-    bestId: number | null;
     onRemove: (id: number) => void;
 }
 
-export function CompareTable({ warehouses, bestId, onRemove }: CompareTableProps) {
+export function CompareTable({ warehouses, onRemove }: CompareTableProps) {
     if (warehouses.length < 2) return null;
 
     return (
@@ -137,25 +136,15 @@ export function CompareTable({ warehouses, bestId, onRemove }: CompareTableProps
                             style={{ background: 'var(--color-surface)' }}
                         />
                         {warehouses.map((w) => {
-                            const isBest = w.id_warehouse === bestId;
                             return (
                                 <th
                                     key={w.id_warehouse}
                                     className="border-b border-r border-[var(--color-border)] px-4 py-3 min-w-[200px]"
                                     style={{
-                                        background: isBest
-                                            ? 'rgba(37,99,235,0.05)'
-                                            : 'var(--color-surface)',
-                                        borderTop: isBest ? '3px solid var(--color-primary)' : '3px solid transparent',
-                                        position: 'relative',
+                                        background: 'var(--color-surface)',
                                         verticalAlign: 'top',
                                     }}
                                 >
-                                    {isBest && (
-                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--color-primary)] text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
-                                            Phù hợp nhất
-                                        </div>
-                                    )}
                                     <div className="flex flex-col gap-2 mt-2">
                                         <span className="font-bold text-base truncate block text-left" title={w.name}>
                                             {w.name}
@@ -193,18 +182,14 @@ export function CompareTable({ warehouses, bestId, onRemove }: CompareTableProps
                                     {row.label}
                                 </div>
                             </td>
-                            {warehouses.map((w) => {
-                                const isBest = w.id_warehouse === bestId;
-                                return (
-                                    <td
-                                        key={w.id_warehouse}
-                                        className="border-b border-r border-[var(--color-border)] px-4 py-3 text-center"
-                                        style={{ background: isBest ? 'rgba(37,99,235,0.02)' : 'transparent' }}
-                                    >
-                                        {row.render(w)}
-                                    </td>
-                                );
-                            })}
+                            {warehouses.map((w) => (
+                                <td
+                                    key={w.id_warehouse}
+                                    className="border-b border-r border-[var(--color-border)] px-4 py-3 text-center"
+                                >
+                                    {row.render(w)}
+                                </td>
+                            ))}
                         </tr>
                     ))}
                 </tbody>
