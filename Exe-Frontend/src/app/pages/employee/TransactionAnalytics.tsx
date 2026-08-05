@@ -328,7 +328,12 @@ export default function TransactionAnalytics() {
                   <LineChart data={revenuePoints} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                     <XAxis dataKey="bucketLabel" stroke="var(--color-text-muted)" fontSize={12} tickMargin={10} minTickGap={30} />
-                    <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                    <YAxis
+                      stroke="var(--color-text-muted)"
+                      fontSize={12}
+                      tickFormatter={(value: number) => (value / 1000).toLocaleString('vi-VN')}
+                      label={{ value: 'Nghìn VNĐ', angle: -90, position: 'insideLeft', fill: 'var(--color-text-muted)', fontSize: 12 }}
+                    />
                     <RechartsTooltip
                       contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '4px', fontSize: '13px' }}
                       itemStyle={{ color: 'var(--color-text)' }}
