@@ -198,12 +198,6 @@ export default function ManageSponsorTiers() {
                   </div>
                 </div>
 
-                <div className="flex-1 mt-1 mb-4">
-                    <p className="text-xs flex justify-between" style={{ color: 'var(--color-text-muted)' }}>
-                      <span>Giá gói Năm:</span> <span className="font-medium font-mono text-[var(--color-success)]">{new Intl.NumberFormat('vi-VN').format(t.yearPackSale)} VND</span>
-                    </p>
-                </div>
-
                 <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex justify-between items-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
                     <div className="flex items-center gap-1.5">
                         <Warehouse className="w-3.5 h-3.5" />
@@ -281,19 +275,7 @@ export default function ManageSponsorTiers() {
                       style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                      Giá gói Năm (VND)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.yearPackSale}
-                      onChange={e => setForm(p => ({ ...p, yearPackSale: Number(e.target.value) }))}
-                      className="w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-warning)]"
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
-                    />
-                  </div>
+
               </div>
             </div>
           </div>
