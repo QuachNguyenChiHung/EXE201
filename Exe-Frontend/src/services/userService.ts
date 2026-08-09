@@ -120,6 +120,18 @@ export const userService = {
     }
     return profile;
   },
+
+  /**
+   * POST /api/users/me/change-password — change the password of the currently
+   * logged-in user. Available for all roles (RENTER / OWNER / EMPLOYEE).
+   */
+  changeOwnPassword: async (
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> => {
+    const res = await api.post('/users/me/change-password', { currentPassword, newPassword });
+    return res.data;
+  },
 };
 
 export type { UserProfileDTO };

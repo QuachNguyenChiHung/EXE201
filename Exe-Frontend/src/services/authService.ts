@@ -59,6 +59,25 @@ export const authService = {
     return response.data;
   },
 
+  forgotPassword: async (email: string): Promise<{ message: string; cooldownSeconds: number }> => {
+    const { data } = await api.post('/auth/forgot-password', { email });
+    return data;
+  },
+
+  verifyOtp: async (payload: { email: string; otp: string }): Promise<{ message: string }> => {
+    const { data } = await api.post('/auth/verify-otp', payload);
+    return data;
+  },
+
+  resetPassword: async (payload: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }): Promise<{ message: string }> => {
+    const { data } = await api.post('/auth/reset-password', payload);
+    return data;
+  },
+
   isLoggedIn: (): boolean => {
     return !!getToken();
   }

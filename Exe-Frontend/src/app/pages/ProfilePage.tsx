@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { userService, UserProfileUpdateDTO } from '../../services/userService';
 import type { UserProfileDTO } from '../../services/userService';
 import { getUser } from '../../utils/auth';
-import { ArrowLeft, Save, Loader2, Camera, User, Phone, Building2, FileText, ShieldCheck, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Camera, User, Phone, Building2, FileText, ShieldCheck, Calendar, Lock, KeyRound } from 'lucide-react';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -31,7 +31,20 @@ export default function ProfilePage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof UserProfileUpdateDTO, string>>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Employee-only change-password state
+  const [pwdForm, setPwdForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [pwdErrors, setPwdErrors] = useState<{ currentPassword?: string; newPassword?: string; confirmPassword?: string }>({});
+  const [changingPwd, setChangingPwd] = useState(false);
+
   const isOwner = user?.role === 'OWNER';
+  // Change-password card is available for any signed-in user
+  // (RENTER / OWNER / EMPLOYEE). The backend endpoint lives at
+  // POST /api/users/me/change-password.
+  const canChangePassword = !!user;
   // Show the company section when:
   //  • the user is an OWNER (always editable), OR
   //  • the user already has a company linked to their profile
@@ -143,6 +156,49 @@ export default function ProfilePage() {
       setUploadingAvatar(false);
       // Reset file input so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const setPwdField = (field: 'currentPassword' | 'newPassword' | 'confirmPassword', value: string) => {
+    setPwdForm((prev) => ({ ...prev, [field]: value }));
+    setPwdErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const validatePasswordForm = (): boolean => {
+    const errors: { currentPassword?: string; newPassword?: string; confirmPassword?: string } = {};
+    if (!pwdForm.currentPassword) {
+      errors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
+    }
+    if (!pwdForm.newPassword) {
+      errors.newPassword = 'Vui lòng nhập mật khẩu mới';
+    } else if (pwdForm.newPassword.length < 6) {
+      errors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    } else if (pwdForm.newPassword === pwdForm.currentPassword) {
+      errors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại';
+    }
+    if (!pwdForm.confirmPassword) {
+      errors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới';
+    } else if (pwdForm.confirmPassword !== pwdForm.newPassword) {
+      errors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+    }
+    setPwdErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validatePasswordForm()) return;
+
+    setChangingPwd(true);
+    try {
+      const res = await userService.changeOwnPassword(pwdForm.currentPassword, pwdForm.newPassword);
+      toast.success(res.message || 'Đổi mật khẩu thành công!');
+      setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message || 'Đổi mật khẩu thất bại';
+      toast.error(typeof msg === 'string' ? msg : 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
+    } finally {
+      setChangingPwd(false);
     }
   };
 
@@ -426,6 +482,93 @@ export default function ProfilePage() {
             </Button>
           </div>
         </form>
+
+        {/* Change password — available for all logged-in users */}
+        {canChangePassword && (
+          <form onSubmit={handleChangePassword} className="mt-6">
+            <Card className="bento-card p-6">
+              <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-[var(--color-primary)]" />
+                Đổi mật khẩu
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="currentPassword">
+                    Mật khẩu hiện tại <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative mt-1">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={pwdForm.currentPassword}
+                      onChange={(e) => setPwdField('currentPassword', e.target.value)}
+                      placeholder="Nhập mật khẩu hiện tại"
+                      className="pl-10"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  {pwdErrors.currentPassword && (
+                    <p className="mt-1 text-xs text-[var(--color-error)]">{pwdErrors.currentPassword}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="newPassword">
+                    Mật khẩu mới <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative mt-1">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={pwdForm.newPassword}
+                      onChange={(e) => setPwdField('newPassword', e.target.value)}
+                      placeholder="Tối thiểu 6 ký tự"
+                      className="pl-10"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  {pwdErrors.newPassword && (
+                    <p className="mt-1 text-xs text-[var(--color-error)]">{pwdErrors.newPassword}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword">
+                    Xác nhận mật khẩu mới <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative mt-1">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={pwdForm.confirmPassword}
+                      onChange={(e) => setPwdField('confirmPassword', e.target.value)}
+                      placeholder="Nhập lại mật khẩu mới"
+                      className="pl-10"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  {pwdErrors.confirmPassword && (
+                    <p className="mt-1 text-xs text-[var(--color-error)]">{pwdErrors.confirmPassword}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-5">
+                <Button type="submit" disabled={changingPwd}>
+                  {changingPwd ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-4 w-4 mr-2" />
+                  )}
+                  {changingPwd ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
+                </Button>
+              </div>
+            </Card>
+          </form>
+        )}
       </div>
 
       <Footer />

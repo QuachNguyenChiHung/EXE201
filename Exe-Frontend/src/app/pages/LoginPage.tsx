@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { bookmarksAPI } from "../../services/apiClient";
 import { authService } from "../../services/authService";
@@ -16,13 +16,53 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [locked, setLocked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  // Khi đăng nhập sai nhưng chưa bị khóa, lưu số lần đã sai để cảnh báo FE.
+  // Ưu tiên giá trị từ BE (remainingAttempts); chỉ fallback local khi BE
+  // không trả về.
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  // Thời điểm mở khóa (từ BE 423 response). Khi đến thời điểm này, tự
+  // động clear locked + attemptsUsed.
+  const [lockUntil, setLockUntil] = useState<string | null>(null);
+  const MAX_ATTEMPTS = 5;
   const navigate = useNavigate();
+
+  // Auto-unlock khi lock window kết thúc. Tính theo lockUntil từ BE; nếu
+  // BE không trả về, fallback 5 phút (giá trị mặc định).
+  useEffect(() => {
+    if (!locked || !lockUntil) return;
+    const target = new Date(lockUntil).getTime();
+    const ms = target - Date.now();
+    if (Number.isNaN(target) || ms <= 0) {
+      setLocked(false);
+      setAttemptsUsed(0);
+      setLockUntil(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      setLocked(false);
+      setAttemptsUsed(0);
+      setLockUntil(null);
+    }, ms);
+    return () => clearTimeout(t);
+  }, [locked, lockUntil]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    // Chặn submit nếu tài khoản đang bị khóa tạm — không gọi BE để tránh gia
+    // hạn khóa. Người dùng vẫn có thể sửa email/mật khẩu để đăng nhập tài khoản
+    // khác trong khi chờ.
+    if (locked) {
+      toast.error(
+        authError ||
+          "Tài khoản đang bị khóa tạm thời. Vui lòng thử lại sau 5 phút."
+      );
       return;
     }
 
@@ -32,13 +72,75 @@ export default function LoginPage() {
       const user = await authService.login({ email, password });
 
       toast.success("Đăng nhập thành công!");
+      // Reset các state lỗi khi đăng nhập thành công.
+      setAttemptsUsed(0);
+      setLocked(false);
+      setLockUntil(null);
       if (user.role === "RENTER") navigate("/renter");
       else if (user.role === "OWNER") navigate("/warehouse");
       else if (user.role === "EMPLOYEE") navigate("/employee");
       else navigate("/");
     } catch (err: any) {
-      setAuthError(err?.message ?? "Đăng nhập thất bại");
-      toast.error(err?.message ?? "Đăng nhập thất bại");
+      const status = err?.response?.status;
+      // 423 LOCKED — tài khoản đang bị khóa tạm do nhập sai mật khẩu quá nhiều
+      // lần. Vô hiệu hóa nút submit cho đến khi backend tự mở khóa sau 5 phút.
+      if (status === 423) {
+        setLocked(true);
+        setAttemptsUsed(MAX_ATTEMPTS);
+        // Lưu lockUntil từ BE để useEffect tự động clear locked khi hết hạn.
+        const beLockUntil = err?.response?.data?.lockUntil;
+        setLockUntil(typeof beLockUntil === "string" ? beLockUntil : null);
+        const lockMsg =
+          err?.response?.data?.message ||
+          "Bạn đã nhập sai mật khẩu quá nhiều lần. Tài khoản đã bị khóa tạm thời 5 phút để bảo vệ an toàn. Vui lòng thử lại sau.";
+        setAuthError(lockMsg);
+        toast.error(lockMsg);
+        return;
+      }
+
+      // 401 BAD CREDENTIALS — sai email hoặc mật khẩu. Ưu tiên dùng
+      // remainingAttempts từ BE (giá trị chính xác sau reset/idle). Fallback
+      // local increment khi BE không trả về trường này.
+      if (status === 401) {
+        const serverRemaining = err?.response?.data?.remainingAttempts;
+        if (typeof serverRemaining === "number" && serverRemaining >= 0) {
+          const used = Math.max(0, MAX_ATTEMPTS - serverRemaining);
+          setAttemptsUsed(used);
+          if (serverRemaining === 0) {
+            setAuthError(
+              "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại."
+            );
+          } else {
+            setAuthError(
+              `Email hoặc mật khẩu không chính xác. Còn ${serverRemaining} lần thử trước khi tài khoản bị khóa tạm thời.`
+            );
+          }
+        } else {
+          // Fallback (BE chưa hỗ trợ remainingAttempts): legacy local increment.
+          const newAttempts = attemptsUsed + 1;
+          setAttemptsUsed(newAttempts);
+          const remaining = MAX_ATTEMPTS - newAttempts;
+          if (newAttempts >= MAX_ATTEMPTS) {
+            setAuthError(
+              "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại."
+            );
+          } else {
+            setAuthError(
+              `Email hoặc mật khẩu không chính xác. Còn ${remaining} lần thử trước khi tài khoản bị khóa tạm thời.`
+            );
+          }
+        }
+        toast.error("Đăng nhập thất bại");
+        return;
+      }
+
+      // Các lỗi khác (mạng, 500, v.v.)
+      const fallback =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Đăng nhập thất bại. Vui lòng thử lại.";
+      setAuthError(fallback);
+      toast.error(fallback);
     } finally {
       setLoading(false);
     }
@@ -86,14 +188,26 @@ export default function LoginPage() {
 
           {authError && (
             <div
-              className="mb-4 px-4 py-3 text-sm border"
-              style={{
-                background: "rgba(239,68,68,0.06)",
-                borderColor: "rgba(239,68,68,0.35)",
-                color: "var(--color-error, #ef4444)",
-              }}
+              className="mb-4 px-4 py-3 text-sm border flex items-start gap-2"
+              style={
+                locked
+                  ? {
+                      background: "rgba(245,158,11,0.08)",
+                      borderColor: "rgba(245,158,11,0.4)",
+                      color: "var(--color-warning, #b45309)",
+                    }
+                  : {
+                      background: "rgba(239,68,68,0.06)",
+                      borderColor: "rgba(239,68,68,0.35)",
+                      color: "var(--color-error, #ef4444)",
+                    }
+              }
+              role={locked ? "warning" : "alert"}
             >
-              {authError}
+              <span className="font-semibold leading-none mt-0.5">
+                {locked ? "🔒" : "⚠"}
+              </span>
+              <span className="flex-1">{authError}</span>
             </div>
           )}
 
@@ -105,20 +219,39 @@ export default function LoginPage() {
                 type="email"
                 placeholder="example@email.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value);
+                  // User chỉnh email — không rõ ràng là cùng tài khoản nữa,
+                  // nên clear cả lock + attempts + lockUntil + authError.
+                  if (locked) setLocked(false);
+                  if (lockUntil) setLockUntil(null);
+                  if (attemptsUsed > 0) setAttemptsUsed(0);
+                  if (authError) setAuthError(null);
+                }}
                 disabled={loading}
                 className="rounded-none"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password">Mật khẩu</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Mật khẩu</Label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-[var(--color-primary)] hover:underline"
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => {
+                  setPassword(e.target.value);
+                  if (authError) setAuthError(null);
+                }}
                 disabled={loading}
                 className="rounded-none"
               />
