@@ -5,7 +5,7 @@ import { CompositeWarehouse, CompositeAiConversations, FilterOptions, AIResponse
 import { toast } from "sonner";
 import { renterService } from "../../../services/renterService";
 import { aiAPI } from "../../../services/apiClient";
-import { isAINotConfigured } from "./aiSearchUtils";
+import { isAINotConfigured, extractAiErrorMessage, isAiSubscriptionRequired, isTokenExhausted } from "./aiSearchUtils";
 import { AIChatPanel, ChatMsg } from "../../components/renter/AIChatPanel";
 import { AIResultGrid } from "../../components/renter/AIResultGrid";
 import { SearchSidebar } from "../../components/renter/SearchSidebar";
@@ -388,8 +388,57 @@ export default function AISearchWarehouse() {
                 };
                 setChatMessages((prev) => [...prev, fallbackMsg]);
                 setAiError("AI_BACKEND_NOT_CONFIGURED");
+            } else if (isAiSubscriptionRequired(err)) {
+                // Backend rejected because the user has no active AI tier
+                // (or the 1-month window has expired). Surface the original
+                // Vietnamese message and nudge them to /renter/ai-subscription.
+                const reason = extractAiErrorMessage(
+                    err,
+                    "Bạn cần đăng ký Gói AI để sử dụng Trợ lý ảo!",
+                );
+                const upgradeMsg: ChatMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "ai",
+                    content:
+                        `${reason}\n\n` +
+                        `👉 Vào **trang đăng ký gói AI** ở banner vàng phía trên ` +
+                        `(hoặc truy cập **/renter/ai-subscription**) để mở khóa Trợ lý ảo.`,
+                    timestamp: new Date(),
+                };
+                setChatMessages((prev) => [...prev, upgradeMsg]);
+                // Show the amber banner so the "Nâng cấp gói AI" button is visible.
+                setHasActiveTier(false);
+                setAiError("AI_SUBSCRIPTION_REQUIRED");
+                toast.error(reason, {
+                    description: "Nhấn \"Nâng cấp gói AI\" ở banner phía trên để tiếp tục.",
+                    duration: 6000,
+                });
+            } else if (isTokenExhausted(err)) {
+                // User has run out of output tokens in their current billing window.
+                // Push the notice into the chat box (not just a toast at the corner)
+                // so the user actually sees it while looking at the conversation.
+                const reason = extractAiErrorMessage(
+                    err,
+                    "Bạn đã dùng hết token trong gói AI hiện tại. Hãy nạp thêm hoặc nâng cấp gói.",
+                );
+                const tokenMsg: ChatMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "ai",
+                    content:
+                        `${reason}\n\n` +
+                        `👉 Vào **trang đăng ký gói AI** (hoặc truy cập **/renter/ai-subscription**) ` +
+                        `để nâng cấp gói cao hơn hoặc mua thêm token.`,
+                    timestamp: new Date(),
+                };
+                setChatMessages((prev) => [...prev, tokenMsg]);
+                // Keep the toast as a secondary signal in case the user has scrolled away.
+                toast.error(reason, {
+                    description: "Truy cập /renter/ai-subscription để nâng cấp.",
+                    duration: 6000,
+                });
+                setAiError("TOKEN_EXHAUSTED");
             } else {
-                toast.error("AI gặp lỗi, vui lòng thử lại.");
+                toast.error(extractAiErrorMessage(err, "AI gặp lỗi, vui lòng thử lại."));
                 setAiError(err.message ?? "Unknown error");
             }
         } finally {

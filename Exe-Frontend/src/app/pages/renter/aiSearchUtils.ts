@@ -137,7 +137,64 @@ export const isAINotConfigured = (err: any): boolean =>
     err?.message?.includes("AI_BACKEND_NOT_CONFIGURED") ||
     err?.message?.includes("AI_KEY_NOT_CONFIGURED");
 
-export const fmtCurrency = (n: number) => 
+/**
+ * Parse a backend error and pull out a clean Vietnamese message.
+ *
+ * aiAPI.chat() uses raw fetch() (not axios), so the error message contains
+ * the JSON body as a string like:
+ *   {"status":400,"error":"Bad Request","message":"Truy cập bị từ chối: Bạn cần đăng ký Gói AI..."}
+ *
+ * This helper unwraps that JSON so callers can show a friendly toast without
+ * the surrounding `{"status":...}` noise.
+ */
+export const extractAiErrorMessage = (err: any, fallback: string): string => {
+    if (!err) return fallback;
+    const raw: string =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        err?.message ||
+        fallback;
+    if (typeof raw !== "string") return fallback;
+
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{")) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed?.message && typeof parsed.message === "string") {
+                return parsed.message;
+            }
+        } catch {
+            // not JSON — fall through to raw string
+        }
+    }
+    return raw || fallback;
+};
+
+/**
+ * Returns true when the error from the AI backend means the user hasn't
+ * subscribed to an AI tier (or the subscription expired).
+ *
+ * Backend message (see AiService.resolveAiAccess):
+ *   "Truy cập bị từ chối: Bạn cần đăng ký Gói AI để sử dụng Trợ lý ảo!"
+ */
+export const isAiSubscriptionRequired = (err: any): boolean => {
+    const msg = (err?.message ?? "").toString();
+    return msg.includes("Gói AI") && msg.includes("Trợ lý ảo");
+};
+
+/**
+ * Returns true when the AI backend rejected the request because the user has
+ * run out of output tokens in their current billing window.
+ *
+ * Backend message (see AiService.resolveAiAccess):
+ *   "Không đủ token. Vui lòng nạp thêm gói AI!"
+ */
+export const isTokenExhausted = (err: any): boolean => {
+    const msg = (err?.message ?? "").toString();
+    return msg.includes("Không đủ token");
+};
+
+export const fmtCurrency = (n: number) =>
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
 export function buildSearchParams(selections: Record<string, string[]>): any {
