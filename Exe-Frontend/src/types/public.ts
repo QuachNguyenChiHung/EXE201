@@ -40,6 +40,7 @@ export interface User {
   phone: string;
   hash_tax_code?: string;
   ai_tier?: number; // FK AiSubscriptionTier
+  ai_renewal_tier_id?: number | null; // set when the renter's AI subscription window has lapsed and needs renewal
   id_company?: number; // FK Company
 }
 

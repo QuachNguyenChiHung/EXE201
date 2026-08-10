@@ -3,13 +3,15 @@ import { useNavigate, Link } from "react-router";
 import { bookmarksAPI } from "../../services/apiClient";
 import { authService } from "../../services/authService";
 import { userService } from "../../services/userService";
+import { renterService } from "../../services/renterService";
+import { AISubscriptionConfirmModal } from "../components/renter/AISubscriptionConfirmModal";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "../../assets/logo.png";
-import type { User } from "../../types/public";
+import type { User, AiSubscriptionTier } from "../../types/public";
 
 
 export default function LoginPage() {
@@ -27,6 +29,45 @@ export default function LoginPage() {
   const [lockUntil, setLockUntil] = useState<string | null>(null);
   const MAX_ATTEMPTS = 5;
   const navigate = useNavigate();
+
+  // Renewal prompt — shown post-login when the renter's AI subscription window
+  // has lapsed (aiRenewalTierId from the login response). Navigation is held
+  // back until the user confirms or dismisses the modal.
+  const [renewalTiers, setRenewalTiers] = useState<AiSubscriptionTier[]>([]);
+  const [renewalTier, setRenewalTier] = useState<AiSubscriptionTier | null>(null);
+  const [renewalLoading, setRenewalLoading] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+
+  const roleHomePath = (role: string) => {
+    if (role === "RENTER") return "/renter";
+    if (role === "OWNER") return "/warehouse";
+    if (role === "EMPLOYEE") return "/employee";
+    return "/";
+  };
+
+  const handleRenewalConfirm = async () => {
+    if (!renewalTier) return;
+    setRenewalLoading(true);
+    try {
+      const res = await renterService.buyAiTier(renewalTier.id_ai_subscription);
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+        return;
+      }
+      toast.success(`Đăng ký gói "${renewalTier.label}" thành công!`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Không thể gia hạn gói AI. Vui lòng thử lại.");
+    } finally {
+      setRenewalLoading(false);
+      setRenewalTier(null);
+      if (pendingPath) navigate(pendingPath);
+    }
+  };
+
+  const handleRenewalClose = () => {
+    setRenewalTier(null);
+    if (pendingPath) navigate(pendingPath);
+  };
 
   // Auto-unlock khi lock window kết thúc. Tính theo lockUntil từ BE; nếu
   // BE không trả về, fallback 5 phút (giá trị mặc định).
@@ -76,10 +117,28 @@ export default function LoginPage() {
       setAttemptsUsed(0);
       setLocked(false);
       setLockUntil(null);
-      if (user.role === "RENTER") navigate("/renter");
-      else if (user.role === "OWNER") navigate("/warehouse");
-      else if (user.role === "EMPLOYEE") navigate("/employee");
-      else navigate("/");
+
+      const homePath = roleHomePath(user.role);
+
+      // Renter whose AI subscription window lapsed — hold navigation and show
+      // the renewal prompt instead. If the tier lookup fails for any reason,
+      // fail open and navigate normally rather than blocking login.
+      if (user.role === "RENTER" && user.ai_renewal_tier_id) {
+        try {
+          const tiers = await renterService.getAiTiers();
+          const tier = tiers.find(t => t.id_ai_subscription === user.ai_renewal_tier_id);
+          if (tier) {
+            setRenewalTiers(tiers);
+            setRenewalTier(tier);
+            setPendingPath(homePath);
+            return;
+          }
+        } catch {
+          // ignore — fall through to normal navigation below
+        }
+      }
+
+      navigate(homePath);
     } catch (err: any) {
       const status = err?.response?.status;
       // 423 LOCKED — tài khoản đang bị khóa tạm do nhập sai mật khẩu quá nhiều
@@ -275,6 +334,16 @@ export default function LoginPage() {
 
         </div>
       </div>
+
+      {/* currentTierId intentionally omitted — this is a same-tier renewal, not
+          an upgrade, so the modal shows its "Xác nhận đăng ký gói AI" title. */}
+      <AISubscriptionConfirmModal
+        tier={renewalTier}
+        aiTiers={renewalTiers}
+        loading={renewalLoading}
+        onClose={handleRenewalClose}
+        onConfirm={handleRenewalConfirm}
+      />
     </div>
   );
 }

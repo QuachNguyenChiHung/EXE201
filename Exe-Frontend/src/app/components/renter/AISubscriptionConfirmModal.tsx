@@ -7,9 +7,11 @@ interface Props {
   aiTiers: AiSubscriptionTier[];
   currentTierId?: number;
   isDowngrade?: boolean;
+  willSchedule?: boolean;
   loading: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  onForceConfirm?: () => void;
 }
 
 const fmtVnd = (n: number) =>
@@ -22,7 +24,7 @@ const TIER_COLORS = [
   { color: '#8b5cf6', bgColor: '#f5f3ff' },
 ];
 
-export function AISubscriptionConfirmModal({ tier, aiTiers, currentTierId, isDowngrade, loading, onClose, onConfirm }: Props) {
+export function AISubscriptionConfirmModal({ tier, aiTiers, currentTierId, isDowngrade, willSchedule, loading, onClose, onConfirm, onForceConfirm }: Props) {
   if (!tier) return null;
 
   const tierIdx = aiTiers.findIndex(t => t.id_ai_subscription === tier.id_ai_subscription);
@@ -88,6 +90,10 @@ export function AISubscriptionConfirmModal({ tier, aiTiers, currentTierId, isDow
             <p className="text-xs text-[var(--color-text-muted)] mt-3">
               Bạn sẽ chuyển về gói miễn phí. Dịch vụ AI của bạn sẽ bị giới hạn theo gói cơ bản.
             </p>
+          ) : willSchedule ? (
+            <p className="text-xs text-[var(--color-text-muted)] mt-3">
+              Bạn sẽ không bị tính phí ngay. Gói này sẽ được thanh toán và áp dụng khi gói hiện tại của bạn kết thúc.
+            </p>
           ) : tier.price > 0 ? (
             <p className="text-xs text-[var(--color-text-muted)] mt-3">
               Bạn sẽ được chuyển hướng đến cổng thanh toán để hoàn tất giao dịch.
@@ -96,22 +102,33 @@ export function AISubscriptionConfirmModal({ tier, aiTiers, currentTierId, isDow
         </div>
 
         {/* Actions */}
-        <div className="px-6 pb-6 flex gap-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 py-2 text-sm border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors"
-          >
-            Huỷ
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : isDowngrade || tier.price === 0 ? 'Xác nhận' : 'Thanh toán'}
-          </button>
+        <div className="px-6 pb-6 flex flex-col gap-2">
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 py-2 text-sm border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+            >
+              Huỷ
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className="flex-1 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : isDowngrade || tier.price === 0 ? 'Xác nhận' : willSchedule ? 'Lên lịch' : 'Thanh toán'}
+            </button>
+          </div>
+          {willSchedule && onForceConfirm && (
+            <button
+              onClick={onForceConfirm}
+              disabled={loading}
+              className="w-full py-2 text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors disabled:opacity-60"
+            >
+              Đổi ngay (tính phí ngay lập tức)
+            </button>
+          )}
         </div>
       </div>
     </div>

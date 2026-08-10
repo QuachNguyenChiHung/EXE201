@@ -37,6 +37,7 @@ export const authService = {
       status: 'ACTIVE',
       create_at: '',
       id_user: 0,
+      ai_renewal_tier_id: loginData.aiRenewalTierId ?? null,
     };
     localStorage.setItem('user', JSON.stringify(user));
     window.dispatchEvent(new Event('storage'));
