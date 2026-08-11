@@ -41,9 +41,6 @@ export function connect(): void {
   socket.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'SERVER_INFO') {
-        console.log('[WebSocket] Server version:', msg.version, '— updated', msg.updatedDate);
-      }
       const set = listeners.get(msg.type);
       set?.forEach((fn) => fn(msg));
     } catch {
