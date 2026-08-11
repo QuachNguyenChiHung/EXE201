@@ -41,7 +41,16 @@ export interface User {
   hash_tax_code?: string;
   ai_tier?: number; // FK AiSubscriptionTier
   ai_renewal_tier_id?: number | null; // set when the renter's AI subscription window has lapsed and needs renewal
+  sponsor_renewals?: SponsorRenewal[]; // warehouses (owner only) whose sponsor subscription window has lapsed and needs renewal
   id_company?: number; // FK Company
+}
+
+// Sponsor tiers are per-warehouse (unlike AI tiers, which are per-user), so an
+// owner can have several warehouses needing renewal at once — see ai_renewal_tier_id.
+export interface SponsorRenewal {
+  warehouseId: number;
+  warehouseName: string;
+  sponsorTierId: number;
 }
 
 export interface SponsorTier {

@@ -4,14 +4,17 @@ import { bookmarksAPI } from "../../services/apiClient";
 import { authService } from "../../services/authService";
 import { userService } from "../../services/userService";
 import { renterService } from "../../services/renterService";
+import { ownerService } from "../../services/ownerService";
 import { AISubscriptionConfirmModal } from "../components/renter/AISubscriptionConfirmModal";
+import { SponsorRenewalModal } from "../components/owner/SponsorRenewalModal";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "../../assets/logo.png";
-import type { User, AiSubscriptionTier } from "../../types/public";
+import type { User, AiSubscriptionTier, SponsorRenewal } from "../../types/public";
+import type { SponsorTierDTO } from "../../types";
 
 
 export default function LoginPage() {
@@ -37,6 +40,13 @@ export default function LoginPage() {
   const [renewalTier, setRenewalTier] = useState<AiSubscriptionTier | null>(null);
   const [renewalLoading, setRenewalLoading] = useState(false);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
+
+  // Same idea for OWNER: sponsor tiers are per-warehouse rather than per-user,
+  // so a queue of lapsed warehouses is worked through one modal at a time
+  // instead of a single tier id.
+  const [sponsorTiers, setSponsorTiers] = useState<SponsorTierDTO[]>([]);
+  const [sponsorRenewalQueue, setSponsorRenewalQueue] = useState<SponsorRenewal[]>([]);
+  const [sponsorRenewalLoading, setSponsorRenewalLoading] = useState(false);
 
   const roleHomePath = (role: string) => {
     if (role === "RENTER") return "/renter";
@@ -67,6 +77,41 @@ export default function LoginPage() {
   const handleRenewalClose = () => {
     setRenewalTier(null);
     if (pendingPath) navigate(pendingPath);
+  };
+
+  const currentSponsorRenewal = sponsorRenewalQueue[0] ?? null;
+
+  const advanceSponsorRenewalQueue = () => {
+    setSponsorRenewalQueue(q => {
+      const next = q.slice(1);
+      if (next.length === 0 && pendingPath) navigate(pendingPath);
+      return next;
+    });
+  };
+
+  const handleSponsorRenewalConfirm = async () => {
+    if (!currentSponsorRenewal) return;
+    setSponsorRenewalLoading(true);
+    try {
+      const res = await ownerService.buySponsorTier(
+        currentSponsorRenewal.warehouseId,
+        currentSponsorRenewal.sponsorTierId
+      );
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+        return;
+      }
+      toast.success(`Đã gia hạn gói tài trợ cho kho "${currentSponsorRenewal.warehouseName}"!`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Không thể gia hạn gói tài trợ. Vui lòng thử lại.");
+    } finally {
+      setSponsorRenewalLoading(false);
+      advanceSponsorRenewalQueue();
+    }
+  };
+
+  const handleSponsorRenewalClose = () => {
+    advanceSponsorRenewalQueue();
   };
 
   // Auto-unlock khi lock window kết thúc. Tính theo lockUntil từ BE; nếu
@@ -133,6 +178,20 @@ export default function LoginPage() {
             setPendingPath(homePath);
             return;
           }
+        } catch {
+          // ignore — fall through to normal navigation below
+        }
+      }
+
+      // Owner with one or more warehouses whose sponsor subscription window
+      // lapsed — hold navigation and work through the renewal queue instead.
+      if (user.role === "OWNER" && user.sponsor_renewals && user.sponsor_renewals.length > 0) {
+        try {
+          const tiers = await ownerService.getSponsorTiers();
+          setSponsorTiers(tiers);
+          setSponsorRenewalQueue(user.sponsor_renewals);
+          setPendingPath(homePath);
+          return;
         } catch {
           // ignore — fall through to normal navigation below
         }
@@ -343,6 +402,14 @@ export default function LoginPage() {
         loading={renewalLoading}
         onClose={handleRenewalClose}
         onConfirm={handleRenewalConfirm}
+      />
+
+      <SponsorRenewalModal
+        renewal={currentSponsorRenewal}
+        sponsorTiers={sponsorTiers}
+        loading={sponsorRenewalLoading}
+        onClose={handleSponsorRenewalClose}
+        onConfirm={handleSponsorRenewalConfirm}
       />
     </div>
   );

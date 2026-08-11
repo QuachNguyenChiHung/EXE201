@@ -7,6 +7,8 @@ import { fmtVnd, getSponsorTierVisuals } from './SubscriptionUtils';
 interface SubscriptionTierPickerProps {
   sponsorTiers: SponsorTierDTO[];
   selectedWarehouse: CompositeWarehouse | null;
+  /** true when this warehouse's current tier stopped billing and needs renewal. */
+  isLapsed?: boolean;
   onClose: () => void;
   onSelectTier: (warehouse: CompositeWarehouse, tier: SponsorTierDTO) => void;
 }
@@ -14,6 +16,7 @@ interface SubscriptionTierPickerProps {
 export function SubscriptionTierPicker({
   sponsorTiers,
   selectedWarehouse,
+  isLapsed,
   onClose,
   onSelectTier,
 }: SubscriptionTierPickerProps) {
@@ -38,6 +41,7 @@ export function SubscriptionTierPicker({
               {currentVisuals.icon}{' '}
               {currentTierObj ? currentTierObj.label.replace(/\s*\(Top\s*\d+\)/i, '') : 'Miễn phí'}
             </strong>
+            {isLapsed && <span className="text-red-600 font-semibold"> — Đã hết hạn</span>}
           </p>
         </div>
         <button
@@ -78,7 +82,16 @@ export function SubscriptionTierPicker({
               </div>
 
               {isCurrent ? (
-                selectedWarehouse.isSponsor ? (
+                isLapsed && tier.id !== 0 ? (
+                  <Button
+                    size="sm"
+                    className="mt-auto rounded-none text-xs w-full"
+                    style={{ background: visuals.color, color: '#fff' }}
+                    onClick={() => onSelectTier(selectedWarehouse, tier)}
+                  >
+                    Gia hạn ngay
+                  </Button>
+                ) : selectedWarehouse.isSponsor ? (
                   <Button
                     size="sm"
                     variant="outline"

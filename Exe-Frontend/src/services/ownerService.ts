@@ -1,5 +1,5 @@
 import { api } from './asus_api';
-import type { CompositeWarehouse } from '../types';
+import type { CompositeWarehouse, SponsorRenewal } from '../types';
 import type { WarehouseRatingResponse } from '../types/warehouse';
 
 export interface OwnerStatisticResponseDTO {
@@ -11,6 +11,8 @@ export interface OwnerStatisticResponseDTO {
   totalActiveContract: number;
   billingThisMonth: number;
   endingContract: number;
+  activeSponsorWarehouses: number;
+  sponsorsNeedingRenewal: number;
 }
 
 export const ownerService = {
@@ -297,8 +299,24 @@ export const ownerService = {
     const response = await api.get('/owners/sponsor-tiers');
     return response.data;
   },
-  buySponsorTier: async (warehouseId: number | string, sponsorTierId: number): Promise<{ paymentUrl?: string }> => {
-    const response = await api.post(`/owners/warehouses/${warehouseId}/sponsor`, { sponsorTierId });
+
+  /**
+   * Warehouses whose sponsor subscription window has lapsed and still needs
+   * renewal — the sponsor-tier counterpart to the AI flow's aiRenewalTierId,
+   * but a list since sponsor tiers are per-warehouse, not per-user.
+   */
+  getSponsorRenewals: async (): Promise<SponsorRenewal[]> => {
+    const response = await api.get('/owners/sponsor-renewals');
+    return response.data;
+  },
+
+  /**
+   * immediate=false (default): if the warehouse already has an active (non-lapsed)
+   * sponsor subscription, this only schedules the tier switch — no charge now,
+   * applied when the current window ends. immediate=true forces a charge now.
+   */
+  buySponsorTier: async (warehouseId: number | string, sponsorTierId: number, immediate = false): Promise<{ paymentUrl?: string }> => {
+    const response = await api.post(`/owners/warehouses/${warehouseId}/sponsor?immediate=${immediate}`, { sponsorTierId });
     return response.data;
   },
 

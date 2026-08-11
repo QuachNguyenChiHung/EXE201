@@ -9,7 +9,7 @@ import {
   CompositeWarehouse,
   SponsorTierDTO
 } from '../../../types';
-import { Crown } from 'lucide-react';
+import { Crown, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUser } from "../../../utils/auth";
 import { SubscriptionPricingGrid } from '../../components/owner/SubscriptionPricingGrid';
@@ -17,6 +17,7 @@ import { SubscriptionWarehouseList } from '../../components/owner/SubscriptionWa
 import { SubscriptionTierPicker } from '../../components/owner/SubscriptionTierPicker';
 import { SubscriptionConfirmModal } from '../../components/owner/SubscriptionConfirmModal';
 import { ownerService } from '../../../services/ownerService';
+import type { SponsorRenewal } from '../../../types/public';
 
 export default function SubscriptionManagement() {
   const user = getUser();
@@ -26,6 +27,7 @@ export default function SubscriptionManagement() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<CompositeWarehouse | null>(null);
   const [upgrading, setUpgrading] = useState(false);
   const [sponsorTiers, setSponsorTiers] = useState<SponsorTierDTO[]>([]);
+  const [sponsorRenewals, setSponsorRenewals] = useState<SponsorRenewal[]>([]);
 
   const [showConfirm, setShowConfirm] = useState<{
     warehouse: CompositeWarehouse;
@@ -74,11 +76,41 @@ export default function SubscriptionManagement() {
       }
     };
 
+    const fetchRenewals = async () => {
+      try {
+        const renewals = await ownerService.getSponsorRenewals();
+        setSponsorRenewals(renewals);
+      } catch (err) {
+        // silent
+      }
+    };
+
     fetchTiers();
     fetchWarehouses();
+    fetchRenewals();
   }, []);
 
-  const handleUpgrade = async (warehouse: CompositeWarehouse, tier: SponsorTierDTO) => {
+  const refreshWarehouses = async () => {
+    const [response, renewals] = await Promise.all([
+      ownerService.getMyWarehouses(0, 100),
+      ownerService.getSponsorRenewals(),
+    ]);
+    setMyWarehouses(response.content || []);
+    setSponsorRenewals(renewals);
+  };
+
+  // A warehouse's currently chosen sponsor tier stopped actually billing (the
+  // owner never auto-loses the ranking boost, but the tier needs renewing to
+  // keep paying for it going forward).
+  const isLapsed = (warehouse: CompositeWarehouse) =>
+    sponsorRenewals.some(r => r.warehouseId === warehouse.id_warehouse);
+
+  // A different, still-billing sponsor tier is already active on this warehouse —
+  // picking another real tier should schedule the switch rather than charge now.
+  const willScheduleFor = (warehouse: CompositeWarehouse, tier: SponsorTierDTO) =>
+    !!warehouse.isSponsor && tier.id !== 0 && !isLapsed(warehouse);
+
+  const handleUpgrade = async (warehouse: CompositeWarehouse, tier: SponsorTierDTO, force: boolean = false) => {
     setUpgrading(true);
     try {
       if (tier.id === 0) {
@@ -86,18 +118,22 @@ export default function SubscriptionManagement() {
         toast.success(`Đã hủy gói đăng ký cho kho "${warehouse.name}"`);
         setShowConfirm(null);
         setSelectedWarehouse(null);
-        const response = await ownerService.getMyWarehouses(0, 100);
-        setMyWarehouses(response.content || []);
+        await refreshWarehouses();
       } else {
-        const res = await ownerService.buySponsorTier(warehouse.id_warehouse, tier.id);
+        const willSchedule = !force && willScheduleFor(warehouse, tier);
+        const res = await ownerService.buySponsorTier(warehouse.id_warehouse, tier.id, force);
         if (res.paymentUrl) {
           window.location.href = res.paymentUrl;
+        } else if (willSchedule) {
+          toast.success(`Đã lên lịch chuyển kho "${warehouse.name}" sang ${tier.label} — sẽ được thanh toán và áp dụng khi gói hiện tại kết thúc.`);
+          setShowConfirm(null);
+          setSelectedWarehouse(null);
+          await refreshWarehouses();
         } else {
           toast.success(`Đã nâng cấp "${warehouse.name}" lên ${tier.label}!`);
           setShowConfirm(null);
           setSelectedWarehouse(null);
-          const response = await ownerService.getMyWarehouses(0, 100);
-          setMyWarehouses(response.content || []);
+          await refreshWarehouses();
         }
       }
     } catch (err: any) {
@@ -133,6 +169,26 @@ export default function SubscriptionManagement() {
           </p>
         </div>
 
+        {sponsorRenewals.length > 0 && (
+          <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 flex items-start gap-3">
+            <XCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="text-sm text-red-600 space-y-1">
+              <p>
+                {sponsorRenewals.length === 1
+                  ? `Gói tài trợ của kho "${sponsorRenewals[0].warehouseName}" đã hết hạn — hãy gia hạn để tiếp tục được ưu tiên hiển thị.`
+                  : `${sponsorRenewals.length} kho có gói tài trợ đã hết hạn — hãy gia hạn để tiếp tục được ưu tiên hiển thị:`}
+              </p>
+              {sponsorRenewals.length > 1 && (
+                <ul className="list-disc list-inside">
+                  {sponsorRenewals.map(r => (
+                    <li key={r.warehouseId}>{r.warehouseName}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Pricing grid */}
         <SubscriptionPricingGrid sponsorTiers={sponsorTiers} />
 
@@ -154,6 +210,7 @@ export default function SubscriptionManagement() {
         <SubscriptionTierPicker
           sponsorTiers={sponsorTiers}
           selectedWarehouse={selectedWarehouse}
+          isLapsed={!!selectedWarehouse && isLapsed(selectedWarehouse)}
           onClose={() => setSelectedWarehouse(null)}
           onSelectTier={(warehouse, tier) => setShowConfirm({ warehouse, tier })}
         />
@@ -164,8 +221,10 @@ export default function SubscriptionManagement() {
         sponsorTiers={sponsorTiers}
         showConfirm={showConfirm}
         upgrading={upgrading}
+        willSchedule={!!showConfirm && willScheduleFor(showConfirm.warehouse, showConfirm.tier)}
         onClose={() => setShowConfirm(null)}
-        onConfirm={() => showConfirm && handleUpgrade(showConfirm.warehouse, showConfirm.tier)}
+        onConfirm={() => showConfirm && handleUpgrade(showConfirm.warehouse, showConfirm.tier, false)}
+        onForceConfirm={() => showConfirm && handleUpgrade(showConfirm.warehouse, showConfirm.tier, true)}
       />
 
       {/* Payment Result Modal */}

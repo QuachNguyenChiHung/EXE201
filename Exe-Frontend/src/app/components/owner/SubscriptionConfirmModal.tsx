@@ -8,16 +8,23 @@ interface SubscriptionConfirmModalProps {
   sponsorTiers: SponsorTierDTO[];
   showConfirm: { warehouse: CompositeWarehouse; tier: SponsorTierDTO } | null;
   upgrading: boolean;
+  /** A different, already-billing sponsor tier is active on this warehouse — picking
+   * another one should schedule the switch (applied once the current window ends)
+   * rather than charge immediately, unless the owner explicitly forces it. */
+  willSchedule?: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  onForceConfirm?: () => void;
 }
 
 export function SubscriptionConfirmModal({
   sponsorTiers,
   showConfirm,
   upgrading,
+  willSchedule,
   onClose,
   onConfirm,
+  onForceConfirm,
 }: SubscriptionConfirmModalProps) {
   if (!showConfirm) return null;
 
@@ -93,26 +100,38 @@ export function SubscriptionConfirmModal({
           </div>
 
           <p className="text-xs text-[var(--color-text-muted)]">
-            Thanh toán sẽ được xử lý tự động hàng tháng. Bạn có thể thay đổi gói bất kỳ
-            lúc nào.
+            {willSchedule
+              ? 'Bạn sẽ không bị tính phí ngay. Gói này sẽ được thanh toán và áp dụng khi gói hiện tại kết thúc.'
+              : 'Thanh toán sẽ được xử lý tự động hàng tháng. Bạn có thể thay đổi gói bất kỳ lúc nào.'}
           </p>
         </div>
-        <div className="px-5 py-4 border-t border-[var(--color-border)] flex justify-end gap-2">
-          <Button
-            variant="outline"
-            className="rounded-none"
-            disabled={upgrading}
-            onClick={onClose}
-          >
-            Huỷ
-          </Button>
-          <Button
-            className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)]"
-            disabled={upgrading}
-            onClick={onConfirm}
-          >
-            {upgrading ? 'Đang xử lý...' : 'Xác nhận'}
-          </Button>
+        <div className="px-5 py-4 border-t border-[var(--color-border)] flex flex-col gap-2">
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              className="rounded-none"
+              disabled={upgrading}
+              onClick={onClose}
+            >
+              Huỷ
+            </Button>
+            <Button
+              className="rounded-none bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)]"
+              disabled={upgrading}
+              onClick={onConfirm}
+            >
+              {upgrading ? 'Đang xử lý...' : willSchedule ? 'Lên lịch' : 'Xác nhận'}
+            </Button>
+          </div>
+          {willSchedule && onForceConfirm && (
+            <button
+              onClick={onForceConfirm}
+              disabled={upgrading}
+              className="w-full py-2 text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors disabled:opacity-60"
+            >
+              Đổi ngay (tính phí ngay lập tức)
+            </button>
+          )}
         </div>
       </div>
     </div>

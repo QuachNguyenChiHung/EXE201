@@ -38,6 +38,7 @@ export const authService = {
       create_at: '',
       id_user: 0,
       ai_renewal_tier_id: loginData.aiRenewalTierId ?? null,
+      sponsor_renewals: loginData.sponsorRenewals ?? [],
     };
     localStorage.setItem('user', JSON.stringify(user));
     window.dispatchEvent(new Event('storage'));
