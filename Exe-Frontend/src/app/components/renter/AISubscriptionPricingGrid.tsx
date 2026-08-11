@@ -132,31 +132,6 @@ export function AISubscriptionPricingGrid({ aiTiers, currentTierId, currentTierI
                 )}
               </div>
 
-              {/* Benefits */}
-              <ul className="space-y-2 flex-1 mt-2">
-                <li className="flex items-start gap-2 text-sm">
-                  <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                  <span className="text-[var(--color-text-secondary)]">Tìm kiếm kho lạnh bằng AI</span>
-                </li>
-                {idx > 0 && (
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                    <span className="text-[var(--color-text-secondary)]">So sánh chi tiết</span>
-                  </li>
-                )}
-                {idx > 1 && (
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                    <span className="text-[var(--color-text-secondary)]">Hỗ trợ ưu tiên</span>
-                  </li>
-                )}
-                {idx > 2 && (
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                    <span className="text-[var(--color-text-secondary)]">Không giới hạn chat</span>
-                  </li>
-                )}
-              </ul>
 
               {/* CTA */}
               <button

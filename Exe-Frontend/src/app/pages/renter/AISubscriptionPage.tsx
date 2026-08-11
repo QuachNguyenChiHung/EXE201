@@ -3,7 +3,7 @@ import { Navbar } from '../../components/Navbar';
 import { Footer } from '../../components/Footer';
 import { Sparkles, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { renterService } from '../../../services/renterService';
+import { renterService, RenterStatisticResponseDTO } from '../../../services/renterService';
 import { AiSubscriptionTier } from '../../../types/public';
 import { AISubscriptionPricingGrid } from '../../components/renter/AISubscriptionPricingGrid';
 import { AISubscriptionConfirmModal } from '../../components/renter/AISubscriptionConfirmModal';
@@ -11,18 +11,23 @@ import { AISubscriptionConfirmModal } from '../../components/renter/AISubscripti
 export default function AISubscriptionPage() {
   const [aiTiers, setAiTiers] = useState<AiSubscriptionTier[]>([]);
   const [activeTierId, setActiveTierId] = useState<number | undefined>(undefined);
+  const [stats, setStats] = useState<RenterStatisticResponseDTO | null>(null);
   const [loadingTiers, setLoadingTiers] = useState(true);
   const [buying, setBuying] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [selectedTier, setSelectedTier] = useState<AiSubscriptionTier | null>(null);
 
+  const refreshStatus = async (tiers: AiSubscriptionTier[]) => {
+    const fetchedStats = await renterService.getDashboardStatistics(0);
+    setStats(fetchedStats);
+    const matched = tiers.find((t: AiSubscriptionTier) => t.label === fetchedStats.activeAiTierLabel);
+    setActiveTierId(matched ? matched.id_ai_subscription : undefined);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tiers, aiStatus] = await Promise.all([
-          renterService.getAiTiers(),
-          renterService.getRenterAiSubscriptionStatus(),
-        ]);
+        const tiers = await renterService.getAiTiers();
 
         const freeTier: AiSubscriptionTier = {
           id_ai_subscription: 0,
@@ -36,12 +41,9 @@ export default function AISubscriptionPage() {
           update_at: '',
         };
 
-        setAiTiers(
-          [freeTier, ...(Array.isArray(tiers) ? tiers : [])]
-            .sort((a, b) => a.price - b.price)
-        );
-        const matched = tiers.find((t: AiSubscriptionTier) => t.label === aiStatus.tierLabel);
-        setActiveTierId(matched ? matched.id_ai_subscription : undefined);
+        const allTiers = [freeTier, ...(Array.isArray(tiers) ? tiers : [])].sort((a, b) => a.price - b.price);
+        setAiTiers(allTiers);
+        await refreshStatus(tiers);
       } catch {
         setAiTiers([]);
       } finally {
@@ -56,6 +58,13 @@ export default function AISubscriptionPage() {
   const isCurrentFreeTier = activeTierId === undefined || (activeTier?.price ?? 0) === 0;
   const isDowngrade = selectedTier !== null && activeTierId !== undefined
     && currentTierIndex > aiTiers.findIndex(t => t.id_ai_subscription === selectedTier.id_ai_subscription);
+  // A different (non-free) tier is already active right now — picking anything else should
+  // schedule rather than charge immediately, unless the user explicitly forces it.
+  const willSchedule = activeTierId !== undefined && !isCurrentFreeTier;
+  // "On" (chosen) differs from "active" (actually granting access) — a switch is already
+  // scheduled and waiting for the current window to run out.
+  const hasScheduledSwitch = !!stats?.activeAiTierLabel && stats.aiSubscriptionInUse !== stats.activeAiTierLabel;
+  const isLapsed = !stats?.activeAiTierLabel && !!stats?.aiSubscriptionInUse && stats.aiSubscriptionInUse !== 'Chưa đăng ký';
 
   const handleSelectTier = (tier: AiSubscriptionTier) => {
     setSelectedTier(tier);
@@ -66,9 +75,7 @@ export default function AISubscriptionPage() {
     try {
       await renterService.cancelAiSubscription();
       toast.success('Đã hủy gói AI thành công!');
-      const aiStatus = await renterService.getRenterAiSubscriptionStatus();
-      const matched = aiTiers.find((t: AiSubscriptionTier) => t.label === aiStatus.tierLabel);
-      setActiveTierId(matched ? matched.id_ai_subscription : undefined);
+      await refreshStatus(aiTiers);
     } catch (err: any) {
       toast.error(err?.message ?? 'Không thể hủy gói AI. Vui lòng thử lại.');
     } finally {
@@ -76,27 +83,27 @@ export default function AISubscriptionPage() {
     }
   };
 
-  const handleConfirmPurchase = async () => {
+  const handleConfirmPurchase = async (force: boolean = false) => {
     if (!selectedTier) return;
     setBuying(true);
     try {
-      if (isDowngrade && selectedTier.price === 0) {
+      if (!force && isDowngrade && selectedTier.price === 0) {
         await renterService.cancelAiSubscription();
         toast.success('Đã hủy gói AI thành công!');
         setSelectedTier(null);
-        const aiStatus = await renterService.getRenterAiSubscriptionStatus();
-        const matched = aiTiers.find((t: AiSubscriptionTier) => t.label === aiStatus.tierLabel);
-        setActiveTierId(matched ? matched.id_ai_subscription : undefined);
+        await refreshStatus(aiTiers);
       } else {
-        const res = await renterService.buyAiTier(selectedTier.id_ai_subscription);
+        const res = await renterService.buyAiTier(selectedTier.id_ai_subscription, force);
         if (res.paymentUrl) {
           window.location.href = res.paymentUrl;
+        } else if (!force && willSchedule) {
+          toast.success(`Đã lên lịch chuyển sang gói "${selectedTier.label}" — sẽ được thanh toán và áp dụng khi gói hiện tại kết thúc.`);
+          setSelectedTier(null);
+          await refreshStatus(aiTiers);
         } else {
           toast.success(`Đăng ký gói "${selectedTier.label}" thành công!`);
           setSelectedTier(null);
-          const aiStatus = await renterService.getRenterAiSubscriptionStatus();
-          const matched = aiTiers.find((t: AiSubscriptionTier) => t.label === aiStatus.tierLabel);
-          setActiveTierId(matched ? matched.id_ai_subscription : undefined);
+          await refreshStatus(aiTiers);
         }
       }
     } catch (err: any) {
@@ -159,6 +166,24 @@ export default function AISubscriptionPage() {
           </div>
         )}
 
+        {isLapsed && (
+          <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 flex items-center gap-3">
+            <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+            <p className="text-sm text-red-600">
+              Gói {stats?.aiSubscriptionInUse} đã hết hạn — hãy gia hạn để tiếp tục sử dụng Trợ lý AI.
+            </p>
+          </div>
+        )}
+
+        {hasScheduledSwitch && (
+          <div className="mb-6 px-4 py-3 bg-[var(--color-accent-50)] border border-[var(--color-accent-200)] flex items-center gap-3">
+            <Sparkles className="h-4 w-4 text-[var(--color-accent)] shrink-0" />
+            <p className="text-sm text-[var(--color-accent)]">
+              Gói {stats?.aiSubscriptionInUse} đã được chọn — sẽ áp dụng khi gói {stats?.activeAiTierLabel} hiện tại kết thúc.
+            </p>
+          </div>
+        )}
+
         {/* Pricing grid */}
         {loadingTiers ? (
           <div className="text-center py-12 text-[var(--color-text-muted)]">Đang tải gói AI...</div>
@@ -185,9 +210,11 @@ export default function AISubscriptionPage() {
         aiTiers={aiTiers}
         currentTierId={activeTierId}
         isDowngrade={isDowngrade}
+        willSchedule={willSchedule && !(isDowngrade && selectedTier?.price === 0)}
         loading={buying}
         onClose={() => setSelectedTier(null)}
-        onConfirm={handleConfirmPurchase}
+        onConfirm={() => handleConfirmPurchase(false)}
+        onForceConfirm={() => handleConfirmPurchase(true)}
       />
 
       <Footer />

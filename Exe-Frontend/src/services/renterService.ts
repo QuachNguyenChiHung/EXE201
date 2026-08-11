@@ -100,6 +100,7 @@ export interface RenterStatisticResponseDTO {
     totalOwnerUpdatedRequest: number;
     totalActiveContract: number;
     endOfContract: number;
+    activeAiTierLabel?: string | null;
 }
 
 export const renterService = {
@@ -233,8 +234,8 @@ export const renterService = {
         return (response.data || []).map(mapAiTierResponse);
     },
 
-    buyAiTier: async (tierId: number): Promise<{ paymentUrl?: string }> => {
-        const response = await api.post(`/renters/ai-tiers/${tierId}/pay`);
+    buyAiTier: async (tierId: number, immediate: boolean = false): Promise<{ paymentUrl?: string }> => {
+        const response = await api.post(`/renters/ai-tiers/${tierId}/pay`, null, { params: { immediate } });
         return response.data;
     },
 
@@ -251,8 +252,8 @@ export const renterService = {
     getRenterAiSubscriptionStatus: async (): Promise<{ hasActiveTier: boolean; tierLabel?: string }> => {
         try {
             const stats = await api.get<RenterStatisticResponseDTO>('/renters/statistics', { params: { expireDays: 0 } });
-            const hasActiveTier = stats.data.aiSubscriptionInUse !== 'Chưa đăng ký' && !!stats.data.aiSubscriptionInUse;
-            return { hasActiveTier, tierLabel: stats.data.aiSubscriptionInUse };
+            const hasActiveTier = !!stats.data.activeAiTierLabel;
+            return { hasActiveTier, tierLabel: stats.data.activeAiTierLabel ?? undefined };
         } catch {
             return { hasActiveTier: false };
         }
