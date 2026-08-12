@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { getUser } from '../../../utils/auth';
-import { ArrowLeft, BarChart3, Loader2, TrendingUp, Award, Star, Users as UsersIcon } from "lucide-react";
+import { ArrowLeft, BarChart3, Loader2, TrendingUp, Award, Star, Users as UsersIcon, Trash2 } from "lucide-react";
 import {
   PieChart, Pie, Cell, Legend, Tooltip as RechartsTooltip, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -71,16 +71,21 @@ export default function TransactionAnalytics() {
   const [summary, setSummary] = useState<TransactionAnalyticsSummaryDTO | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
+  const fetchSummary = useCallback(() => {
+    setLoadingSummary(true);
+    employeeService.getTransactionAnalyticsSummary()
+      .then(setSummary)
+      .catch((err) => toast.error(extractErrorMessage(err, 'Không thể tải dữ liệu phân tích giao dịch')))
+      .finally(() => setLoadingSummary(false));
+  }, []);
+
   useEffect(() => {
     if (!user || user.role !== "EMPLOYEE") {
       navigate("/login");
       return;
     }
-    employeeService.getTransactionAnalyticsSummary()
-      .then(setSummary)
-      .catch((err) => toast.error(extractErrorMessage(err, 'Không thể tải dữ liệu phân tích giao dịch')))
-      .finally(() => setLoadingSummary(false));
-  }, [user?.role, navigate]);
+    fetchSummary();
+  }, [user?.role, navigate, fetchSummary]);
 
   // ── Line chart (revenue over time) ────────────────────────────────────────
   const [granularity, setGranularity] = useState<'day' | 'month' | 'year'>('day');
@@ -89,13 +94,17 @@ export default function TransactionAnalytics() {
   const [revenuePoints, setRevenuePoints] = useState<RevenuePointDTO[]>([]);
   const [loadingChart, setLoadingChart] = useState(true);
 
-  useEffect(() => {
+  const fetchChart = useCallback(() => {
     setLoadingChart(true);
     employeeService.getTransactionRevenueTimeseries(granularity, chartStartDate, chartEndDate)
       .then(setRevenuePoints)
       .catch((err) => toast.error(extractErrorMessage(err, 'Không thể tải dữ liệu doanh thu theo thời gian')))
       .finally(() => setLoadingChart(false));
   }, [granularity, chartStartDate, chartEndDate]);
+
+  useEffect(() => {
+    fetchChart();
+  }, [fetchChart]);
 
   // ── Raw transaction table ─────────────────────────────────────────────────
   const [transactions, setTransactions] = useState<EmployeeTransactionDTO[]>([]);
@@ -108,6 +117,7 @@ export default function TransactionAnalytics() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchTransactions = useCallback(() => {
     setLoadingTable(true);
@@ -137,6 +147,25 @@ export default function TransactionAnalytics() {
     setter(value);
     setPage(0);
   }, []);
+
+  // Soft-deletes a transaction (backend marks it DELETED) — it then drops out
+  // of every metric on this page too, so the summary tiles/charts need a
+  // refetch alongside the table, not just a local row removal.
+  const handleDelete = useCallback((tx: EmployeeTransactionDTO) => {
+    if (!confirm(`Xóa giao dịch #${tx.id}? Giao dịch sẽ không còn hiển thị hoặc được tính vào số liệu thống kê. Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+    setDeletingId(tx.id);
+    employeeService.deleteTransaction(tx.id)
+      .then(() => {
+        toast.success(`Đã xóa giao dịch #${tx.id}`);
+        fetchTransactions();
+        fetchSummary();
+        fetchChart();
+      })
+      .catch((err) => toast.error(extractErrorMessage(err, 'Không thể xóa giao dịch')))
+      .finally(() => setDeletingId(null));
+  }, [fetchTransactions, fetchSummary, fetchChart]);
 
   const statTiles = useMemo(() => [
     {
@@ -431,11 +460,13 @@ export default function TransactionAnalytics() {
                     <th className="px-4 py-3 font-semibold">Trạng thái</th>
                     <th className="px-4 py-3 font-semibold">Ngày tạo</th>
                     <th className="px-4 py-3 font-semibold">Mô tả</th>
+                    <th className="px-4 py-3 font-semibold text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
                   {transactions.map(tx => {
                     const statusCfg = STATUS_CONFIG[tx.status] ?? { label: tx.status, color: '#6b7280', bg: 'rgba(107,114,128,0.1)' };
+                    const isDeleting = deletingId === tx.id;
                     return (
                       <tr key={tx.id} className="hover:bg-[var(--color-bg-secondary)]">
                         <td className="px-4 py-3 font-medium">#{tx.id}</td>
@@ -467,6 +498,17 @@ export default function TransactionAnalytics() {
                         </td>
                         <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                           {tx.description ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleDelete(tx)}
+                            disabled={isDeleting}
+                            title="Xóa giao dịch"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                          >
+                            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                            Xóa
+                          </button>
                         </td>
                       </tr>
                     );

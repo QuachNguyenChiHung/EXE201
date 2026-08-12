@@ -253,6 +253,11 @@ export const employeeService = {
     return Array.isArray(data) ? data : [];
   },
 
+  deleteTransaction: async (id: number): Promise<string> => {
+    const { data } = await api.delete(`/employees/transactions/${id}`);
+    return data;
+  },
+
   // =============== AI TIERS ===============
   getAllAiTiers: async (): Promise<any[]> => {
     const { data } = await api.get('/employees/ai-tiers');
