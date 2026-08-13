@@ -68,25 +68,7 @@ export function SubscriptionPricingGrid({ sponsorTiers }: Props) {
                 </span>
               </div>
 
-              {/* Benefits */}
-              <ul className="space-y-2 flex-1 mt-2">
-                 <li className="flex items-start gap-2 text-sm">
-                   <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                   <span className="text-[var(--color-text-secondary)]">Hiển thị trong kết quả tìm kiếm</span>
-                 </li>
-                 {tier.priorityLevel > 0 && (
-                   <li className="flex items-start gap-2 text-sm">
-                     <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                     <span className="text-[var(--color-text-secondary)]">Nhãn dán nổi bật</span>
-                   </li>
-                 )}
-                 {tier.priorityLevel > 1 && (
-                   <li className="flex items-start gap-2 text-sm">
-                     <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: visuals.color }} />
-                     <span className="text-[var(--color-text-secondary)]">Hỗ trợ riêng</span>
-                   </li>
-                 )}
-              </ul>
+
             </div>
           </div>
         );
