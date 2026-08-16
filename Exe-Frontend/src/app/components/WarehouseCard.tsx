@@ -230,11 +230,7 @@ export function WarehouseCard({
           <div
             className="absolute top-0 left-0 px-2 py-1 font-bold"
             style={{
-              background: warehouse.sponsor_type === 3
-                ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
-                : warehouse.sponsor_type === 2
-                  ? 'linear-gradient(135deg, #475569 0%, #64748b 100%)'
-                  : 'linear-gradient(135deg, #b45309 0%, #d97706 100%)',
+              background: '#2563EB',
               color: '#fff',
               fontSize: compact ? '0.55rem' : '0.6rem',
               letterSpacing: '0.04em',
