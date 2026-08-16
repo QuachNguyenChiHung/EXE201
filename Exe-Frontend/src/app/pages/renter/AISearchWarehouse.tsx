@@ -123,18 +123,19 @@ export default function AISearchWarehouse() {
             .catch(() => { });
     }, []);
 
-    // Fetch all warehouses on mount so the AI has a full candidate pool immediately.
+    // Fetch all warehouses on mount so the AI has a full candidate pool immediately
+    // and the right-hand grid shows the full list right away.
     useEffect(() => {
-        setCandidatesLoading(true);
-        renterService.searchWarehouses({ page: 0, size: 50 })
-            .then((data) => {
-                const list = data.content || [];
-                setWarehouseEntitiesList(list);
-            })
-            .catch(() => { })
-            .finally(() => setCandidatesLoading(false));
+        refreshWarehouseList();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Whenever the user switches between Standard and Context mode, re-fetch the
+    // full warehouse list and reveal it on the right-hand grid.
+    useEffect(() => {
+        refreshWarehouseList();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchMode]);
 
     // Restore the latest saved conversation on mount.
     // Guard: if the user sends a message before the fetch returns, skip restore
@@ -260,6 +261,21 @@ export default function AISearchWarehouse() {
             return [];
         }
     }, []);
+
+    // Fetch the full warehouse list, populate both the AI candidate pool AND the
+    // right-hand result grid. Used on mount and whenever the user toggles
+    // Standard <-> Context mode.
+    const refreshWarehouseList = useCallback(async () => {
+        setCandidatesLoading(true);
+        try {
+            const list = await fetchInitialCandidates();
+            setWarehouseEntitiesList(list);
+            setDisplayedList(list);
+            setWarehousesRevealed(true);
+        } finally {
+            setCandidatesLoading(false);
+        }
+    }, [fetchInitialCandidates]);
 
     const handleApplyFilters = useCallback(async () => {
         setCandidatesLoading(true);
