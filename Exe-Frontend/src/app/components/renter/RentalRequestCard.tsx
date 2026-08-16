@@ -687,7 +687,7 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                 className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-border)]"
                 style={{ background: "var(--color-bg-secondary)" }}
             >
-                {(status === "PENDING" || status === "NEGOTIATING") && (
+                {(status === "PENDING" || status === "NEGOTIATING" || status === "APPROVED") && (
                     <button
                         onClick={() => onWithdraw(request.id_rentRequest)}
                         className="text-xs px-3 py-1.5 border transition-colors hover:border-[var(--color-error)]"
