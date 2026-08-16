@@ -6,7 +6,7 @@ import { CompositeContract, CompositeWarehouse, ContractDetailDTO } from '../../
 import { ArrowLeft, Package, Snowflake } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { FilterTab } from '../../components/renter/RentedPropertyUtils';
+import { FilterTab, mapBackendStatus } from '../../components/renter/RentedPropertyUtils';
 import { RentedPropertyFilters } from '../../components/renter/RentedPropertyFilters';
 import { RentedPropertyCard } from '../../components/renter/RentedPropertyCard';
 import { getUser } from '../../../utils/auth';
@@ -20,6 +20,10 @@ export default function RentedProperties() {
   const [tab, setTab] = useState<FilterTab>('all');
   const [renterContracts, setRenterContracts] = useState<CompositeContract[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(true);
+  /** Backend-reported count of ACTIVE contracts (accurate, not derived from list) */
+  const [statsActiveCount, setStatsActiveCount] = useState<number | null>(null);
+  /** Backend-reported count of contracts whose end_at is within the next 30 days */
+  const [statsExpiringSoonCount, setStatsExpiringSoonCount] = useState<number | null>(null);
 
   const buildContractDetails = (details: any[]): ContractDetailDTO[] => {
     if (!details || details.length === 0) return [];
@@ -39,9 +43,10 @@ export default function RentedProperties() {
   const fetchContracts = async () => {
     setLoadingContracts(true);
     try {
-      const [contractsRes, requestsRes] = await Promise.all([
+      const [contractsRes, requestsRes, dashboardStats] = await Promise.all([
         renterService.getMyContracts(0, 100),
         renterService.getMyRequests(0, 100).catch(() => ({ content: [] })),
+        renterService.getDashboardStatistics(30).catch(() => null),
       ]);
 
       const requestDetailsMap: Record<number, any[]> = {};
@@ -67,6 +72,8 @@ export default function RentedProperties() {
       });
 
       setRenterContracts(contracts);
+      setStatsActiveCount(dashboardStats?.totalActiveContract ?? null);
+      setStatsExpiringSoonCount(dashboardStats?.endOfContract ?? null);
     } catch (err) {
       // silent
     } finally {
@@ -108,12 +115,19 @@ export default function RentedProperties() {
     }
   };
 
-  const filtered = renterContracts.filter(c => tab === 'all' || c.status === tab);
+  const filtered = renterContracts.filter(c => tab === 'all' || mapBackendStatus(c.status, c.ownerSigned, c.renterSigned) === tab);
 
   const counts = renterContracts.reduce(
-    (acc, c) => { acc[c.status] = (acc[c.status] || 0) + 1; return acc; },
+    (acc, c) => {
+      const uiKey = mapBackendStatus(c.status, c.ownerSigned, c.renterSigned);
+      acc[uiKey] = (acc[uiKey] || 0) + 1;
+      return acc;
+    },
     {} as Record<string, number>,
   );
+  // Override with authoritative backend counts where available.
+  if (statsActiveCount != null) counts.active = statsActiveCount;
+  if (statsExpiringSoonCount != null) counts.expiring_soon = statsExpiringSoonCount;
 
   const pendingSignCount = renterContracts.filter(c =>
     c.status === 'pending_renter' || c.status === 'PENDING'

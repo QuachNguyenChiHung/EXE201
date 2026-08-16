@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from '../../components/Footer';
 import { CompositeWarehouse } from "../../../types";
 import { toast } from "sonner";
-import { Star, List, ChevronUp, ChevronDown } from "lucide-react";
+import { Star, List, ChevronUp, ChevronDown, FileText, Inbox } from "lucide-react";
 import { useBookmarks } from "../../../hooks/useBookmarks";
-import { renterService } from "../../../services/renterService";
+import { renterService, CompositeContract } from "../../../services/renterService";
 import { useWebSocketMessage } from "../../../hooks/useWebSocket";
 
 import { WarehouseDetailGallery } from "../../components/renter/WarehouseDetailGallery";
@@ -23,6 +23,29 @@ const STATUS_CFG: Record<string, { label: string; badgeClass: string }> = {
     RENTED: { label: 'Đã cho thuê hết', badgeClass: 'bg-[rgba(59,130,246,0.1)] text-[#3b82f6]' },
     INACTIVE: { label: 'Ngừng hoạt động', badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]' },
 };
+
+const STATUS_PRIORITY: Record<string, number> = {
+    ACTIVE: 0,
+    COMPLETED: 1,
+    CANCELED: 2,
+    PENDING: 3,
+};
+
+const CONTRACT_STATUS_CFG: Record<string, { label: string; badgeClass: string }> = {
+    ACTIVE:    { label: 'Đang hiệu lực', badgeClass: 'bg-[rgba(34,197,94,0.1)] text-[var(--color-success)]' },
+    COMPLETED: { label: 'Đã kết thúc',  badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]' },
+    CANCELED:  { label: 'Đã hủy',       badgeClass: 'bg-[rgba(239,68,68,0.1)] text-[var(--color-error)]' },
+    PENDING:   { label: 'Chờ ký kết',   badgeClass: 'bg-[rgba(245,158,11,0.1)] text-[var(--color-warning)]' },
+};
+
+const formatDate = (iso?: string) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN');
+};
+
+const formatVnd = (n?: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n ?? 0);
 
 export default function WarehouseDetail() {
     const { id } = useParams<{ id: string }>();
@@ -47,6 +70,8 @@ export default function WarehouseDetail() {
     const [reviewContractId, setReviewContractId] = useState<string | undefined>();
     const [reviewContractRef, setReviewContractRef] = useState<string | undefined>();
     const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
+    /** Contracts the renter has for this warehouse, kept for the history section */
+    const [myContracts, setMyContracts] = useState<CompositeContract[]>([]);
 
     const fetchWarehouse = useCallback((opts?: { silent?: boolean }) => {
         if (!id) return;
@@ -69,24 +94,38 @@ export default function WarehouseDetail() {
         fetchWarehouse();
     }, [fetchWarehouse]);
 
-    // Check if the logged-in renter has any contract for this warehouse
+    // Check if the logged-in renter has any contract for this warehouse.
+    // The matched list is kept in `myContracts` and reused for the history
+    // section rendered below the rental sidebar.
     useEffect(() => {
         if (!warehouse?.id_warehouse || !warehouse?.name) return;
         setContractsLoading(true);
         renterService.getMyContracts(0, 100)
             .then(res => {
-                const matched = (res.content || []).find(
-                    (c: any) => c.warehouseName === warehouse.name
+                const matched = (res.content || []).filter((c: any) =>
+                    c.warehouseName === warehouse.name ||
+                    String(c.id_warehouse ?? '') === String(warehouse.id_warehouse)
                 );
-                setCanReview(!!matched);
-                if (matched) {
-                    setReviewContractId(String(matched.id_contract));
-                    setReviewContractRef(matched.contractRef ?? String(matched.id_contract));
+                setMyContracts(matched);
+                const active = matched.find(c => c.status === 'ACTIVE') ?? matched[0];
+                setCanReview(!!active);
+                if (active) {
+                    setReviewContractId(String(active.id_contract));
+                    setReviewContractRef(active.contractRef ?? String(active.id_contract));
                 }
             })
-            .catch(() => setCanReview(false))
+            .catch(() => { setCanReview(false); setMyContracts([]); })
             .finally(() => setContractsLoading(false));
     }, [warehouse?.id_warehouse]);
+
+    const sortedContracts = useMemo(() => {
+        return [...myContracts].sort((a, b) => {
+            const pa = STATUS_PRIORITY[a.status] ?? 99;
+            const pb = STATUS_PRIORITY[b.status] ?? 99;
+            if (pa !== pb) return pa - pb;
+            return new Date(b.start_at).getTime() - new Date(a.start_at).getTime();
+        });
+    }, [myContracts]);
 
     useWebSocketMessage('WAREHOUSE_STATUS_CHANGED', useCallback((msg: any) => {
         if (!id || String(msg.warehouseId) !== String(id)) return;
@@ -138,7 +177,7 @@ export default function WarehouseDetail() {
         statusKey === 'RENTED'
             ? (totalAvailableCapacity > 0
                 ? { label: 'Kho còn chỗ trống', badgeClass: 'bg-[rgba(34,197,94,0.1)] text-[var(--color-success)]' }
-                : STATUS_CFG.RENTED)
+                : { label: STATUS_CFG.RENTED.label, badgeClass: STATUS_CFG.RENTED.badgeClass })
             : statusCfg;
 
     return (
@@ -239,6 +278,61 @@ export default function WarehouseDetail() {
                             refreshKey={reviewRefreshKey}
                             onReviewSubmitted={() => setReviewRefreshKey(k => k + 1)}
                         />
+
+                        {/* ── Contract History (đăng kí thuê kho) ── */}
+                        <section className="bento-card p-6">
+                            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-[var(--color-primary)]" />
+                                Lịch sử hợp đồng của bạn
+                            </h2>
+
+                            {contractsLoading ? (
+                                <div className="space-y-3">
+                                    {[0, 1, 2].map(i => (
+                                        <div key={i} className="h-16 rounded-md bg-[var(--color-bg)] animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : sortedContracts.length === 0 ? (
+                                <div className="text-center py-10 text-[var(--color-text-muted)]">
+                                    <Inbox className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                                    Bạn chưa có hợp đồng nào với kho này.
+                                </div>
+                            ) : (
+                                <ul className="divide-y divide-[var(--color-border)]">
+                                    {sortedContracts.map(c => {
+                                        const cfg = CONTRACT_STATUS_CFG[c.status] ?? {
+                                            label: c.status,
+                                            badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]',
+                                        };
+                                        return (
+                                            <li key={c.id_contract} className="py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-medium text-sm">
+                                                            #{c.contractRef ?? c.id_contract}
+                                                        </span>
+                                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded ${cfg.badgeClass}`}>
+                                                            {cfg.label}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
+                                                        {formatDate(c.start_at)} → {formatDate(c.end_at)}
+                                                    </p>
+                                                    {c.cargo_description && (
+                                                        <p className="text-xs text-[var(--color-text-muted)] truncate">
+                                                            {c.cargo_description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm font-semibold whitespace-nowrap">
+                                                    {formatVnd(c.total_price)}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </section>
                     </div>
 
                     {/* Right Column (Sidebar) */}
