@@ -287,7 +287,7 @@ export default function WarehouseRequests() {
                 warehouse={warehouses[req.id_warehouse as number]}
                 existingContract={contracts.find(c => c.id_rent_request === req.id_rentRequest)}
                 onAccept={handleAccept}
-                onReject={id => handleReject(id, '')}
+                onReject={handleReject}
                 onMarkViewed={handleMarkViewed}
                 onCreateContract={id => navigate(`/warehouse/contracts/create/${id}`)}
                 onViewContract={() => navigate(`/warehouse/contracts/create/${req.id_rentRequest}`)}

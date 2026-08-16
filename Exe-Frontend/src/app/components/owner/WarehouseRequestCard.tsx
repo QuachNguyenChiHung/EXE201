@@ -18,7 +18,7 @@ interface RequestCardProps {
   warehouse: CompositeWarehouse | undefined;
   existingContract: CompositeContract | undefined;
   onAccept: (id: string) => Promise<{ renterPhone: string; ownerPhone: string; message: string } | undefined>;
-  onReject: (id: string) => Promise<void>;
+  onReject: (id: string, rejectionReason?: string) => Promise<void>;
   onMarkViewed: (id: string) => void;
   onCreateContract: (requestId: string) => void;
   onViewContract: () => void;
@@ -540,13 +540,33 @@ export function WarehouseRequestCard({
               </div>
             )}
             {req.status === 'APPROVED' && !existingContract && (
-              <button
-                onClick={() => onCreateContract(req.id_rentRequest.toString())}
-                className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                <FilePlus className="h-3.5 w-3.5" /> Soạn hợp đồng
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    const input = window.prompt('Nhập lý do từ chối (tùy chọn):', '');
+                    if (input === null) return;
+                    const reason = input;
+                    setRejecting(true);
+                    try {
+                      await onReject(req.id_rentRequest.toString(), reason);
+                    } finally {
+                      setRejecting(false);
+                    }
+                  }}
+                  disabled={rejecting}
+                  className="text-xs px-3 py-1.5 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm disabled:opacity-50"
+                  style={{ background: '#ef4444' }}
+                >
+                  {rejecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />} Từ chối
+                </button>
+                <button
+                  onClick={() => onCreateContract(req.id_rentRequest.toString())}
+                  className="text-xs px-4 py-2 font-medium text-white transition-colors hover:opacity-80 flex items-center gap-1.5 rounded-sm shadow-sm"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  <FilePlus className="h-3.5 w-3.5" /> Soạn hợp đồng
+                </button>
+              </div>
             )}
             {existingContract && (
               <button
