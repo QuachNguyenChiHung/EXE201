@@ -170,15 +170,24 @@ export default function WarehouseDetail() {
     const isOperationallyOpen = statusKey === 'ACTIVE' || statusKey === 'RENTED';
     const isRentable = isOperationallyOpen && totalAvailableCapacity > 0;
 
-    // RENTED badge is overridden based on actual remaining capacity — if any
-    // section still has free space, show "Kho còn chỗ trống" instead of
-    // "Đã cho thuê hết". Other statuses keep their default label.
+    // When the warehouse is operationally open but every section has been
+    // filled, surface that to the renter instead of the generic status label.
+    // RENTED keeps its existing flip ("Kho còn chỗ trống" ↔ "Đã cho thuê hết");
+    // ACTIVE gets the same treatment with a "Không còn chỗ chứa" override when
+    // there's no remaining capacity at all.
+    const noCapacity = totalAvailableCapacity === 0;
+    const isFullBadge = {
+        label: 'Không còn chỗ chứa',
+        badgeClass: 'bg-[rgba(239,68,68,0.1)] text-[var(--color-error)]',
+    };
     const badgeCfg =
         statusKey === 'RENTED'
             ? (totalAvailableCapacity > 0
                 ? { label: 'Kho còn chỗ trống', badgeClass: 'bg-[rgba(34,197,94,0.1)] text-[var(--color-success)]' }
                 : { label: STATUS_CFG.RENTED.label, badgeClass: STATUS_CFG.RENTED.badgeClass })
-            : statusCfg;
+            : statusKey === 'ACTIVE' && noCapacity
+                ? isFullBadge
+                : statusCfg;
 
     return (
         <div className="min-h-screen bg-[var(--color-bg)] relative">
