@@ -543,7 +543,7 @@ export function WarehouseRequestCard({
               <div className="flex items-center gap-2">
                 <button
                   onClick={async () => {
-                    const input = window.prompt('Nhập lý do từ chối (tùy chọn):', '');
+                    const input = "Thương lượng thất bại";
                     if (input === null) return;
                     const reason = input;
                     setRejecting(true);
