@@ -126,13 +126,14 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
               )}
             </Field>
           </div>
-          <Field label="Loại hàng hóa lưu trữ">
+          <Field label="Loại hàng hóa lưu trữ" required>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Package className="h-4 w-4 text-gray-400" />
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="VD: Hải sản đông lạnh, Dược phẩm..."
@@ -143,13 +144,14 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Mức dung lượng thuê (tùy chọn)">
+            <Field label="Mức dung lượng thuê" required>
               <div className="relative">
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <span className="text-gray-400 text-xs">m³</span>
                 </div>
                 <input
                   type="number"
+                  required
                   className={`${INPUT_CLS} pr-8`}
                   style={INPUT_STYLE}
                   placeholder="VD: 50"
@@ -225,8 +227,9 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
       <div className="p-6 border border-[var(--color-border)] bg-[var(--color-surface)]">
         <SectionHeader icon={<Edit3 className="h-5 w-5" />} title="Điều khoản hợp đồng" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Field label="Điều khoản thanh toán">
+          <Field label="Điều khoản thanh toán" required>
             <textarea
+              required
               className={TEXTAREA_CLS}
               style={INPUT_STYLE}
               rows={2}
@@ -236,8 +239,9 @@ export function CreateContractTerms({ contract, onChange, request, readOnly = fa
               disabled={readOnly}
             />
           </Field>
-          <Field label="Quy định phạt">
+          <Field label="Quy định phạt" required>
             <textarea
+              required
               className={TEXTAREA_CLS}
               style={INPUT_STYLE}
               rows={2}

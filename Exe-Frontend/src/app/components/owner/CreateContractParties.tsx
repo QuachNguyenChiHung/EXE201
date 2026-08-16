@@ -47,6 +47,7 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="VD: CÔNG TY TNHH LOGICHA"
@@ -63,6 +64,7 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="VD: 0312345678"
@@ -72,13 +74,14 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
               />
             </div>
           </Field>
-          <Field label="Địa chỉ trụ sở">
+          <Field label="Địa chỉ trụ sở" required>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MapPin className="h-4 w-4 text-gray-400" />
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="Địa chỉ công ty bên A"
@@ -89,13 +92,14 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Số điện thoại">
+            <Field label="Số điện thoại" required>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Phone className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                   type="text"
+                  required
                   className={`${INPUT_CLS} pl-9`}
                   style={INPUT_STYLE}
                   placeholder="09xx..."
@@ -105,13 +109,14 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
                 />
               </div>
             </Field>
-            <Field label="Email liên hệ">
+            <Field label="Email liên hệ" required>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                   type="email"
+                  required
                   className={`${INPUT_CLS} pl-9`}
                   style={INPUT_STYLE}
                   placeholder="email@bena.com"
@@ -136,6 +141,7 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="VD: NGUYEN VAN A"
@@ -152,6 +158,7 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="VD: 8312345678"
@@ -161,13 +168,14 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
               />
             </div>
           </Field>
-          <Field label="Địa chỉ">
+          <Field label="Địa chỉ" required>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MapPin className="h-4 w-4 text-gray-400" />
               </div>
               <input
                 type="text"
+                required
                 className={`${INPUT_CLS} pl-9`}
                 style={INPUT_STYLE}
                 placeholder="Địa chỉ công ty/cá nhân bên B"
@@ -178,13 +186,14 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Số điện thoại">
+            <Field label="Số điện thoại" required>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Phone className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                   type="text"
+                  required
                   className={`${INPUT_CLS} pl-9`}
                   style={INPUT_STYLE}
                   placeholder="09xx..."
@@ -194,13 +203,14 @@ export function CreateContractParties({ contract, onChange, readOnly = false }: 
                 />
               </div>
             </Field>
-            <Field label="Email liên hệ">
+            <Field label="Email liên hệ" required>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                   type="email"
+                  required
                   className={`${INPUT_CLS} pl-9`}
                   style={INPUT_STYLE}
                   placeholder="email@benb.com"

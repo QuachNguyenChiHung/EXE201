@@ -121,13 +121,24 @@ export default function CreateContract() {
   };
 
   const validateForm = (): boolean => {
+    if (!contract.contractTitle?.trim()) { toast.error('Vui lòng nhập tên hợp đồng'); return false; }
     if (!contract.owner_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên A'); return false; }
     if (!contract.owner_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên A'); return false; }
+    if (!contract.owner_address?.trim()) { toast.error('Vui lòng nhập địa chỉ Bên A'); return false; }
+    if (!contract.owner_phone?.trim()) { toast.error('Vui lòng nhập số điện thoại Bên A'); return false; }
+    if (!contract.owner_email?.trim()) { toast.error('Vui lòng nhập email Bên A'); return false; }
     if (!contract.renter_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên B'); return false; }
     if (!contract.renter_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên B'); return false; }
+    if (!contract.renter_address?.trim()) { toast.error('Vui lòng nhập địa chỉ Bên B'); return false; }
+    if (!contract.renter_phone?.trim()) { toast.error('Vui lòng nhập số điện thoại Bên B'); return false; }
+    if (!contract.renter_email?.trim()) { toast.error('Vui lòng nhập email Bên B'); return false; }
     if (!contract.start_at) { toast.error('Vui lòng chọn ngày bắt đầu'); return false; }
     if (!contract.end_at) { toast.error('Vui lòng chọn ngày kết thúc'); return false; }
-    if (!contract.monthlyRate || contract.monthlyRate <= 0) { toast.error('Vui lòng nhập đơn giá'); return false; }
+    if (!contract.cargo_description?.trim()) { toast.error('Vui lòng nhập loại hàng hóa lưu trữ'); return false; }
+    if (!contract.rentedCapacity || Number(contract.rentedCapacity) <= 0) { toast.error('Vui lòng nhập mức dung lượng thuê'); return false; }
+    if (!contract.monthlyRate || contract.monthlyRate <= 0) { toast.error('Vui lòng nhập tổng giá trị hợp đồng'); return false; }
+    if (!contract.payment_term?.trim()) { toast.error('Vui lòng nhập điều khoản thanh toán'); return false; }
+    if (!contract.penalty_clause?.trim()) { toast.error('Vui lòng nhập quy định phạt'); return false; }
     return true;
   };
 
@@ -309,10 +320,13 @@ export default function CreateContract() {
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
               <FileText className="h-5 w-5" style={{ color: "var(--color-primary)" }} />
-              <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-text)" }}>Tên hợp đồng</span>
+              <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-text)" }}>
+                Tên hợp đồng <span className="ml-1" style={{ color: "var(--color-error)" }}>*</span>
+              </span>
             </div>
             <input
               type="text"
+              required
               className="w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-primary)] transition-colors"
               style={{ borderColor: "var(--color-border)", background: "var(--color-surface)", color: "var(--color-text)" }}
               placeholder={`Hợp đồng thuê kho lạnh${warehouse ? ` – ${warehouse.name}` : ''}`}
