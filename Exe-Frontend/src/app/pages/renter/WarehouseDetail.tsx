@@ -305,7 +305,19 @@ export default function WarehouseDetail() {
                                             badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]',
                                         };
                                         return (
-                                            <li key={c.id_contract} className="py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                            <li
+                                                key={c.id_contract}
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => navigate(`/shared/contracts/${c.id_contract}`)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        navigate(`/shared/contracts/${c.id_contract}`);
+                                                    }
+                                                }}
+                                                className="py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 cursor-pointer hover:bg-[var(--color-bg-secondary)]/60 transition-colors -mx-2 px-2 rounded"
+                                            >
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="font-medium text-sm">
