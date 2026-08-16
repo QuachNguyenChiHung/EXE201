@@ -131,6 +131,16 @@ export default function WarehouseDetail() {
     const isOperationallyOpen = statusKey === 'ACTIVE' || statusKey === 'RENTED';
     const isRentable = isOperationallyOpen && totalAvailableCapacity > 0;
 
+    // RENTED badge is overridden based on actual remaining capacity — if any
+    // section still has free space, show "Kho còn chỗ trống" instead of
+    // "Đã cho thuê hết". Other statuses keep their default label.
+    const badgeCfg =
+        statusKey === 'RENTED'
+            ? (totalAvailableCapacity > 0
+                ? { label: 'Kho còn chỗ trống', badgeClass: 'bg-[rgba(34,197,94,0.1)] text-[var(--color-success)]' }
+                : STATUS_CFG.RENTED)
+            : statusCfg;
+
     return (
         <div className="min-h-screen bg-[var(--color-bg)] relative">
             <Navbar />
@@ -148,8 +158,8 @@ export default function WarehouseDetail() {
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4 border-b border-[var(--color-border)] pb-6">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                            <span className={`px-2.5 py-1 text-xs font-semibold rounded-sm uppercase tracking-wide ${statusCfg.badgeClass}`}>
-                                {statusCfg.label}
+                            <span className={`px-2.5 py-1 text-xs font-semibold rounded-sm uppercase tracking-wide ${badgeCfg.badgeClass}`}>
+                                {badgeCfg.label}
                             </span>
                             {warehouse.ownerName && (
                                 <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
