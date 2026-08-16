@@ -655,13 +655,6 @@ export function RentalRequestCard({ request, warehouse, contract, isExpanded, on
                                                 SĐT chủ kho: <span className="font-semibold" style={{ color: "var(--color-text)" }}>{ownerPhone}</span>
                                             </p>
                                         </div>
-                                        <a
-                                            href={`tel:${ownerPhone}`}
-                                            className="px-2.5 py-1.5 text-xs font-medium text-white rounded shrink-0 hover:opacity-80 transition-opacity"
-                                            style={{ background: "#22c55e" }}
-                                        >
-                                            Gọi ngay
-                                        </a>
                                     </div>
                                 )}
 
