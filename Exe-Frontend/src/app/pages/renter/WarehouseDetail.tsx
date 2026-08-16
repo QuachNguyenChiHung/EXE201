@@ -117,7 +117,19 @@ export default function WarehouseDetail() {
 
     const statusKey = String(warehouse.status || '').toUpperCase();
     const statusCfg = STATUS_CFG[statusKey] ?? { label: warehouse.status ?? 'Unknown', badgeClass: 'bg-[rgba(107,114,128,0.1)] text-[var(--color-text-muted)]' };
-    const isRentable = statusKey === 'ACTIVE';
+
+    // Sum up remaining capacity across all sections — a warehouse is rentable
+    // as long as it is approved for operation AND there is at least some
+    // capacity left. RENTED with a few empty sections still allows booking.
+    const totalAvailableCapacity = (warehouse.sections || []).reduce(
+        (sum, s: any) => {
+            const avail = Number(s?.availableCapacity ?? s?.available_capacity ?? 0);
+            return sum + (Number.isFinite(avail) && avail > 0 ? avail : 0);
+        },
+        0
+    );
+    const isOperationallyOpen = statusKey === 'ACTIVE' || statusKey === 'RENTED';
+    const isRentable = isOperationallyOpen && totalAvailableCapacity > 0;
 
     return (
         <div className="min-h-screen bg-[var(--color-bg)] relative">
