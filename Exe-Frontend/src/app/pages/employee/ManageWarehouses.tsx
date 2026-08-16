@@ -25,7 +25,7 @@ const TABS: { key: StatusFilter; label: string }[] = [
 export default function ManageWarehouses() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { users, incrementWarehouseRevision } = useApp();
+  const { incrementWarehouseRevision } = useApp();
 
   const [tab, setTab] = useState<StatusFilter>('all');
   const [search, setSearch] = useState(location.state?.searchWarehouse || '');
@@ -132,12 +132,6 @@ export default function ManageWarehouses() {
       }
     });
   }, [page, tab]);
-
-  const ownerInfoMap = useMemo(() => {
-    const m: Record<string, { name: string; email: string }> = {};
-    users.forEach(u => { if (u.id_user) m[u.id_user] = { name: u.name || '', email: u.email || '' }; });
-    return m;
-  }, [users]);
 
   const filtered = useMemo(() => {
     if (!search) return warehouses;
@@ -339,7 +333,7 @@ export default function ManageWarehouses() {
                 <p style={{ color: 'var(--color-text-secondary)' }}>Không có kho nào.</p>
              </div>
           ) : filtered.map(w => (
-            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerInfoMap[w.id_owner || 0]?.email} ownerName={ownerInfoMap[w.id_owner || 0]?.name} expandWarehouseId={location.state?.expandWarehouseId} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
+            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerName={w.ownerName} expandWarehouseId={location.state?.expandWarehouseId} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
               title: 'Xoá kho',
               message: `Bạn có chắc muốn xoá kho "${w.name}" không?`,
               confirmLabel: 'Xoá',

@@ -195,19 +195,10 @@ export default function WarehouseRow({
                             locationAddressText: warehouse.location_address_text,
                         })}</span>
                     </div>
-                    {(ownerName || ownerEmail) && (
-                        <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: 'var(--color-text-muted)' }}>
-                            {ownerName && (
-                                <span className="flex items-center gap-1 min-w-0">
-                                    <Building className="h-3 w-3 shrink-0" />
-                                    <span className="truncate font-medium" style={{ color: 'var(--color-text-secondary)' }}>{ownerName}</span>
-                                </span>
-                            )}
-                            {ownerEmail && (
-                                <a href={`mailto:${ownerEmail}`} className="flex items-center gap-1 hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
-                                    <span className="truncate">{ownerEmail}</span>
-                                </a>
-                            )}
+                    {ownerName && (
+                        <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                            <Building className="h-3 w-3 shrink-0" />
+                            <span className="truncate font-medium" style={{ color: 'var(--color-text-secondary)' }}>{ownerName}</span>
                         </div>
                     )}
                 </div>
