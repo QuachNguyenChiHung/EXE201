@@ -425,11 +425,7 @@ export function WarehouseRequestCard({
                             SĐT người thuê: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{acceptResult.renterPhone}</span>
                           </p>
                         )}
-                        {acceptResult.ownerPhone && (
-                          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                            SĐT chủ kho: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{acceptResult.ownerPhone}</span>
-                          </p>
-                        )}
+
                         {acceptResult.message && (
                           <p className="text-xs mt-1 italic" style={{ color: 'var(--color-text-muted)' }}>{acceptResult.message}</p>
                         )}
@@ -444,7 +440,7 @@ export function WarehouseRequestCard({
                           Số điện thoại của bạn (đã cung cấp cho người thuê)
                         </p>
                         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                          SĐT chủ kho: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{currentUser.phone}</span>
+                          <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{currentUser.phone}</span>
                         </p>
                       </div>
                     </div>
