@@ -133,9 +133,9 @@ export default function ManageWarehouses() {
     });
   }, [page, tab]);
 
-  const ownerEmailMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    users.forEach(u => { if (u.id_user) m[u.id_user] = u.email || ''; });
+  const ownerInfoMap = useMemo(() => {
+    const m: Record<string, { name: string; email: string }> = {};
+    users.forEach(u => { if (u.id_user) m[u.id_user] = { name: u.name || '', email: u.email || '' }; });
     return m;
   }, [users]);
 
@@ -339,7 +339,7 @@ export default function ManageWarehouses() {
                 <p style={{ color: 'var(--color-text-secondary)' }}>Không có kho nào.</p>
              </div>
           ) : filtered.map(w => (
-            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerEmailMap[w.id_owner || 0]} expandWarehouseId={location.state?.expandWarehouseId} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
+            <WarehouseRowComp key={w.id_warehouse} warehouse={w} ownerEmail={ownerInfoMap[w.id_owner || 0]?.email} ownerName={ownerInfoMap[w.id_owner || 0]?.name} expandWarehouseId={location.state?.expandWarehouseId} onApprove={handleApprove} onReject={handleReject} onDeactivate={handleDeactivate} onReviewCert={(cert) => setReviewingCert(cert)} onDelete={() => setConfirmModal({
               title: 'Xoá kho',
               message: `Bạn có chắc muốn xoá kho "${w.name}" không?`,
               confirmLabel: 'Xoá',
