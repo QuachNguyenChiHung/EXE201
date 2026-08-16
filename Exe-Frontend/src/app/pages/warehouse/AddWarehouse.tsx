@@ -58,11 +58,6 @@ export default function AddWarehouse() {
       return;
     }
 
-    if (certFiles.length === 0) {
-      toast.error("Vui lòng tải lên ít nhất một chứng chỉ");
-      return;
-    }
-
     if (certFiles.some((cert) => !cert.certTypeId)) {
       toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
       return;

@@ -193,12 +193,6 @@ export default function WarehouseForm() {
       return;
     }
 
-    const hasCerts = certFiles.length > 0 || (warehouse.certifications && warehouse.certifications.length > 0);
-    if (!hasCerts) {
-      toast.error("Vui lòng tải lên ít nhất một chứng chỉ");
-      return;
-    }
-
     if (certFiles.some((cert) => !cert.certTypeId)) {
       toast.error("Vui lòng chọn loại chứng chỉ cho tất cả file đã tải lên");
       return;
