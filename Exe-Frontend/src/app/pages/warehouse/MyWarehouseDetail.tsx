@@ -61,6 +61,7 @@ export default function MyWarehouseDetail() {
 
             // Fetch details
             const detailData = await ownerService.getMyWarehouseDetail(warehouseId);
+            console.log("🏭 Warehouse Detail:", detailData);
             setWarehouse(detailData);
 
             // Fetch requests for this warehouse
