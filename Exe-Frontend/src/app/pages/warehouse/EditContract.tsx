@@ -47,7 +47,6 @@ export default function EditContract() {
     if (!contractData) return;
     const c = contractData;
     setForm({
-      contractTitle: c.contractTitle || c.title || '',
       owner_legal_name: c.ownerLegalName || c.owner_legal_name || '',
       owner_tax_code: c.ownerTaxCode || c.owner_tax_code || '',
       owner_address: c.ownerAddress || c.owner_address || '',
@@ -252,23 +251,6 @@ export default function EditContract() {
         )}
 
         <div className="space-y-6">
-
-          {/* Contract title */}
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6">
-            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
-              <ClipboardList className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
-              <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text)' }}>Tên hợp đồng</span>
-            </div>
-            <input
-              type="text"
-              className="w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-primary)] transition-colors disabled:opacity-50"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-              placeholder={warehouseName ? `Hợp đồng thuê kho lạnh – ${warehouseName}` : 'Tên hợp đồng'}
-              value={form.contractTitle || ''}
-              onChange={(e) => onChange('contractTitle', e.target.value)}
-              disabled={!isEditable}
-            />
-          </div>
 
           {/* Parties */}
           <CreateContractParties

@@ -9,7 +9,7 @@ import { CreateContractTerms } from '../../components/owner/CreateContractTerms'
 import { CreateContractPDFUpload } from '../../components/owner/CreateContractPDFUpload';
 import { CreateContractPreviewModal } from '../../components/owner/CreateContractPreviewModal';
 import {
-  ArrowLeft, ClipboardList, Save, Send, CheckCircle, Hash, LayoutGrid, Globe, Snowflake, Edit3, Upload, FileText, AlertCircle, ChevronDown
+  ArrowLeft, ClipboardList, Save, Send, CheckCircle, Hash, LayoutGrid, Globe, Snowflake, Edit3, Upload, AlertCircle, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,7 +34,6 @@ export default function CreateContract() {
   const contractId = existingDraft?.id_contract || Date.now();
 
   const [contract, setContract] = useState<Partial<CompositeContract>>({
-    contractTitle: '',
     owner_legal_name: '',
     owner_tax_code: '',
     owner_address: '',
@@ -121,7 +120,6 @@ export default function CreateContract() {
   };
 
   const validateForm = (): boolean => {
-    if (!contract.contractTitle?.trim()) { toast.error('Vui lòng nhập tên hợp đồng'); return false; }
     if (!contract.owner_legal_name?.trim()) { toast.error('Vui lòng nhập tên Bên A'); return false; }
     if (!contract.owner_tax_code?.trim()) { toast.error('Vui lòng nhập MST Bên A'); return false; }
     if (!contract.owner_address?.trim()) { toast.error('Vui lòng nhập địa chỉ Bên A'); return false; }
@@ -153,7 +151,7 @@ export default function CreateContract() {
     isWholeWarehouse: request?.isWholeWarehouse,
     contractRef,
     status,
-    contractTitle: contract.contractTitle || `Hợp đồng thuê kho lạnh${warehouse ? ` – ${warehouse.name}` : ''}`,
+    contractTitle: `Hợp đồng thuê kho lạnh${warehouse ? ` – ${warehouse.name}` : ''}`,
 
     // Core ERD
     owner_legal_name: contract.owner_legal_name || '',
@@ -316,24 +314,6 @@ export default function CreateContract() {
 
 
         <div className="space-y-6">
-
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6">
-            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-border)]">
-              <FileText className="h-5 w-5" style={{ color: "var(--color-primary)" }} />
-              <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-text)" }}>
-                Tên hợp đồng <span className="ml-1" style={{ color: "var(--color-error)" }}>*</span>
-              </span>
-            </div>
-            <input
-              type="text"
-              required
-              className="w-full h-9 px-3 text-sm border focus:outline-none focus:border-[var(--color-primary)] transition-colors"
-              style={{ borderColor: "var(--color-border)", background: "var(--color-surface)", color: "var(--color-text)" }}
-              placeholder={`Hợp đồng thuê kho lạnh${warehouse ? ` – ${warehouse.name}` : ''}`}
-              value={contract.contractTitle || ''}
-              onChange={(e) => onChange('contractTitle', e.target.value)}
-            />
-          </div>
 
           <CreateContractParties contract={contract} onChange={onChange} />
 
