@@ -19,6 +19,27 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
   const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString("vi-VN") : "___");
 
+  // Mirror SharedContractDetail.tsx so the two views produce the same content.
+  const requestIdValue =
+    (contract as any).requestId ??
+    contract.id_rent_request ??
+    request?.id_rentRequest ??
+    request?.id ??
+    null;
+  const signedDateObj = contract.start_at ? new Date(contract.start_at) : new Date();
+  const day = signedDateObj.getDate();
+  const month = signedDateObj.getMonth() + 1;
+  const year = signedDateObj.getFullYear();
+
+  const contractTotalPrice = (contract as any).totalPrice ?? (contract as any).total_price ?? rate;
+  let autoCalculatedTotal = 0;
+  if (request && request.details) {
+    const totalMonthly = request.details.reduce((acc: number, d: any) => acc + (d.rentedArea * d.priceTierValue), 0);
+    const isYears = request.durationUnit === 'YEARS' || request.durationUnit === 'Năm';
+    const durationMultiplier = isYears ? (request.duration * 12) : (request.duration || 1);
+    autoCalculatedTotal = totalMonthly * durationMultiplier;
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
@@ -48,13 +69,13 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
             <h2 className="font-bold text-lg leading-tight uppercase">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h2>
             <h3 className="font-bold text-base leading-tight underline decoration-1 underline-offset-4">Độc lập - Tự do - Hạnh phúc</h3>
             <p className="mt-4 text-sm italic">
-              Hôm nay, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
+              Hôm nay, ngày {day} tháng {month} năm {year}
             </p>
           </div>
 
           <div className="text-center mb-8">
-            <h1 className="font-bold text-2xl uppercase mb-1">{contract.contractTitle || "HỢP ĐỒNG CHO THUÊ KHO BÃI"}</h1>
-            <p className="text-base">Số: {contract.contractRef || "___"}</p>
+            <h1 className="font-bold text-2xl uppercase mb-1">HỢP ĐỒNG CHO THUÊ KHO BÃI</h1>
+            <p className="text-base">Số: {(contract as any).id ?? (contract as any).id_contract ? `${(contract as any).id ?? (contract as any).id_contract}/HĐTK-${year}` : (contract.contractRef || "___")}</p>
           </div>
 
           {/* Body */}
@@ -83,6 +104,7 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
               <p><strong>Địa chỉ:</strong> {contract.renter_address || "___"}</p>
               <p><strong>Email:</strong> {contract.renter_email || "___"}</p>
               <p><strong>Điện thoại:</strong> {contract.renter_phone || "___"}</p>
+              {requestIdValue && <p><strong>Liên kết Yêu cầu thuê (Request ID):</strong> #{requestIdValue}</p>}
             </div>
 
             <div className="mt-8 space-y-4">
@@ -96,13 +118,19 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
               
               {request && (
                 <div className="mt-4 p-4 border border-gray-300 bg-gray-50 rounded-md">
-                  <h4 className="font-bold text-sm uppercase mb-2 text-gray-700">Tham chiếu Yêu cầu thuê (#{contract.id_rent_request || request.id_rentRequest || request.id})</h4>
+                  <h4 className="font-bold text-sm uppercase mb-2 text-gray-700">Tham chiếu Yêu cầu thuê (#{requestIdValue || '___'})</h4>
                   <p className="text-sm italic text-gray-600 mb-3">
                     Chi tiết từ Yêu cầu thuê ban đầu. Lưu ý: Các điều khoản, diện tích, hoặc mức giá chính thức trong hợp đồng có thể thay đổi so với yêu cầu ban đầu tùy theo thỏa thuận thực tế.
                   </p>
                   <div className="text-sm space-y-1 pl-3 border-l-2 border-gray-300">
                     <p>- Hàng hóa lưu trữ: {request.cargoDescription || request.cargo_description || 'Chưa mô tả'}</p>
-                    <p>- Thời gian thuê: {request.duration} {request.durationUnit === 'MONTHS' || request.durationUnit === 'MONTH' || request.durationUnit === 'Tháng' ? 'Tháng' : request.durationUnit === 'YEARS' || request.durationUnit === 'YEAR' || request.durationUnit === 'Năm' ? 'Năm' : request.durationUnit}</p>
+                    <p>- Thời gian thuê: {request.duration} {request.durationUnit === 'MONTHS' || request.durationUnit === 'MONTH' || request.durationUnit === 'Tháng' ? 'Tháng' : request.durationUnit === 'YEARS' || request.durationUnit === 'YEAR' || request.durationUnit === 'Năm' ? 'Năm' : request.durationUnit}
+                      {request.startDate && request.endDate && (
+                        <span className="italic ml-1">
+                          (Từ {new Date(request.startDate).toLocaleDateString('vi-VN')} đến {new Date(request.endDate).toLocaleDateString('vi-VN')})
+                        </span>
+                      )}
+                    </p>
                     {request.details && request.details.length > 0 && (
                        <div className="mt-2">
                           <p className="font-semibold">- Phân khu yêu cầu thuê:</p>
@@ -158,8 +186,13 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
 
               <h3 className="font-bold text-lg mt-6">ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG & THANH TOÁN</h3>
               <p>
-                Tổng giá trị hợp đồng chính thức được hai bên thống nhất xác nhận là: <strong>{fmtCurrency(rate)}</strong> <em>(Chưa bao gồm thuế GTGT)</em>.
+                Tổng giá trị hợp đồng chính thức được hai bên thống nhất xác nhận là: <strong>{fmtCurrency(contractTotalPrice)}</strong> <em>(Chưa bao gồm thuế GTGT)</em>.
               </p>
+              {autoCalculatedTotal !== contractTotalPrice && autoCalculatedTotal > 0 && (
+                <p className="italic text-gray-600 mt-2">
+                  *(Mức giá trên áp dụng theo thỏa thuận cuối cùng của hợp đồng, có thể khác với giá dự kiến ban đầu là {fmtCurrency(autoCalculatedTotal)}).
+                </p>
+              )}
               <p className="mt-2">{contract.payment_term || 'Chưa cập nhật phương thức và kỳ hạn thanh toán cụ thể.'}</p>
 
               <h3 className="font-bold text-lg">ĐIỀU 3: ĐIỀU KHOẢN PHẠT & CAM KẾT CHUNG</h3>
@@ -167,8 +200,13 @@ export function CreateContractPreviewModal({ contract, request, onClose }: Props
               <p>{contract.special_term || 'Chưa có các cam kết hoặc điều khoản đặc biệt nào khác.'}</p>
 
               <h3 className="font-bold text-lg">ĐIỀU 4: TÌNH TRẠNG PHÁP LÝ & HIỆU LỰC</h3>
+              {contract.cancel_reason && (
+                <p>
+                  <strong>Lý do hủy/chấm dứt:</strong> {contract.cancel_reason}
+                </p>
+              )}
               <p>
-                Hợp đồng này được tạo và lưu trữ trên hệ thống nền tảng AiLogis, có giá trị pháp lý tương đương văn bản thỏa thuận điện tử giữa các bên kể từ ngày ký.
+                Hợp đồng này được tạo và lưu trữ trên hệ thống nền tảng AiLogis, có giá trị pháp lý tương đương văn bản thỏa thuận điện tử giữa các bên kể từ ngày ký ({day}/{month}/{year}).
               </p>
             </div>
           </div>
